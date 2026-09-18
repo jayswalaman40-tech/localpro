@@ -8,7 +8,7 @@ import { hasSupabase } from './supabase.js';
 
 /* ==================== i18n ==================== */
 let lang = 'en';
-const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : I18N.en[k];
+const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.en[k] != null ? I18N.en[k] : k);
 const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k]);
 
 /* ==================== state ==================== */
@@ -34,6 +34,12 @@ const catNameById = (id) => {
   const c = categories.find(x => x.id === id);
   if (!c) return '';
   return (c.translations && (c.translations[lang] || c.translations.en)) || c.key;
+};
+// Provider's trade label: DB category, else their custom "Other" text.
+const providerCatLabel = (p) => {
+  if (p?.category_id) return catNameById(p.category_id);
+  if (p?.custom_category) return p.custom_category;
+  return '';
 };
 const UNIT = {
   onwards: () => ' ' + t('onwards'), plus: () => '+', sqft: () => t('perSqft'),
@@ -73,7 +79,7 @@ function setLang(code) {
 
 function applyLang() {
   document.documentElement.lang = lang;
-  document.title = 'LocalPro Customer — ' + t('splashTitle');
+  document.title = 'Helpzo — ' + t('splashTitle');
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
@@ -119,8 +125,8 @@ function goTo(key) {
   else if (currentScreen() !== key) stack.push(key);
 }
 function goBack() {
-  if (stack.length > 1) stack.pop();
-  showScreen(currentScreen() || 'home');
+  if (stack.length > 1) { stack.pop(); showScreen(currentScreen()); }
+  else { stack = ['home']; showScreen('home'); }
 }
 async function openNotifications() {
   $('notifDot').classList.add('hidden');
@@ -145,6 +151,8 @@ async function logout() {
   savedIds = new Set(); providers = []; selectedProvider = null;
   stack = ['splash']; activeCategory = 'all';
   const si = $('searchInput'); if (si) si.value = '';
+  const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
+  const lp = $('loginPhone'); if (lp) lp.value = '';
   showScreen('splash');
 }
 
@@ -163,9 +171,12 @@ async function sendOtp() {
   const btn = $('sendOtpBtn'); btn.disabled = true;
   try {
     pendingPhone = await api.sendOtp(phoneDigits());
-    goTo('otp');
+    // reveal the OTP boxes on the SAME page (no screen change)
+    $('otpSection').hidden = false;
+    $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
     const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
     boxes.forEach(b => b.value = ''); boxes[0].focus();
+    toast(t('otpSentToast') || 'OTP sent');
   } catch (e) {
     toast(e.message || 'Could not send OTP');
   } finally { btn.disabled = false; }
@@ -219,7 +230,7 @@ function providerCardHtml(p) {
       <div class="pcard-top">
         <div>
           <p class="pcard-name">${esc(p.name)}</p>
-          <p class="pcard-cat">${esc(catNameById(p.category_id))} · ${esc(priceNU(p.starting_price, p.price_unit))}</p>
+          <p class="pcard-cat">${esc(providerCatLabel(p))} · ${esc(priceNU(p.starting_price, p.price_unit))}</p>
         </div>
         <div class="pcard-right">
           ${dist}
@@ -295,7 +306,7 @@ async function renderHistory() {
       <div class="book-card">
         <div class="book-top">
           <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.provider?.name || '')}</p>
-          <p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(catNameById(b.provider?.category_id))} · ${esc(fmtDateISO(b.created_at))}</p></div>
+          <p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(providerCatLabel(b.provider))} · ${esc(fmtDateISO(b.created_at))}</p></div>
           <span class="badge ${badge[b.status] || 'pending'}">${esc(t(label[b.status] || 'stPending'))}</span>
         </div>
       </div>`).join('');
@@ -306,7 +317,7 @@ async function fillDetail(p) {
   $('detailAvatar').textContent = (p.name || '?')[0];
   $('detailName').textContent = p.name;
   $('detailVerified').classList.toggle('hidden', !p.verified);
-  $('detailCat').textContent = catNameById(p.category_id) + ' · ' + priceNU(p.starting_price, p.price_unit);
+  $('detailCat').textContent = providerCatLabel(p) + ' · ' + priceNU(p.starting_price, p.price_unit);
   $('detailPhone').textContent = p.phone;
   $('detailPhoneLink').href = telHref(p.phone);
   $('detailCallBtn').href = telHref(p.phone);

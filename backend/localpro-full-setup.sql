@@ -494,6 +494,102 @@ begin
 end;
 $$;
 
+-- ============ 0005 PROVIDER KYC + ONBOARDING ============
+-- =====================================================================
+-- LocalPro — Migration 0005: Provider KYC + onboarding
+--   Providers must complete onboarding (selfie + Aadhaar + PAN) before
+--   their listing goes live. Documents live in a PRIVATE storage bucket;
+--   only the owner (and admins) can read them. Safe to re-run.
+-- =====================================================================
+
+alter table public.providers add column if not exists selfie_path   text;
+alter table public.providers add column if not exists aadhaar_path  text;
+alter table public.providers add column if not exists pan_path      text;
+alter table public.providers add column if not exists onboarded     boolean not null default false;
+alter table public.providers add column if not exists whatsapp   text;
+alter table public.providers add column if not exists gender     text;
+alter table public.providers add column if not exists dob        date;
+alter table public.providers add column if not exists city       text;
+alter table public.providers add column if not exists aadhaar_no text;
+alter table public.providers add column if not exists pan_no     text;
+
+insert into storage.buckets (id, name, public)
+values ('kyc', 'kyc', false)
+on conflict (id) do nothing;
+
+drop policy if exists "kyc owner read"   on storage.objects;
+drop policy if exists "kyc owner insert" on storage.objects;
+drop policy if exists "kyc owner update" on storage.objects;
+drop policy if exists "kyc owner delete" on storage.objects;
+drop policy if exists "kyc admin read"   on storage.objects;
+
+create policy "kyc owner read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner insert" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner update" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc admin read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'kyc' and public.is_admin());
+
+-- ============ 0006 CUSTOM "OTHER" TRADE ============
+alter table public.providers add column if not exists custom_category text;
+
+drop function if exists public.nearby_providers(double precision, double precision, double precision, uuid, text);
+
+create or replace function public.nearby_providers(
+  in_lat      double precision,
+  in_lng      double precision,
+  radius_km   double precision default 10,
+  in_category uuid default null,
+  in_query    text default null
+)
+returns table (
+  id uuid, name text, phone text, category_id uuid, custom_category text,
+  about text, starting_price int, price_unit price_unit,
+  service_area text, experience_yrs int, verified boolean,
+  available boolean, rating_avg numeric, rating_count int,
+  response_rate int, distance_km numeric
+)
+language sql stable security definer set search_path = public as $$
+  select
+    p.id, p.name, p.phone, p.category_id, p.custom_category, p.about, p.starting_price,
+    p.price_unit, p.service_area, p.experience_yrs, p.verified,
+    p.available, p.rating_avg, p.rating_count, p.response_rate,
+    round(
+      (6371 * acos(
+        greatest(-1, least(1,
+          cos(radians(in_lat)) * cos(radians(p.lat)) *
+          cos(radians(p.lng) - radians(in_lng)) +
+          sin(radians(in_lat)) * sin(radians(p.lat))
+        ))
+      ))::numeric, 1
+    ) as distance_km
+  from public.providers p
+  where p.available = true
+    and p.lat is not null and p.lng is not null
+    and (in_category is null or p.category_id = in_category)
+    and (in_query is null or in_query = ''
+         or p.name ilike '%' || in_query || '%'
+         or p.custom_category ilike '%' || in_query || '%')
+    and (6371 * acos(
+          greatest(-1, least(1,
+            cos(radians(in_lat)) * cos(radians(p.lat)) *
+            cos(radians(p.lng) - radians(in_lng)) +
+            sin(radians(in_lat)) * sin(radians(p.lat))
+          ))
+        )) <= radius_km
+  order by distance_km asc, p.rating_avg desc;
+$$;
+
 -- ============ SEED (9 categories + 12 demo providers) ============
 -- =====================================================================
 -- LocalPro — DEMO seed data (categories + 12 sample providers)
@@ -546,18 +642,26 @@ begin
   loop
     select id into v_cat from public.categories where key = r.cat;
 
-    -- create demo auth user (trigger creates the profile)
-    v_uid := gen_random_uuid();
-    insert into auth.users (
-      instance_id, id, aud, role, phone, phone_confirmed_at,
-      created_at, updated_at, raw_app_meta_data, raw_user_meta_data
-    ) values (
-      '00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
-      r.phone, now(), now(), now(),
-      '{"provider":"phone"}',
-      jsonb_build_object('full_name', r.name, 'role', 'provider')
-    )
-    on conflict (phone) do nothing;
+    -- reuse an existing demo auth user with this phone, else create one
+    select id into v_uid from auth.users where phone = r.phone;
+    if v_uid is null then
+      v_uid := gen_random_uuid();
+      insert into auth.users (
+        instance_id, id, aud, role, phone, phone_confirmed_at,
+        created_at, updated_at, raw_app_meta_data, raw_user_meta_data
+      ) values (
+        '00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
+        r.phone, now(), now(), now(),
+        '{"provider":"phone"}',
+        jsonb_build_object('full_name', r.name, 'role', 'provider')
+      );
+    end if;
+
+    -- ensure the profile exists (don't rely on the trigger alone — a manual
+    -- insert into auth.users may not fire it, and a reused phone won't re-fire).
+    insert into public.profiles (id, phone, full_name, role)
+    values (v_uid, r.phone, r.name, 'provider')
+    on conflict (id) do nothing;
 
     -- listing
     insert into public.providers (

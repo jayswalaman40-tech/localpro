@@ -140,7 +140,7 @@ export async function getMyBookings() {
   if (!u?.user) return [];
   const { data, error } = await supabase
     .from('leads')
-    .select('id, status, created_at, provider:providers(name, category_id)')
+    .select('id, status, created_at, provider:providers(name, category_id, custom_category)')
     .eq('customer_id', u.user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;

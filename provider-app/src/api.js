@@ -129,6 +129,50 @@ export async function getMyReviews() {
   return data ?? [];
 }
 
+// ---------------- KYC DOCUMENT UPLOAD ----------------
+// Uploads a document to the private "kyc" bucket under "<uid>/<kind>.<ext>"
+// and returns the storage path (not a public URL — the bucket is private).
+export async function uploadKyc(file, kind) {
+  const id = await uid();
+  if (!id) throw new Error('Not signed in');
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${id}/${kind}.${ext}`;
+  const { error } = await supabase.storage
+    .from('kyc')
+    .upload(path, file, { upsert: true, contentType: file.type || undefined });
+  if (error) throw error;
+  return path;
+}
+
+// ---------------- SERVICES (price list under my listing) ----------------
+export async function getMyServices() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase
+    .from('provider_services').select('*')
+    .eq('provider_id', prov.id).order('sort_order');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function addService(name, price, unit = 'onwards') {
+  const prov = await getMyProvider();
+  if (!prov) throw new Error('Create your listing first');
+  const { data: existing } = await supabase
+    .from('provider_services').select('sort_order')
+    .eq('provider_id', prov.id).order('sort_order', { ascending: false }).limit(1);
+  const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
+  const { data, error } = await supabase
+    .from('provider_services')
+    .insert({ provider_id: prov.id, name, price, unit, sort_order: nextSort })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteService(id) {
+  const { error } = await supabase.from('provider_services').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---------------- NOTIFICATIONS ----------------
 export async function getNotifications() {
   const id = await uid();

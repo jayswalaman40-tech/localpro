@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LocalPro Customer — find nearby help</title>
+<title>Helpzo — find nearby help</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -20,24 +20,24 @@
   *{box-sizing:border-box;}
   body{
     margin:0; font-family:'Inter',system-ui,sans-serif;
-    background:radial-gradient(circle at 18px 18px, rgba(27,36,64,0.045) 1.5px, transparent 1.5px) 0 0/36px 36px, var(--bg);
-    color:var(--ink); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:32px 16px;
+    background:var(--bg); color:var(--ink);
+    min-height:100dvh; display:flex; justify-content:center;
   }
   h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
-  .stage{width:100%;max-width:1000px;}
-  .stage-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:0 4px;}
+  .stage{width:100%;max-width:520px;}
+  .stage-header{display:none;}
   .brand{display:flex;align-items:center;gap:10px;}
   .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
   .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
   .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
 
-  .phone{width:380px;max-width:100%;margin:0 auto;background:var(--card);border-radius:36px;border:8px solid var(--ink);box-shadow:var(--shadow);overflow:hidden;position:relative;}
-  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:var(--ink);border-bottom-left-radius:14px;border-bottom-right-radius:14px;z-index:5;}
+  .phone{position:relative;width:100%;height:100dvh;background:var(--card);overflow:hidden;box-shadow:var(--shadow);}
+  .notch{display:none;}
 
-  .screen{display:none;height:720px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:34px 18px 90px;position:relative;scrollbar-width:none;}
+  .screen{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 92px;scrollbar-width:none;}
   .screen::-webkit-scrollbar{display:none;}
   .screen.active{display:block;}
-  .screen.nonav{padding-bottom:34px;}
+  .screen.nonav{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));}
 
   .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
   .topbar .title{font-size:14.5px;font-weight:600;}
@@ -111,7 +111,7 @@
   .review-body{color:var(--ink-soft);}
   .sticky-cta{position:sticky;bottom:0;display:flex;gap:8px;background:linear-gradient(to top, var(--card) 70%, transparent);padding:14px 0 4px;margin-top:12px;}
 
-  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px 14px;z-index:10;}
+  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px calc(14px + env(safe-area-inset-bottom,0px));z-index:10;}
   .bottomnav.hidden{display:none;}
   .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
   .navitem.active{color:var(--ink);}
@@ -120,7 +120,7 @@
   .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
   .toast.low{bottom:24px;}
   .toast.show{opacity:1;transform:translateY(0);}
-  footer{text-align:center;font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6;}
+  footer{display:none;}
 
   /* onboarding / auth */
   .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
@@ -131,6 +131,20 @@
   .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:22px;}
   .otp-box{width:44px;height:52px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:18px;font-family:'Space Grotesk',sans-serif;outline:none;color:var(--ink);background:var(--card);}
   .otp-box:focus{border-color:var(--ink);}
+
+  /* Helpzo splash + logo */
+  .splash-hz{gap:0;}
+  .hz-stage{position:relative;width:260px;height:300px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+  .hz-logo{width:230px;max-width:72vw;border-radius:26px;box-shadow:0 18px 44px rgba(11,37,107,.28);opacity:0;transform:scale(.6);animation:hzLogoIn .7s .9s ease-out forwards;}
+  @keyframes hzLogoIn{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+  .hz-ic{position:absolute;left:50%;top:50%;font-size:36px;--x:0;--y:0;animation:hzFly 1.5s ease-in-out forwards;}
+  @keyframes hzFly{0%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(.5)}25%{opacity:1}70%{opacity:1;transform:translate(-50%,-50%) scale(.4)}85%{opacity:0;transform:translate(-50%,-50%) scale(.15)}100%{opacity:0}}
+  .hz-loader{width:130px;height:4px;border-radius:8px;background:rgba(27,36,64,.12);overflow:hidden;margin:16px 0 2px;opacity:0;animation:hzUp .5s 1.7s forwards;}
+  .hz-loader span{display:block;height:100%;width:40%;border-radius:8px;background:#1267FF;animation:hzLoad 1.4s 1.7s infinite;}
+  @keyframes hzLoad{from{transform:translateX(-120%)}to{transform:translateX(360%)}}
+  @keyframes hzUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .hz-login-logo{width:92px;border-radius:20px;box-shadow:0 10px 24px rgba(11,37,107,.22);margin-bottom:16px;}
+
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
   .field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;}
@@ -202,43 +216,48 @@
 
     <!-- SPLASH -->
     <div class="screen active nonav" id="screen-splash">
-      <div class="center-col">
-        <div class="logo-big">L</div>
-        <p class="h-title" data-i18n="splashTitle">Need a hand? Just search.</p>
-        <p class="h-sub" data-i18n="splashSub">Find skilled people near you and talk to them directly — from plumbers to tailors.</p>
-        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')">Get started</button>
+      <div class="center-col splash-hz">
+        <div class="hz-stage">
+          <span class="hz-ic" style="--x:-96px;--y:-104px">&#128295;</span>
+          <span class="hz-ic" style="--x:98px;--y:-92px;animation-delay:.08s">&#128268;</span>
+          <span class="hz-ic" style="--x:-108px;--y:44px;animation-delay:.04s">&#127912;</span>
+          <span class="hz-ic" style="--x:104px;--y:52px;animation-delay:.14s">&#129529;</span>
+          <span class="hz-ic" style="--x:-42px;--y:120px;animation-delay:.2s">&#9986;&#65039;</span>
+          <span class="hz-ic" style="--x:46px;--y:126px;animation-delay:.26s">&#127859;</span>
+          <img class="hz-logo" src="/helpzo-logo.jpg" alt="Helpzo — Your Help, Our Priority">
+        </div>
+        <div class="hz-loader"><span></span></div>
+        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')" style="margin-top:18px">Get started</button>
       </div>
     </div>
 
-    <!-- LOGIN -->
+    <!-- LOGIN + OTP (same page) -->
     <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:60px;">
+      <div class="center-col" style="justify-content:flex-start;padding-top:44px;">
+        <img class="hz-login-logo" src="/helpzo-logo.jpg" alt="Helpzo">
         <p class="h-title" data-i18n="loginTitle">Enter your number</p>
         <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
         <div class="form-col">
           <div class="field">
             <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" value="98765 43210" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
           </div>
           <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
           <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- OTP -->
-    <div class="screen nonav" id="screen-otp">
-      <div class="center-col">
-        <p class="h-title" data-i18n="verifyTitle">Verify</p>
-        <p class="h-sub" id="otpSub">Enter the 4-digit code sent to +91</p>
-        <div class="otp-row" id="otpRow">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+          <!-- OTP appears here on the same page after Send OTP -->
+          <div id="otpSection" hidden style="margin-top:24px">
+            <p class="h-sub" id="otpSub" style="max-width:none;margin:0 0 12px;text-align:center">Enter the 4-digit code sent to +91</p>
+            <div class="otp-row" id="otpRow">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+            </div>
+            <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:14px;text-align:center"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="sendOtp()">Resend</button></p>
+          </div>
         </div>
-        <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
-        <p style="font-size:11.5px;color:var(--muted);margin-top:14px"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="toast(t('resendToast'))">Resend</button></p>
       </div>
     </div>
 
@@ -298,14 +317,14 @@
 
     <!-- SAVED -->
     <div class="screen" id="screen-saved">
-      <div class="topbar"><span class="title" data-i18n="savedTitle">Saved</span></div>
+      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="savedTitle">Saved</span></div>
       <p class="result-count" id="savedCount"></p>
       <div id="savedList"></div>
     </div>
 
     <!-- HISTORY -->
     <div class="screen" id="screen-history">
-      <div class="topbar"><span class="title" data-i18n="historyTitle">Booking history</span></div>
+      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="historyTitle">Booking history</span></div>
       <div id="historyList"></div>
     </div>
 
