@@ -1,0 +1,77 @@
+{
+  "name": "LocalPro OTP sender (Supabase Send SMS Hook -> Fast2SMS)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "localpro-otp",
+        "responseMode": "responseNode",
+        "options": { "rawBody": true }
+      },
+      "id": "webhook-otp",
+      "name": "Supabase SMS Hook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "localpro-otp"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify Supabase 'Send SMS Hook' (Standard Webhooks) and extract phone + otp.\nconst crypto = require('crypto');\nconst item = $input.first().json;\nconst headers = item.headers || {};\n\n// raw body (rawBody:true) comes as a string; fall back to parsed body\nlet raw = item.body;\nif (raw && typeof raw === 'object') raw = JSON.stringify(raw);\n\n// ---- signature check (set SUPABASE_SMS_HOOK_VERIFY=false to skip while testing) ----\nconst doVerify = ($env.SUPABASE_SMS_HOOK_VERIFY || 'true') !== 'false';\nif (doVerify) {\n  const secretRaw = ($env.SUPABASE_SMS_HOOK_SECRET || '').trim();\n  const b64 = secretRaw.replace('v1,whsec_', '').replace('whsec_', '');\n  const id = headers['webhook-id'];\n  const ts = headers['webhook-timestamp'];\n  const sigHeader = headers['webhook-signature'] || '';\n  const signed = `${id}.${ts}.${raw}`;\n  const key = Buffer.from(b64, 'base64');\n  const expected = crypto.createHmac('sha256', key).update(signed).digest('base64');\n  const ok = String(sigHeader).split(' ').some(s => s.split(',')[1] === expected);\n  if (!ok) throw new Error('Invalid Supabase webhook signature');\n}\n\nconst body = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst phone = String(body.user && body.user.phone || '').replace(/\\D/g, '');\nconst numbers = phone.replace(/^91/, '').slice(-10);\nconst otp = String(body.sms && body.sms.otp || '');\nif (numbers.length !== 10 || !otp) throw new Error('Missing phone or otp in payload');\nreturn [{ json: { numbers, otp } }];"
+      },
+      "id": "verify-extract",
+      "name": "Verify + extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.fast2sms.com/dev/bulkV2",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "authorization", "value": "={{ $env.FAST2SMS_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "route", "value": "dlt" },
+            { "name": "sender_id", "value": "={{ $env.FAST2SMS_SENDER_ID }}" },
+            { "name": "message", "value": "={{ $env.FAST2SMS_DLT_TEMPLATE_ID }}" },
+            { "name": "variables_values", "value": "={{ $json.otp }}" },
+            { "name": "numbers", "value": "={{ $json.numbers }}" },
+            { "name": "flash", "value": "0" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms",
+      "name": "Fast2SMS send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "respond-ok",
+      "name": "200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Supabase SMS Hook": { "main": [[{ "node": "Verify + extract", "type": "main", "index": 0 }]] },
+    "Verify + extract": { "main": [[{ "node": "Fast2SMS send", "type": "main", "index": 0 }]] },
+    "Fast2SMS send": { "main": [[{ "node": "200 OK", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

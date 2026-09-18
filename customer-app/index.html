@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LocalPro Customer — find nearby help</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2440; --ink-soft:#4B5375; --muted:#7C8299;
+    --bg:#EEF1F6; --card:#FFFFFF;
+    --amber:#E8A33D; --amber-ink:#5A3A0B;
+    --teal:#1F8A70; --teal-bg:#E4F4EF;
+    --line:#DFE3EC; --danger:#C1462E; --danger-bg:#FBEAE7;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Inter',system-ui,sans-serif;
+    background:radial-gradient(circle at 18px 18px, rgba(27,36,64,0.045) 1.5px, transparent 1.5px) 0 0/36px 36px, var(--bg);
+    color:var(--ink); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:32px 16px;
+  }
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  .stage{width:100%;max-width:1000px;}
+  .stage-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:0 4px;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
+  .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
+  .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
+
+  .phone{width:380px;max-width:100%;margin:0 auto;background:var(--card);border-radius:36px;border:8px solid var(--ink);box-shadow:var(--shadow);overflow:hidden;position:relative;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:var(--ink);border-bottom-left-radius:14px;border-bottom-right-radius:14px;z-index:5;}
+
+  .screen{display:none;height:720px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:34px 18px 90px;position:relative;scrollbar-width:none;}
+  .screen::-webkit-scrollbar{display:none;}
+  .screen.active{display:block;}
+  .screen.nonav{padding-bottom:34px;}
+
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .topbar .title{font-size:14.5px;font-weight:600;}
+  .topbar .spacer{flex:1;}
+  .iconbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;position:relative;padding:0;color:var(--ink);font-family:inherit;}
+  .iconbtn:focus-visible,.btn:focus-visible,.navitem:focus-visible,.chip:focus-visible,.toggle:focus-visible,.list-row:focus-visible,.pcard:focus-visible,.heart:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .dot{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--card);}
+  .dot.hidden{display:none;}
+
+  .location-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:14px;}
+  .location-row b{color:var(--ink);font-weight:600;}
+
+  .searchbar{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card);margin-bottom:14px;}
+  .searchbar input{border:none;outline:none;font-size:13.5px;flex:1;min-width:0;font-family:inherit;background:transparent;color:var(--ink);}
+  .searchbar input::placeholder{color:var(--muted);}
+  .searchbar .clear{border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;display:none;}
+  .searchbar .clear.show{display:block;}
+
+  .chips{display:flex;gap:7px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px;scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .result-count{font-size:11.5px;color:var(--muted);margin-bottom:10px;}
+
+  .pcard{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px;cursor:pointer;background:var(--card);}
+  .pcard:hover{border-color:var(--ink-soft);}
+  .pcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .pcard-name{font-size:14px;font-weight:600;margin:0;}
+  .pcard-cat{font-size:11px;color:var(--muted);margin:2px 0 0;}
+  .pcard-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .dist-badge{font-size:10.5px;color:var(--teal);background:var(--teal-bg);padding:3px 8px;border-radius:10px;flex-shrink:0;font-weight:600;}
+  .heart{border:none;background:none;cursor:pointer;font-size:15px;line-height:1;padding:2px;color:var(--muted);}
+  .heart.on{color:var(--danger);}
+  .pcard-meta{display:flex;align-items:center;gap:5px;margin:8px 0 6px;font-size:12px;color:var(--ink-soft);}
+  .pcard-phone{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:10px;letter-spacing:.2px;}
+  .star{color:var(--amber);}
+  .pcard-actions{display:flex;gap:8px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-family:inherit;font-size:13px;font-weight:600;line-height:1;padding:11px 14px;cursor:pointer;color:var(--ink);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .06s ease;-webkit-tap-highlight-color:transparent;}
+  .btn:hover{border-color:var(--ink);}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 2px 10px rgba(31,138,112,.28);}
+  .btn-primary:hover{background:#1A7761;border-color:#1A7761;}
+  .btn-block{width:100%;padding:13px;font-size:14px;}
+  .btn-outline-danger{width:100%;padding:12px;font-size:13px;border-color:var(--danger);color:var(--danger);background:var(--card);}
+  .btn-outline-danger:hover{background:var(--danger-bg);border-color:var(--danger);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+  .btn-link{border:none;background:none;padding:0;font-size:11.5px;color:var(--ink);font-weight:600;cursor:pointer;font-family:inherit;}
+  /* row containers split their buttons evenly */
+  .sticky-cta .btn,.pcard-actions .btn{flex:1;min-width:0;}
+  .empty{text-align:center;padding:40px 10px;color:var(--muted);font-size:13px;line-height:1.6;}
+  .field-error{font-size:11px;color:var(--danger);margin:-8px 0 12px;display:none;}
+  .field-error.show{display:block;}
+
+  .detail-hero{border-radius:14px;background:linear-gradient(135deg, var(--ink) 0%, #2E3A66 100%);height:110px;margin-bottom:-30px;}
+  .detail-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;}
+  .detail-avatar{width:58px;height:58px;border-radius:14px;background:var(--amber);color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;border:4px solid var(--card);margin-top:-42px;margin-bottom:8px;}
+  .verified{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--teal);background:var(--teal-bg);padding:3px 8px;border-radius:10px;font-weight:600;margin-left:6px;}
+  .verified.hidden{display:none;}
+  .phone-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:6px 12px;border-radius:20px;margin-top:8px;text-decoration:none;}
+  .detail-stats{display:flex;gap:18px;margin:14px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .stat b{display:block;font-size:15px;}
+  .stat span{font-size:10.5px;color:var(--muted);}
+  .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:16px 0 8px;}
+  .service-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .service-row span:last-child{color:var(--muted);white-space:nowrap;}
+  .review{border-bottom:1px solid var(--line);padding:10px 0;font-size:12.5px;}
+  .review:last-child{border-bottom:none;}
+  .review-top{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .review-name{font-weight:600;}
+  .review-body{color:var(--ink-soft);}
+  .sticky-cta{position:sticky;bottom:0;display:flex;gap:8px;background:linear-gradient(to top, var(--card) 70%, transparent);padding:14px 0 4px;margin-top:12px;}
+
+  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px 14px;z-index:10;}
+  .bottomnav.hidden{display:none;}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
+  .navitem.active{color:var(--ink);}
+  .navitem .ic{font-size:17px;}
+
+  .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
+  .toast.low{bottom:24px;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  footer{text-align:center;font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6;}
+
+  /* onboarding / auth */
+  .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
+  .logo-big{width:64px;height:64px;border-radius:18px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;margin-bottom:18px;}
+  .h-title{font-size:19px;font-weight:600;margin:0 0 6px;font-family:'Space Grotesk',sans-serif;}
+  .h-sub{font-size:12.5px;color:var(--muted);margin:0 0 26px;max-width:260px;line-height:1.5;}
+  .form-col{width:100%;text-align:left;}
+  .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:22px;}
+  .otp-box{width:44px;height:52px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:18px;font-family:'Space Grotesk',sans-serif;outline:none;color:var(--ink);background:var(--card);}
+  .otp-box:focus{border-color:var(--ink);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--ink);}
+
+  /* profile */
+  .profile-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .avatar-lg{width:56px;height:56px;border-radius:16px;background:var(--teal-bg);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
+  .list-row{display:flex;align-items:center;gap:12px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);cursor:pointer;background:none;text-align:left;font-family:inherit;color:var(--ink);}
+  .list-row.static{cursor:default;}
+  .list-row .ic{width:32px;height:32px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .list-row .lbl{font-size:13px;font-weight:500;flex:1;}
+  .list-row .chev{color:var(--muted);font-size:13px;}
+  .toggle{width:36px;height:20px;border-radius:12px;background:var(--line);position:relative;cursor:pointer;flex-shrink:0;border:none;padding:0;}
+  .toggle.on{background:var(--teal);}
+  .toggle .knob{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .15s;}
+  .toggle.on .knob{transform:translateX(16px);}
+
+  /* history / bookings */
+  .book-card{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card);}
+  .book-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;}
+  .badge.done{background:var(--teal-bg);color:var(--teal);}
+  .badge.cancel{background:var(--danger-bg);color:var(--danger);}
+  .badge.pending{background:#FBEFDD;color:var(--amber-ink);}
+
+  /* notifications */
+  .notif-row{display:flex;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);}
+  .notif-ic{width:32px;height:32px;border-radius:50%;background:var(--teal-bg);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .notif-title{font-size:12.5px;font-weight:600;margin:0;}
+  .notif-body{font-size:12px;color:var(--muted);margin:2px 0 0;}
+  .notif-time{font-size:10.5px;color:var(--muted);}
+
+  /* language switcher */
+  .langfab{position:absolute;right:14px;bottom:78px;z-index:30;display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.4px;padding:7px 11px;border-radius:22px;cursor:pointer;box-shadow:0 4px 14px rgba(27,36,64,.16);transition:border-color .15s ease,transform .06s ease;}
+  .langfab:hover{border-color:var(--ink);}
+  .langfab:active{transform:translateY(1px);}
+  .langfab .globe{font-size:14px;line-height:1;}
+  .langfab.low{bottom:22px;}
+  .langfab:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .langpop{position:absolute;right:14px;bottom:122px;z-index:31;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;width:186px;}
+  .langpop.low{bottom:66px;}
+  .langpop[hidden]{display:none;}
+  .langpop .head{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;padding:6px 8px 5px;}
+  .langopt{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:none;background:none;font-family:inherit;text-align:left;padding:9px 8px;border-radius:9px;cursor:pointer;color:var(--ink);}
+  .langopt:hover{background:var(--bg);}
+  .langopt:focus-visible{outline:2px solid var(--ink);outline-offset:-1px;}
+  .langopt .native{font-weight:600;font-size:13px;}
+  .langopt .en{font-size:10.5px;color:var(--muted);}
+  .langopt.active{background:var(--teal-bg);}
+  .langopt.active .native{color:var(--teal);}
+  .langopt.active .en{color:var(--teal);}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="stage-header">
+    <div class="brand">
+      <div class="brand-mark">L</div>
+      <div class="brand-name">LocalPro — Customer</div>
+    </div>
+    <div class="tag">Live app · Supabase backend</div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+
+    <!-- SPLASH -->
+    <div class="screen active nonav" id="screen-splash">
+      <div class="center-col">
+        <div class="logo-big">L</div>
+        <p class="h-title" data-i18n="splashTitle">Need a hand? Just search.</p>
+        <p class="h-sub" data-i18n="splashSub">Find skilled people near you and talk to them directly — from plumbers to tailors.</p>
+        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')">Get started</button>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="screen nonav" id="screen-login">
+      <div class="center-col" style="justify-content:flex-start;padding-top:60px;">
+        <p class="h-title" data-i18n="loginTitle">Enter your number</p>
+        <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
+        <div class="form-col">
+          <div class="field">
+            <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" value="98765 43210" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+          </div>
+          <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
+          <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OTP -->
+    <div class="screen nonav" id="screen-otp">
+      <div class="center-col">
+        <p class="h-title" data-i18n="verifyTitle">Verify</p>
+        <p class="h-sub" id="otpSub">Enter the 4-digit code sent to +91</p>
+        <div class="otp-row" id="otpRow">
+          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
+          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
+          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
+          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+        </div>
+        <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
+        <p style="font-size:11.5px;color:var(--muted);margin-top:14px"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="toast(t('resendToast'))">Resend</button></p>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="screen" id="screen-home">
+      <div class="topbar">
+        <div class="location-row" style="margin:0"><span>&#128205;</span> <b>Ahmedabad, Satellite</b></div>
+        <div class="spacer"></div>
+        <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
+      </div>
+      <div class="searchbar">
+        <span>&#128269;</span>
+        <input id="searchInput" type="search" data-i18n-ph="searchPlaceholder" placeholder="Search plumber, electrician..." oninput="renderResults()">
+        <button class="clear" id="searchClear" data-i18n-aria="searchClear" aria-label="Clear search" onclick="clearSearch()">&#10005;</button>
+      </div>
+      <div class="chips" id="chipRow"></div>
+      <p class="result-count" id="resultCount"></p>
+      <div id="resultsList"></div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="screen nonav" id="screen-detail">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <div class="spacer"></div>
+        <button class="iconbtn" id="saveBtn" data-i18n-aria="saveAria" aria-label="Save" onclick="toggleSave()">&#9825;</button>
+      </div>
+      <div class="detail-hero"></div>
+      <div class="detail-card">
+        <div class="detail-avatar" id="detailAvatar">R</div>
+        <div>
+          <span style="font-size:16px;font-weight:600" id="detailName"></span>
+          <span class="verified" id="detailVerified">&#10003; <span data-i18n="verified">Verified</span></span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:3px 0 0" id="detailCat"></p>
+        <a class="phone-pill" id="detailPhoneLink" href="#"><span>&#128222;</span> <span id="detailPhone"></span></a>
+
+        <div class="detail-stats">
+          <div class="stat"><b id="detailRating"></b><span data-i18n="rating">Rating</span></div>
+          <div class="stat"><b id="detailReviews"></b><span data-i18n="reviews">Reviews</span></div>
+          <div class="stat"><b id="detailDist"></b><span data-i18n="distance">Distance</span></div>
+          <div class="stat"><b id="detailExp"></b><span data-i18n="experience">Experience</span></div>
+        </div>
+
+        <p class="section-label" data-i18n="servicesOffered">Services offered</p>
+        <div id="detailServices"></div>
+
+        <p class="section-label" data-i18n="recentReviews">Recent reviews</p>
+        <div id="detailReviewsList"></div>
+
+        <div class="sticky-cta">
+          <button class="btn btn-ghost" onclick="toast(t('whatsappToast'))">&#128172; WhatsApp</button>
+          <a class="btn btn-primary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()">Call now</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVED -->
+    <div class="screen" id="screen-saved">
+      <div class="topbar"><span class="title" data-i18n="savedTitle">Saved</span></div>
+      <p class="result-count" id="savedCount"></p>
+      <div id="savedList"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="screen" id="screen-history">
+      <div class="topbar"><span class="title" data-i18n="historyTitle">Booking history</span></div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen" id="screen-profile">
+      <div class="topbar"><span class="title" data-i18n="profileTitle">Profile</span></div>
+      <div class="profile-head">
+        <div class="avatar-lg">S</div>
+        <div>
+          <p style="font-weight:600;font-size:14.5px;margin:0" id="profileName">Sanjay Mehta</p>
+          <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="profilePhone">+91 98765 43210</p>
+        </div>
+      </div>
+      <button class="list-row" onclick="goTo('editprofile')"><span class="ic">&#9998;</span><span class="lbl" data-i18n="editProfile">Edit profile</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="goTo('saved')"><span class="ic">&#9825;</span><span class="lbl" data-i18n="savedProviders">Saved providers</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="goTo('history')"><span class="ic">&#128337;</span><span class="lbl" data-i18n="bookingHistory">Booking history</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="openNotifications()"><span class="ic">&#128276;</span><span class="lbl" data-i18n="notifications">Notifications</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="goTo('settings')"><span class="ic">&#9881;</span><span class="lbl" data-i18n="settings">Settings</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="toast(t('supportToast'))"><span class="ic">&#128172;</span><span class="lbl" data-i18n="helpSupport">Help and support</span><span class="chev">&#8250;</span></button>
+      <button class="btn btn-outline-danger" style="margin-top:16px" data-i18n="logout" onclick="logout()">Log out</button>
+    </div>
+
+    <!-- EDIT PROFILE -->
+    <div class="screen nonav" id="screen-editprofile">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="editProfile">Edit profile</span>
+      </div>
+      <div class="field"><label for="epName" data-i18n="fullName">Full name</label><input id="epName" value="Sanjay Mehta"></div>
+      <div class="field"><label for="epPhone" data-i18n="mobileNumber">Mobile number</label><input id="epPhone" type="tel" inputmode="numeric" value="+91 98765 43210"></div>
+      <div class="field"><label for="epArea" data-i18n="homeArea">Home area</label><input id="epArea" value="Satellite, Ahmedabad"></div>
+      <button class="btn btn-primary btn-block" data-i18n="saveChanges" onclick="saveProfile()">Save changes</button>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="screen nonav" id="screen-notifications">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="notifications">Notifications</span>
+      </div>
+      <div class="notif-row"><div class="notif-ic">&#9989;</div><div><p class="notif-title" data-i18n="notif1Title">Rajesh Kumar answered your call</p><p class="notif-body" data-i18n="notif1Body">Your call was answered</p><span class="notif-time" data-i18n="notif1Time">10 min ago</span></div></div>
+      <div class="notif-row"><div class="notif-ic">&#11088;</div><div><p class="notif-title" data-i18n="notif2Title">Don't forget to rate</p><p class="notif-body" data-i18n="notif2Body">Rate Manoj Solanki's work</p><span class="notif-time" data-i18n="notif2Time">1 day ago</span></div></div>
+      <div class="notif-row"><div class="notif-ic">&#127881;</div><div><p class="notif-title" data-i18n="notif3Title">New provider joined</p><p class="notif-body" data-i18n="notif3Body">A new tailor is available in your area</p><span class="notif-time" data-i18n="notif3Time">3 days ago</span></div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="screen nonav" id="screen-settings">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="settings">Settings</span>
+      </div>
+      <button class="list-row" onclick="toggleLangPop()"><span class="ic">&#127760;</span><span class="lbl" data-i18n="languageRow">Language</span><span class="chev" id="langRowValue">English</span></button>
+      <div class="list-row static">
+        <span class="ic">&#128276;</span><span class="lbl" data-i18n="pushNotifications">Push notifications</span>
+        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="pushNotifications" aria-label="Push notifications" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+      </div>
+      <div class="list-row static">
+        <span class="ic">&#128205;</span><span class="lbl" data-i18n="locationAccess">Location access</span>
+        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="locationAccess" aria-label="Location access" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+      </div>
+      <button class="list-row" onclick="toast(t('privacyToast'))"><span class="ic">&#128274;</span><span class="lbl" data-i18n="privacyPolicy">Privacy policy</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="toast(t('aboutToast'))"><span class="ic">&#8505;</span><span class="lbl" data-i18n="about">About</span><span class="chev">&#8250;</span></button>
+    </div>
+
+    <!-- SHARED BOTTOM NAV — one copy, all screens -->
+    <nav class="bottomnav hidden" id="bottomNav">
+      <button class="navitem" data-nav="home" onclick="goTo('home')"><span class="ic">&#127968;</span><span data-i18n="navHome">Home</span></button>
+      <button class="navitem" data-nav="saved" onclick="goTo('saved')"><span class="ic">&#9825;</span><span data-i18n="navSaved">Saved</span></button>
+      <button class="navitem" data-nav="history" onclick="goTo('history')"><span class="ic">&#128337;</span><span data-i18n="navHistory">History</span></button>
+      <button class="navitem" data-nav="profile" onclick="goTo('profile')"><span class="ic">&#128100;</span><span data-i18n="navProfile">Profile</span></button>
+    </nav>
+
+    <!-- LANGUAGE SWITCHER -->
+    <div class="langpop" id="langPop" role="menu" hidden></div>
+    <button class="langfab" id="langFab" aria-haspopup="true" aria-expanded="false" data-i18n-aria="langSelect" aria-label="Select language" onclick="event.stopPropagation(); toggleLangPop()"><span class="globe">&#127760;</span><span id="langCode">EN</span></button>
+
+    <!-- SHARED TOAST -->
+    <div class="toast" id="toastEl" role="status" aria-live="polite"></div>
+  </div>
+  <footer data-i18n="footer">The full customer app is clickable — onboarding, login/OTP, search, saved, history, profile, notifications and settings all work. No real signup or payment.</footer>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

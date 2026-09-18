@@ -1,0 +1,28 @@
+# deps / build
+node_modules/
+dist/
+*.log
+
+# secrets — never commit
+.env
+.env.local
+*/.env
+*/.env.local
+
+# generated native project (regenerate with: npx cap add android)
+android/
+ios/
+
+# signing / keys
+*.keystore
+*.jks
+google-services.json
+
+# editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# scratch
+*.tmp

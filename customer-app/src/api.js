@@ -1,0 +1,201 @@
+// =====================================================================
+// LocalPro Customer — data + auth layer
+// All talking to Supabase happens here. The UI (main.js) calls these
+// functions and never touches the database directly.
+// =====================================================================
+import { supabase } from './supabase.js';
+
+const DEFAULT_LAT = Number(import.meta.env.VITE_DEFAULT_LAT ?? 23.0225);
+const DEFAULT_LNG = Number(import.meta.env.VITE_DEFAULT_LNG ?? 72.5714);
+
+// ---------------- AUTH (phone OTP) ----------------
+
+// Sends a real SMS OTP to +91<phone>. Requires Phone auth enabled in Supabase.
+export async function sendOtp(phone10) {
+  const phone = '+91' + String(phone10).replace(/\D/g, '').slice(-10);
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) throw error;
+  return phone;
+}
+
+// Verifies the 4/6-digit code the user typed.
+export async function verifyOtp(phone, code) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone,
+    token: String(code).replace(/\D/g, ''),
+    type: 'sms',
+  });
+  if (error) throw error;
+  return data.user;
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+// ---------------- PROFILE ----------------
+
+export async function getMyProfile() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return null;
+  const { data, error } = await supabase
+    .from('profiles').select('*').eq('id', u.user.id).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMyProfile(fields) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('profiles').update({ ...fields, updated_at: new Date().toISOString() })
+    .eq('id', u.user.id);
+  if (error) throw error;
+}
+
+// ---------------- CATEGORIES ----------------
+
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from('categories').select('*').eq('is_active', true).order('sort_order');
+  if (error) throw error;
+  return data;
+}
+
+// ---------------- PROVIDERS ----------------
+
+// "Near you" — uses the nearby_providers RPC (Haversine) when we have GPS,
+// otherwise falls back to a plain list ordered by rating.
+export async function searchProviders({ lat, lng, categoryId = null, query = '', radiusKm = 25 } = {}) {
+  const useLat = lat ?? DEFAULT_LAT;
+  const useLng = lng ?? DEFAULT_LNG;
+
+  const { data, error } = await supabase.rpc('nearby_providers', {
+    in_lat: useLat,
+    in_lng: useLng,
+    radius_km: radiusKm,
+    in_category: categoryId,
+    in_query: query || null,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getProvider(id) {
+  const { data, error } = await supabase
+    .from('providers').select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getProviderServices(providerId) {
+  const { data, error } = await supabase
+    .from('provider_services').select('*').eq('provider_id', providerId).order('sort_order');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getProviderReviews(providerId) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('rating, body, created_at, reviewer_name')
+    .eq('provider_id', providerId).eq('status', 'approved')
+    .order('created_at', { ascending: false }).limit(20);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ---------------- LEADS (call = lead) ----------------
+
+// Called when the customer taps "Call". Creates a lead so it appears in the
+// provider's dashboard (and triggers their notification server-side).
+export async function createLead(providerId, note = null) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  // Snapshot the customer's name + phone onto the lead so the provider can
+  // see who to call (profiles are self-read only under RLS).
+  let me = null;
+  try { me = await getMyProfile(); } catch (e) {}
+  const { data, error } = await supabase
+    .from('leads')
+    .insert({
+      customer_id: u.user.id,
+      provider_id: providerId,
+      note,
+      customer_name: me?.full_name || null,
+      customer_phone: me?.phone || u.user.phone || null,
+    })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyBookings() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, status, created_at, provider:providers(name, category_id)')
+    .eq('customer_id', u.user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ---------------- SAVED PROVIDERS ----------------
+
+export async function getSavedIds() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return new Set();
+  const { data, error } = await supabase
+    .from('saved_providers').select('provider_id').eq('customer_id', u.user.id);
+  if (error) throw error;
+  return new Set((data ?? []).map(r => r.provider_id));
+}
+
+export async function saveProvider(providerId) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('saved_providers').insert({ customer_id: u.user.id, provider_id: providerId });
+  if (error && error.code !== '23505') throw error; // ignore duplicate
+}
+
+export async function unsaveProvider(providerId) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('saved_providers').delete()
+    .eq('customer_id', u.user.id).eq('provider_id', providerId);
+  if (error) throw error;
+}
+
+// ---------------- NOTIFICATIONS ----------------
+
+export async function getNotifications() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase
+    .from('notifications').select('*')
+    .eq('user_id', u.user.id).order('created_at', { ascending: false }).limit(30);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ---------------- LOCATION ----------------
+
+export function getCurrentLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve({ lat: DEFAULT_LAT, lng: DEFAULT_LNG }),
+      { timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}

@@ -1,0 +1,693 @@
+
+/* ==================== LANGUAGES ==================== */
+const LANGS = [
+  {code:'en', native:'English',  en:'English'},
+  {code:'hi', native:'हिन्दी',    en:'Hindi'},
+  {code:'gu', native:'ગુજરાતી',   en:'Gujarati'},
+  {code:'mr', native:'मराठी',     en:'Marathi'},
+  {code:'te', native:'తెలుగు',    en:'Telugu'},
+];
+
+const I18N = {
+en:{
+  splashTitle:"Need a hand? Just search.",
+  splashSub:"Find skilled people near you and talk to them directly — from plumbers to tailors.",
+  start:"Get started",
+  loginTitle:"Enter your number", loginSub:"We'll send an OTP to verify.",
+  mobileNumber:"Mobile number", phonePlaceholder:"10-digit number",
+  phoneError:"Enter a valid 10-digit number.", sendOtp:"Send OTP",
+  verifyTitle:"Verify", otpSub:"Enter the 4-digit code sent to +91 {phone}",
+  verifyNext:"Verify & continue", noCode:"Didn't get the code?", resend:"Resend",
+  resendToast:"OTP sent again (demo)", otpIncomplete:"Enter the full 4-digit code",
+  notifications:"Notifications", searchPlaceholder:"Search plumber, electrician...",
+  searchClear:"Clear search", back:"Back", saveAria:"Save", unsaveAria:"Remove from saved",
+  verified:"Verified", rating:"Rating", reviews:"Reviews", distance:"Distance", experience:"Experience",
+  servicesOffered:"Services offered", recentReviews:"Recent reviews",
+  whatsappToast:"WhatsApp opens here — disabled in the prototype",
+  call:"Call", viewProfile:"View profile",
+  savedTitle:"Saved", historyTitle:"Booking history", profileTitle:"Profile",
+  editProfile:"Edit profile", savedProviders:"Saved providers", bookingHistory:"Booking history",
+  settings:"Settings", helpSupport:"Help and support", supportToast:"Support chat — demo",
+  logout:"Log out", fullName:"Full name", homeArea:"Home area", saveChanges:"Save changes",
+  profileUpdated:"Profile updated (demo)",
+  notif1Title:"Rajesh Kumar answered your call", notif1Body:"Your call was answered", notif1Time:"10 min ago",
+  notif2Title:"Don't forget to rate", notif2Body:"Rate Manoj Solanki's work", notif2Time:"1 day ago",
+  notif3Title:"New provider joined", notif3Body:"A new tailor is available in your area", notif3Time:"3 days ago",
+  languageRow:"Language", pushNotifications:"Push notifications", locationAccess:"Location access",
+  privacyPolicy:"Privacy policy", privacyToast:"Privacy policy — demo",
+  about:"About", aboutToast:"About LocalPro — demo",
+  navHome:"Home", navSaved:"Saved", navHistory:"History", navProfile:"Profile",
+  footer:"The whole customer app is clickable — onboarding, login/OTP, search, saved, history, profile, notifications and settings all work. No real signup or payment.",
+  langSelect:"Select language", langSet:"Switched to {lang}",
+  resultOne:"1 provider near you", resultMany:"{n} providers near you",
+  noResults:"No providers found.<br>Try changing your search or filter.",
+  savedOne:"1 saved provider", savedMany:"{n} saved providers",
+  noSaved:"No providers saved yet.<br>Tap the heart on any card.",
+  noHistory:"No bookings yet.<br>Call a provider from Home.",
+  stDone:"Completed", stCancel:"Cancelled", stPending:"Pending",
+  savedToast:"Added to saved providers", unsavedToast:"Removed from saved list",
+  callLogged:"Starting call — added to history",
+  yrs:"yrs", km:"km", onwards:"onwards", perSqft:"/sqft", perHr:"/hr", perMo:"/mo",
+  perVisit:"/visit", perKm:"/km", perEvent:"/event",
+  months:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+  cAll:"All", cPlumber:"Plumber", cElectrician:"Electrician", cCarpenter:"Carpenter",
+  cAcRepair:"AC repair", cPainter:"Painter", cTailor:"Tailor", cDriver:"Driver",
+  cCook:"Cook", cGardener:"Gardener",
+  sTapRepair:"Tap repair", sPipelineFitting:"Pipeline fitting", sBathroomInstall:"Bathroom install",
+  sDrainCleaning:"Drain cleaning", sWiringRepair:"Wiring repair", sSwitchboardInstall:"Switchboard install",
+  sFanInstallation:"Fan installation", sShortCircuitFix:"Short circuit fix", sInverterSetup:"Inverter setup",
+  sFurnitureRepair:"Furniture repair", sCustomWardrobe:"Custom wardrobe", sDoorFitting:"Door fitting",
+  sAcServicing:"AC servicing", sGasRefill:"Gas refill", sInstallation:"Installation",
+  sInteriorPainting:"Interior painting", sWaterproofing:"Waterproofing", sWiringCheck:"Wiring check",
+  sBlouseStitching:"Blouse stitching", sAlteration:"Alteration", sKidsWear:"Kids wear",
+  sCityDrive:"City drive", sOutstationTrip:"Outstation trip", sAirportDrop:"Airport drop",
+  sDailyTiffin:"Daily tiffin", sPartyCooking:"Party cooking", sLawnMaintenance:"Lawn maintenance",
+  sPlantSetup:"Plant setup",
+  r1:"Fast response, fixed my leaking tap in 20 mins.", r2:"Fair pricing, will call again.",
+  r3:"Good work, arrived a bit late.", r4:"Very professional, on time.",
+  r5:"Explained the issue clearly.", r6:"Decent, could improve pricing.",
+  r7:"Excellent craftsmanship.", r8:"Same day service, very cool now!",
+  r9:"Reasonable and quick.", r10:"Clean finish, good team.",
+  r11:"Okay experience overall.", r12:"Perfect fitting, very reasonable.",
+  r13:"Safe driving, punctual.", r14:"Tasty home-style food.", r15:"Garden looks great now.",
+},
+hi:{
+  splashTitle:"काम चाहिए? बस खोजिए।",
+  splashSub:"अपने आस-पास के कुशल लोगों को खोजें और सीधे उनसे बात करें — प्लंबर से लेकर दर्जी तक।",
+  start:"शुरू करें",
+  loginTitle:"अपना नंबर डालें", loginSub:"हम वेरिफाई करने के लिए OTP भेजेंगे।",
+  mobileNumber:"मोबाइल नंबर", phonePlaceholder:"10 अंकों का नंबर",
+  phoneError:"मान्य 10 अंकों का नंबर डालें।", sendOtp:"OTP भेजें",
+  verifyTitle:"वेरिफाई करें", otpSub:"+91 {phone} पर भेजा गया 4 अंकों का कोड डालें",
+  verifyNext:"वेरिफाई करें और आगे बढ़ें", noCode:"कोड नहीं मिला?", resend:"दोबारा भेजें",
+  resendToast:"OTP दोबारा भेजा गया (डेमो)", otpIncomplete:"पूरा 4 अंकों का कोड डालें",
+  notifications:"सूचनाएँ", searchPlaceholder:"प्लंबर, इलेक्ट्रीशियन खोजें...",
+  searchClear:"सर्च साफ़ करें", back:"वापस", saveAria:"सेव करें", unsaveAria:"सेव से हटाएँ",
+  verified:"वेरिफाइड", rating:"रेटिंग", reviews:"रिव्यू", distance:"दूरी", experience:"अनुभव",
+  servicesOffered:"दी जाने वाली सेवाएँ", recentReviews:"हाल के रिव्यू",
+  whatsappToast:"यहाँ WhatsApp खुलेगा — प्रोटोटाइप में बंद है",
+  call:"कॉल करें", viewProfile:"प्रोफ़ाइल देखें",
+  savedTitle:"सेव किए गए", historyTitle:"बुकिंग इतिहास", profileTitle:"प्रोफ़ाइल",
+  editProfile:"प्रोफ़ाइल एडिट करें", savedProviders:"सेव किए गए प्रोवाइडर", bookingHistory:"बुकिंग इतिहास",
+  settings:"सेटिंग्स", helpSupport:"मदद और सपोर्ट", supportToast:"सपोर्ट चैट — डेमो",
+  logout:"लॉग आउट", fullName:"पूरा नाम", homeArea:"घर का इलाका", saveChanges:"बदलाव सेव करें",
+  profileUpdated:"प्रोफ़ाइल अपडेट हो गई (डेमो)",
+  notif1Title:"राजेश कुमार ने आपकी कॉल उठाई", notif1Body:"आपकी कॉल का जवाब मिल गया", notif1Time:"10 मिनट पहले",
+  notif2Title:"रेटिंग देना न भूलें", notif2Body:"मनोज सोलंकी के काम को रेट करें", notif2Time:"1 दिन पहले",
+  notif3Title:"नया प्रोवाइडर जुड़ा", notif3Body:"आपके इलाके में एक नया दर्जी उपलब्ध है", notif3Time:"3 दिन पहले",
+  languageRow:"भाषा", pushNotifications:"पुश नोटिफिकेशन", locationAccess:"लोकेशन एक्सेस",
+  privacyPolicy:"प्राइवेसी पॉलिसी", privacyToast:"प्राइवेसी पॉलिसी — डेमो",
+  about:"ऐप के बारे में", aboutToast:"LocalPro के बारे में — डेमो",
+  navHome:"होम", navSaved:"सेव", navHistory:"इतिहास", navProfile:"प्रोफ़ाइल",
+  footer:"पूरी कस्टमर ऐप क्लिक करने लायक है — ऑनबोर्डिंग, लॉगिन/OTP, सर्च, सेव, इतिहास, प्रोफ़ाइल, सूचनाएँ और सेटिंग्स सब काम करते हैं। कोई असली साइनअप या पेमेंट नहीं है।",
+  langSelect:"भाषा चुनें", langSet:"{lang} में बदल गया",
+  resultOne:"आपके पास 1 प्रोवाइडर मिला", resultMany:"आपके पास {n} प्रोवाइडर मिले",
+  noResults:"कोई प्रोवाइडर नहीं मिला।<br>सर्च या फ़िल्टर बदलकर देखें।",
+  savedOne:"1 सेव किया गया प्रोवाइडर", savedMany:"{n} सेव किए गए प्रोवाइडर",
+  noSaved:"अभी कोई प्रोवाइडर सेव नहीं किया।<br>किसी भी कार्ड के हार्ट आइकन पर टैप करें।",
+  noHistory:"अभी तक कोई बुकिंग नहीं।<br>होम से किसी प्रोवाइडर को कॉल करें।",
+  stDone:"पूरा हुआ", stCancel:"रद्द", stPending:"लंबित",
+  savedToast:"सेव किए गए प्रोवाइडर में जुड़ा", unsavedToast:"सेव लिस्ट से हटाया",
+  callLogged:"कॉल शुरू हो रही है — इतिहास में जोड़ा",
+  yrs:"साल", km:"कि.मी.", onwards:"से आगे", perSqft:"/वर्ग फुट", perHr:"/घंटा", perMo:"/माह",
+  perVisit:"/विज़िट", perKm:"/कि.मी.", perEvent:"/इवेंट",
+  months:["जन","फ़र","मार्च","अप्रैल","मई","जून","जुल","अग","सित","अक्तू","नव","दिस"],
+  cAll:"सभी", cPlumber:"प्लंबर", cElectrician:"इलेक्ट्रीशियन", cCarpenter:"बढ़ई",
+  cAcRepair:"AC रिपेयर", cPainter:"पेंटर", cTailor:"दर्जी", cDriver:"ड्राइवर",
+  cCook:"रसोइया", cGardener:"माली",
+  sTapRepair:"नल की मरम्मत", sPipelineFitting:"पाइपलाइन फिटिंग", sBathroomInstall:"बाथरूम इंस्टॉलेशन",
+  sDrainCleaning:"नाली की सफ़ाई", sWiringRepair:"वायरिंग मरम्मत", sSwitchboardInstall:"स्विचबोर्ड इंस्टॉल",
+  sFanInstallation:"पंखा इंस्टॉलेशन", sShortCircuitFix:"शॉर्ट सर्किट ठीक करना", sInverterSetup:"इन्वर्टर सेटअप",
+  sFurnitureRepair:"फर्नीचर मरम्मत", sCustomWardrobe:"कस्टम अलमारी", sDoorFitting:"दरवाज़ा फिटिंग",
+  sAcServicing:"AC सर्विसिंग", sGasRefill:"गैस रीफिल", sInstallation:"इंस्टॉलेशन",
+  sInteriorPainting:"इंटीरियर पेंटिंग", sWaterproofing:"वॉटरप्रूफिंग", sWiringCheck:"वायरिंग जाँच",
+  sBlouseStitching:"ब्लाउज़ सिलाई", sAlteration:"अल्टरेशन", sKidsWear:"बच्चों के कपड़े",
+  sCityDrive:"सिटी ड्राइव", sOutstationTrip:"आउटस्टेशन ट्रिप", sAirportDrop:"एयरपोर्ट ड्रॉप",
+  sDailyTiffin:"रोज़ का टिफ़िन", sPartyCooking:"पार्टी कुकिंग", sLawnMaintenance:"लॉन रखरखाव",
+  sPlantSetup:"पौधे लगाना",
+  r1:"तेज़ रिस्पॉन्स, 20 मिनट में टपकता नल ठीक कर दिया।", r2:"दाम सही हैं, दोबारा बुलाऊँगा।",
+  r3:"काम अच्छा, थोड़ा देर से आए।", r4:"बहुत प्रोफेशनल, समय पर आए।",
+  r5:"समस्या साफ़-साफ़ समझाई।", r6:"ठीक-ठाक, दाम थोड़े कम हो सकते हैं।",
+  r7:"कारीगरी बेहतरीन है।", r8:"उसी दिन सर्विस, अब बहुत ठंडा है!",
+  r9:"वाजिब दाम और तेज़ काम।", r10:"फिनिश साफ़, टीम अच्छी।",
+  r11:"कुल मिलाकर ठीक अनुभव रहा।", r12:"फिटिंग एकदम सही, दाम भी वाजिब।",
+  r13:"सुरक्षित ड्राइविंग, समय के पाबंद।", r14:"स्वादिष्ट घर जैसा खाना।", r15:"बगीचा अब बहुत अच्छा लग रहा है।",
+},
+gu:{
+  splashTitle:"કામ જોઈએ છે? બસ શોધો.",
+  splashSub:"તમારી આસપાસના કુશળ લોકોને શોધો અને સીધા તેમની સાથે વાત કરો — પ્લમ્બરથી લઈને દરજી સુધી.",
+  start:"શરૂ કરો",
+  loginTitle:"તમારો નંબર દાખલ કરો", loginSub:"અમે ચકાસવા માટે OTP મોકલીશું.",
+  mobileNumber:"મોબાઇલ નંબર", phonePlaceholder:"10 અંકનો નંબર",
+  phoneError:"માન્ય 10 અંકનો નંબર દાખલ કરો.", sendOtp:"OTP મોકલો",
+  verifyTitle:"ચકાસો", otpSub:"+91 {phone} પર મોકલેલો 4 અંકનો કોડ દાખલ કરો",
+  verifyNext:"ચકાસો અને આગળ વધો", noCode:"કોડ મળ્યો નથી?", resend:"ફરી મોકલો",
+  resendToast:"OTP ફરી મોકલ્યો (ડેમો)", otpIncomplete:"પૂરો 4 અંકનો કોડ દાખલ કરો",
+  notifications:"સૂચનાઓ", searchPlaceholder:"પ્લમ્બર, ઇલેક્ટ્રિશિયન શોધો...",
+  searchClear:"શોધ સાફ કરો", back:"પાછળ", saveAria:"સેવ કરો", unsaveAria:"સેવમાંથી દૂર કરો",
+  verified:"ચકાસાયેલ", rating:"રેટિંગ", reviews:"રિવ્યુ", distance:"અંતર", experience:"અનુભવ",
+  servicesOffered:"આપવામાં આવતી સેવાઓ", recentReviews:"તાજેતરના રિવ્યુ",
+  whatsappToast:"અહીં WhatsApp ખૂલશે — પ્રોટોટાઇપમાં બંધ છે",
+  call:"કૉલ કરો", viewProfile:"પ્રોફાઇલ જુઓ",
+  savedTitle:"સેવ કરેલા", historyTitle:"બુકિંગ ઇતિહાસ", profileTitle:"પ્રોફાઇલ",
+  editProfile:"પ્રોફાઇલ એડિટ કરો", savedProviders:"સેવ કરેલા પ્રોવાઇડર", bookingHistory:"બુકિંગ ઇતિહાસ",
+  settings:"સેટિંગ્સ", helpSupport:"મદદ અને સપોર્ટ", supportToast:"સપોર્ટ ચેટ — ડેમો",
+  logout:"લૉગ આઉટ", fullName:"પૂરું નામ", homeArea:"ઘરનો વિસ્તાર", saveChanges:"ફેરફારો સેવ કરો",
+  profileUpdated:"પ્રોફાઇલ અપડેટ થઈ (ડેમો)",
+  notif1Title:"રાજેશ કુમારે તમારો કૉલ ઉપાડ્યો", notif1Body:"તમારા કૉલનો જવાબ મળ્યો", notif1Time:"10 મિનિટ પહેલાં",
+  notif2Title:"રેટિંગ આપવાનું ભૂલશો નહીં", notif2Body:"મનોજ સોલંકીના કામને રેટ કરો", notif2Time:"1 દિવસ પહેલાં",
+  notif3Title:"નવો પ્રોવાઇડર જોડાયો", notif3Body:"તમારા વિસ્તારમાં નવો દરજી ઉપલબ્ધ છે", notif3Time:"3 દિવસ પહેલાં",
+  languageRow:"ભાષા", pushNotifications:"પુશ નોટિફિકેશન", locationAccess:"લોકેશન એક્સેસ",
+  privacyPolicy:"પ્રાઇવસી પોલિસી", privacyToast:"પ્રાઇવસી પોલિસી — ડેમો",
+  about:"એપ વિશે", aboutToast:"LocalPro વિશે — ડેમો",
+  navHome:"હોમ", navSaved:"સેવ", navHistory:"ઇતિહાસ", navProfile:"પ્રોફાઇલ",
+  footer:"આખી કસ્ટમર એપ ક્લિક કરી શકાય એવી છે — ઓનબોર્ડિંગ, લૉગિન/OTP, શોધ, સેવ, ઇતિહાસ, પ્રોફાઇલ, સૂચનાઓ અને સેટિંગ્સ બધું કામ કરે છે. કોઈ સાચું સાઇનઅપ કે પેમેન્ટ નથી.",
+  langSelect:"ભાષા પસંદ કરો", langSet:"{lang} માં બદલાયું",
+  resultOne:"તમારી નજીક 1 પ્રોવાઇડર મળ્યો", resultMany:"તમારી નજીક {n} પ્રોવાઇડર મળ્યા",
+  noResults:"કોઈ પ્રોવાઇડર મળ્યો નથી.<br>શોધ કે ફિલ્ટર બદલીને જુઓ.",
+  savedOne:"1 સેવ કરેલો પ્રોવાઇડર", savedMany:"{n} સેવ કરેલા પ્રોવાઇડર",
+  noSaved:"હજી કોઈ પ્રોવાઇડર સેવ કર્યો નથી.<br>કોઈપણ કાર્ડના હાર્ટ આઇકન પર ટૅપ કરો.",
+  noHistory:"હજી કોઈ બુકિંગ નથી.<br>હોમથી કોઈ પ્રોવાઇડરને કૉલ કરો.",
+  stDone:"પૂર્ણ", stCancel:"રદ", stPending:"બાકી",
+  savedToast:"સેવ કરેલા પ્રોવાઇડરમાં ઉમેરાયું", unsavedToast:"સેવ યાદીમાંથી દૂર કર્યું",
+  callLogged:"કૉલ શરૂ થઈ રહ્યો છે — ઇતિહાસમાં ઉમેર્યું",
+  yrs:"વર્ષ", km:"કિ.મી.", onwards:"થી શરૂ", perSqft:"/ચો.ફૂટ", perHr:"/કલાક", perMo:"/મહિનો",
+  perVisit:"/વિઝિટ", perKm:"/કિ.મી.", perEvent:"/ઇવેન્ટ",
+  months:["જાન્યુ","ફેબ્રુ","માર્ચ","એપ્રિલ","મે","જૂન","જુલાઈ","ઑગ","સપ્ટે","ઑક્ટો","નવે","ડિસે"],
+  cAll:"બધા", cPlumber:"પ્લમ્બર", cElectrician:"ઇલેક્ટ્રિશિયન", cCarpenter:"સુથાર",
+  cAcRepair:"AC રિપેર", cPainter:"પેઇન્ટર", cTailor:"દરજી", cDriver:"ડ્રાઇવર",
+  cCook:"રસોઇયો", cGardener:"માળી",
+  sTapRepair:"નળ રિપેર", sPipelineFitting:"પાઇપલાઇન ફિટિંગ", sBathroomInstall:"બાથરૂમ ઇન્સ્ટોલેશન",
+  sDrainCleaning:"ગટર સફાઈ", sWiringRepair:"વાયરિંગ રિપેર", sSwitchboardInstall:"સ્વિચબોર્ડ ઇન્સ્ટોલ",
+  sFanInstallation:"પંખો ઇન્સ્ટોલેશન", sShortCircuitFix:"શોર્ટ સર્કિટ રિપેર", sInverterSetup:"ઇન્વર્ટર સેટઅપ",
+  sFurnitureRepair:"ફર્નિચર રિપેર", sCustomWardrobe:"કસ્ટમ કબાટ", sDoorFitting:"દરવાજા ફિટિંગ",
+  sAcServicing:"AC સર્વિસિંગ", sGasRefill:"ગેસ રિફિલ", sInstallation:"ઇન્સ્ટોલેશન",
+  sInteriorPainting:"ઇન્ટિરિયર પેઇન્ટિંગ", sWaterproofing:"વોટરપ્રૂફિંગ", sWiringCheck:"વાયરિંગ ચેક",
+  sBlouseStitching:"બ્લાઉઝ સિલાઈ", sAlteration:"અલ્ટરેશન", sKidsWear:"બાળકોના કપડાં",
+  sCityDrive:"સિટી ડ્રાઇવ", sOutstationTrip:"આઉટસ્ટેશન ટ્રિપ", sAirportDrop:"એરપોર્ટ ડ્રોપ",
+  sDailyTiffin:"રોજનું ટિફિન", sPartyCooking:"પાર્ટી કુકિંગ", sLawnMaintenance:"લૉન જાળવણી",
+  sPlantSetup:"છોડ સેટઅપ",
+  r1:"ઝડપી પ્રતિસાદ, 20 મિનિટમાં ટપકતો નળ ઠીક કરી દીધો.", r2:"ભાવ વાજબી, ફરી બોલાવીશ.",
+  r3:"કામ સારું, થોડા મોડા આવ્યા.", r4:"ખૂબ પ્રોફેશનલ, સમયસર આવ્યા.",
+  r5:"સમસ્યા સ્પષ્ટ સમજાવી.", r6:"ઠીક છે, ભાવ થોડા ઓછા થઈ શકે.",
+  r7:"કારીગરી ઉત્તમ છે.", r8:"એ જ દિવસે સર્વિસ, હવે ખૂબ ઠંડું છે!",
+  r9:"વાજબી અને ઝડપી.", r10:"ફિનિશ સાફ, ટીમ સારી.",
+  r11:"એકંદરે ઠીક અનુભવ.", r12:"ફિટિંગ એકદમ સરસ, ભાવ પણ વાજબી.",
+  r13:"સલામત ડ્રાઇવિંગ, સમયના પાબંદ.", r14:"સ્વાદિષ્ટ ઘર જેવું જમવાનું.", r15:"બગીચો હવે ખૂબ સરસ લાગે છે.",
+},
+mr:{
+  splashTitle:"काम हवंय? फक्त शोधा.",
+  splashSub:"तुमच्या जवळचे कुशल लोक शोधा आणि थेट त्यांच्याशी बोला — प्लंबरपासून शिंप्यापर्यंत.",
+  start:"सुरू करा",
+  loginTitle:"तुमचा नंबर टाका", loginSub:"पडताळणीसाठी आम्ही OTP पाठवू.",
+  mobileNumber:"मोबाइल नंबर", phonePlaceholder:"10 अंकी नंबर",
+  phoneError:"वैध 10 अंकी नंबर टाका.", sendOtp:"OTP पाठवा",
+  verifyTitle:"पडताळा", otpSub:"+91 {phone} वर पाठवलेला 4 अंकी कोड टाका",
+  verifyNext:"पडताळा आणि पुढे जा", noCode:"कोड मिळाला नाही?", resend:"पुन्हा पाठवा",
+  resendToast:"OTP पुन्हा पाठवला (डेमो)", otpIncomplete:"पूर्ण 4 अंकी कोड टाका",
+  notifications:"सूचना", searchPlaceholder:"प्लंबर, इलेक्ट्रिशियन शोधा...",
+  searchClear:"शोध साफ करा", back:"मागे", saveAria:"सेव्ह करा", unsaveAria:"सेव्हमधून काढा",
+  verified:"पडताळलेले", rating:"रेटिंग", reviews:"पुनरावलोकने", distance:"अंतर", experience:"अनुभव",
+  servicesOffered:"दिल्या जाणाऱ्या सेवा", recentReviews:"अलीकडील पुनरावलोकने",
+  whatsappToast:"इथे WhatsApp उघडेल — प्रोटोटाइपमध्ये बंद आहे",
+  call:"कॉल करा", viewProfile:"प्रोफाइल पहा",
+  savedTitle:"सेव्ह केलेले", historyTitle:"बुकिंग इतिहास", profileTitle:"प्रोफाइल",
+  editProfile:"प्रोफाइल संपादित करा", savedProviders:"सेव्ह केलेले प्रोव्हायडर", bookingHistory:"बुकिंग इतिहास",
+  settings:"सेटिंग्ज", helpSupport:"मदत आणि सपोर्ट", supportToast:"सपोर्ट चॅट — डेमो",
+  logout:"लॉग आउट", fullName:"पूर्ण नाव", homeArea:"घराचा परिसर", saveChanges:"बदल जतन करा",
+  profileUpdated:"प्रोफाइल अपडेट झाली (डेमो)",
+  notif1Title:"राजेश कुमार यांनी तुमचा कॉल घेतला", notif1Body:"तुमच्या कॉलला उत्तर मिळाले", notif1Time:"10 मिनिटांपूर्वी",
+  notif2Title:"रेटिंग द्यायला विसरू नका", notif2Body:"मनोज सोलंकी यांच्या कामाला रेट करा", notif2Time:"1 दिवसापूर्वी",
+  notif3Title:"नवीन प्रोव्हायडर सामील झाला", notif3Body:"तुमच्या भागात नवीन शिंपी उपलब्ध आहे", notif3Time:"3 दिवसांपूर्वी",
+  languageRow:"भाषा", pushNotifications:"पुश सूचना", locationAccess:"स्थान प्रवेश",
+  privacyPolicy:"गोपनीयता धोरण", privacyToast:"गोपनीयता धोरण — डेमो",
+  about:"अ‍ॅपबद्दल", aboutToast:"LocalPro बद्दल — डेमो",
+  navHome:"होम", navSaved:"सेव्ह", navHistory:"इतिहास", navProfile:"प्रोफाइल",
+  footer:"संपूर्ण कस्टमर अ‍ॅप क्लिक करण्यायोग्य आहे — ऑनबोर्डिंग, लॉगिन/OTP, शोध, सेव्ह, इतिहास, प्रोफाइल, सूचना आणि सेटिंग्ज सर्व काम करतात. खरी नोंदणी किंवा पेमेंट नाही.",
+  langSelect:"भाषा निवडा", langSet:"{lang} मध्ये बदलले",
+  resultOne:"तुमच्या जवळ 1 प्रोव्हायडर सापडला", resultMany:"तुमच्या जवळ {n} प्रोव्हायडर सापडले",
+  noResults:"कोणताही प्रोव्हायडर सापडला नाही.<br>शोध किंवा फिल्टर बदलून पहा.",
+  savedOne:"1 सेव्ह केलेला प्रोव्हायडर", savedMany:"{n} सेव्ह केलेले प्रोव्हायडर",
+  noSaved:"अजून कोणताही प्रोव्हायडर सेव्ह केलेला नाही.<br>कोणत्याही कार्डवरील हार्ट आयकॉनवर टॅप करा.",
+  noHistory:"अजून कोणतीही बुकिंग नाही.<br>होमवरून एखाद्या प्रोव्हायडरला कॉल करा.",
+  stDone:"पूर्ण", stCancel:"रद्द", stPending:"प्रलंबित",
+  savedToast:"सेव्ह केलेल्या प्रोव्हायडरमध्ये जोडले", unsavedToast:"सेव्ह यादीतून काढले",
+  callLogged:"कॉल सुरू होत आहे — इतिहासात जोडले",
+  yrs:"वर्षे", km:"कि.मी.", onwards:"पासून पुढे", perSqft:"/चौ.फूट", perHr:"/तास", perMo:"/महिना",
+  perVisit:"/भेट", perKm:"/कि.मी.", perEvent:"/इव्हेंट",
+  months:["जाने","फेब्रु","मार्च","एप्रिल","मे","जून","जुलै","ऑग","सप्टें","ऑक्टो","नोव्हें","डिसें"],
+  cAll:"सर्व", cPlumber:"प्लंबर", cElectrician:"इलेक्ट्रिशियन", cCarpenter:"सुतार",
+  cAcRepair:"AC दुरुस्ती", cPainter:"पेंटर", cTailor:"शिंपी", cDriver:"ड्रायव्हर",
+  cCook:"स्वयंपाकी", cGardener:"माळी",
+  sTapRepair:"नळ दुरुस्ती", sPipelineFitting:"पाइपलाइन फिटिंग", sBathroomInstall:"बाथरूम बसवणे",
+  sDrainCleaning:"नाली साफसफाई", sWiringRepair:"वायरिंग दुरुस्ती", sSwitchboardInstall:"स्विचबोर्ड बसवणे",
+  sFanInstallation:"पंखा बसवणे", sShortCircuitFix:"शॉर्ट सर्किट दुरुस्ती", sInverterSetup:"इन्व्हर्टर सेटअप",
+  sFurnitureRepair:"फर्निचर दुरुस्ती", sCustomWardrobe:"कस्टम कपाट", sDoorFitting:"दरवाजा बसवणे",
+  sAcServicing:"AC सर्व्हिसिंग", sGasRefill:"गॅस रिफिल", sInstallation:"बसवणे",
+  sInteriorPainting:"इंटीरियर पेंटिंग", sWaterproofing:"वॉटरप्रूफिंग", sWiringCheck:"वायरिंग तपासणी",
+  sBlouseStitching:"ब्लाउज शिलाई", sAlteration:"अल्टरेशन", sKidsWear:"लहान मुलांचे कपडे",
+  sCityDrive:"सिटी ड्राइव्ह", sOutstationTrip:"आउटस्टेशन ट्रिप", sAirportDrop:"विमानतळ ड्रॉप",
+  sDailyTiffin:"रोजचा डबा", sPartyCooking:"पार्टी स्वयंपाक", sLawnMaintenance:"लॉन देखभाल",
+  sPlantSetup:"रोपे लावणे",
+  r1:"जलद प्रतिसाद, 20 मिनिटांत गळणारा नळ दुरुस्त केला.", r2:"दर योग्य, पुन्हा बोलावेन.",
+  r3:"काम चांगले, थोडे उशिरा आले.", r4:"अतिशय व्यावसायिक, वेळेवर आले.",
+  r5:"समस्या स्पष्ट समजावली.", r6:"ठीक आहे, दर थोडे कमी असू शकतात.",
+  r7:"कारागिरी उत्कृष्ट आहे.", r8:"त्याच दिवशी सर्व्हिस, आता खूप थंड आहे!",
+  r9:"वाजवी आणि जलद.", r10:"फिनिश स्वच्छ, टीम चांगली.",
+  r11:"एकूण अनुभव ठीक होता.", r12:"फिटिंग अगदी योग्य, दरही वाजवी.",
+  r13:"सुरक्षित ड्रायव्हिंग, वक्तशीर.", r14:"चविष्ट घरगुती जेवण.", r15:"बाग आता खूप छान दिसते.",
+},
+te:{
+  splashTitle:"పని కావాలా? వెతకండి.",
+  splashSub:"మీ దగ్గరలోని నైపుణ్యం గల వ్యక్తులను కనుగొని నేరుగా మాట్లాడండి — ప్లంబర్ నుండి టైలర్ వరకు.",
+  start:"ప్రారంభించండి",
+  loginTitle:"మీ నంబర్ నమోదు చేయండి", loginSub:"ధృవీకరణ కోసం OTP పంపుతాం.",
+  mobileNumber:"మొబైల్ నంబర్", phonePlaceholder:"10 అంకెల నంబర్",
+  phoneError:"సరైన 10 అంకెల నంబర్ నమోదు చేయండి.", sendOtp:"OTP పంపండి",
+  verifyTitle:"ధృవీకరించండి", otpSub:"+91 {phone} కు పంపిన 4 అంకెల కోడ్‌ను నమోదు చేయండి",
+  verifyNext:"ధృవీకరించి కొనసాగండి", noCode:"కోడ్ రాలేదా?", resend:"మళ్లీ పంపండి",
+  resendToast:"OTP మళ్లీ పంపబడింది (డెమో)", otpIncomplete:"పూర్తి 4 అంకెల కోడ్ నమోదు చేయండి",
+  notifications:"నోటిఫికేషన్లు", searchPlaceholder:"ప్లంబర్, ఎలక్ట్రీషియన్ వెతకండి...",
+  searchClear:"శోధనను క్లియర్ చేయండి", back:"వెనుకకు", saveAria:"సేవ్ చేయండి", unsaveAria:"సేవ్ నుండి తీసివేయండి",
+  verified:"ధృవీకరించబడింది", rating:"రేటింగ్", reviews:"రివ్యూలు", distance:"దూరం", experience:"అనుభవం",
+  servicesOffered:"అందించే సేవలు", recentReviews:"ఇటీవలి రివ్యూలు",
+  whatsappToast:"ఇక్కడ WhatsApp తెరుచుకుంటుంది — ప్రోటోటైప్‌లో నిలిపివేయబడింది",
+  call:"కాల్ చేయండి", viewProfile:"ప్రొఫైల్ చూడండి",
+  savedTitle:"సేవ్ చేసినవి", historyTitle:"బుకింగ్ చరిత్ర", profileTitle:"ప్రొఫైల్",
+  editProfile:"ప్రొఫైల్ ఎడిట్ చేయండి", savedProviders:"సేవ్ చేసిన ప్రొవైడర్లు", bookingHistory:"బుకింగ్ చరిత్ర",
+  settings:"సెట్టింగ్‌లు", helpSupport:"సహాయం మరియు మద్దతు", supportToast:"సపోర్ట్ చాట్ — డెమో",
+  logout:"లాగ్ అవుట్", fullName:"పూర్తి పేరు", homeArea:"ఇంటి ప్రాంతం", saveChanges:"మార్పులను సేవ్ చేయండి",
+  profileUpdated:"ప్రొఫైల్ నవీకరించబడింది (డెమో)",
+  notif1Title:"రాజేష్ కుమార్ మీ కాల్‌కు సమాధానమిచ్చారు", notif1Body:"మీ కాల్‌కు సమాధానం వచ్చింది", notif1Time:"10 నిమిషాల క్రితం",
+  notif2Title:"రేటింగ్ ఇవ్వడం మర్చిపోకండి", notif2Body:"మనోజ్ సోలంకి పనిని రేట్ చేయండి", notif2Time:"1 రోజు క్రితం",
+  notif3Title:"కొత్త ప్రొవైడర్ చేరారు", notif3Body:"మీ ప్రాంతంలో కొత్త టైలర్ అందుబాటులో ఉన్నారు", notif3Time:"3 రోజుల క్రితం",
+  languageRow:"భాష", pushNotifications:"పుష్ నోటిఫికేషన్లు", locationAccess:"లొకేషన్ యాక్సెస్",
+  privacyPolicy:"గోప్యతా విధానం", privacyToast:"గోప్యతా విధానం — డెమో",
+  about:"యాప్ గురించి", aboutToast:"LocalPro గురించి — డెమో",
+  navHome:"హోమ్", navSaved:"సేవ్", navHistory:"చరిత్ర", navProfile:"ప్రొఫైల్",
+  footer:"మొత్తం కస్టమర్ యాప్ క్లిక్ చేయదగినది — ఆన్‌బోర్డింగ్, లాగిన్/OTP, శోధన, సేవ్, చరిత్ర, ప్రొఫైల్, నోటిఫికేషన్లు మరియు సెట్టింగ్‌లు అన్నీ పనిచేస్తాయి. నిజమైన సైన్అప్ లేదా చెల్లింపు లేదు.",
+  langSelect:"భాషను ఎంచుకోండి", langSet:"{lang} కు మార్చబడింది",
+  resultOne:"మీ దగ్గర 1 ప్రొవైడర్ దొరికారు", resultMany:"మీ దగ్గర {n} ప్రొవైడర్లు దొరికారు",
+  noResults:"ప్రొవైడర్లు దొరకలేదు.<br>శోధన లేదా ఫిల్టర్ మార్చి ప్రయత్నించండి.",
+  savedOne:"1 సేవ్ చేసిన ప్రొవైడర్", savedMany:"{n} సేవ్ చేసిన ప్రొవైడర్లు",
+  noSaved:"ఇంకా ప్రొవైడర్లను సేవ్ చేయలేదు.<br>ఏదైనా కార్డ్‌లోని హార్ట్ చిహ్నాన్ని నొక్కండి.",
+  noHistory:"ఇంకా బుకింగ్‌లు లేవు.<br>హోమ్ నుండి ఒక ప్రొవైడర్‌కు కాల్ చేయండి.",
+  stDone:"పూర్తయింది", stCancel:"రద్దు", stPending:"పెండింగ్",
+  savedToast:"సేవ్ చేసిన ప్రొవైడర్లలో చేర్చబడింది", unsavedToast:"సేవ్ జాబితా నుండి తీసివేయబడింది",
+  callLogged:"కాల్ ప్రారంభమవుతోంది — చరిత్రలో చేర్చబడింది",
+  yrs:"సంవత్సరాలు", km:"కి.మీ.", onwards:"నుండి", perSqft:"/చ.అడుగు", perHr:"/గంట", perMo:"/నెల",
+  perVisit:"/సందర్శన", perKm:"/కి.మీ.", perEvent:"/ఈవెంట్",
+  months:["జన","ఫిబ్ర","మార్చి","ఏప్రి","మే","జూన్","జూలై","ఆగ","సెప్టెం","అక్టో","నవం","డిసెం"],
+  cAll:"అన్నీ", cPlumber:"ప్లంబర్", cElectrician:"ఎలక్ట్రీషియన్", cCarpenter:"వడ్రంగి",
+  cAcRepair:"AC రిపేర్", cPainter:"పెయింటర్", cTailor:"టైలర్", cDriver:"డ్రైవర్",
+  cCook:"వంటవాడు", cGardener:"తోటమాలి",
+  sTapRepair:"ట్యాప్ రిపేర్", sPipelineFitting:"పైప్‌లైన్ ఫిట్టింగ్", sBathroomInstall:"బాత్రూమ్ ఇన్‌స్టాలేషన్",
+  sDrainCleaning:"డ్రెయిన్ క్లీనింగ్", sWiringRepair:"వైరింగ్ రిపేర్", sSwitchboardInstall:"స్విచ్‌బోర్డ్ ఇన్‌స్టాల్",
+  sFanInstallation:"ఫ్యాన్ ఇన్‌స్టాలేషన్", sShortCircuitFix:"షార్ట్ సర్క్యూట్ రిపేర్", sInverterSetup:"ఇన్వర్టర్ సెటప్",
+  sFurnitureRepair:"ఫర్నిచర్ రిపేర్", sCustomWardrobe:"కస్టమ్ వార్డ్‌రోబ్", sDoorFitting:"డోర్ ఫిట్టింగ్",
+  sAcServicing:"AC సర్వీసింగ్", sGasRefill:"గ్యాస్ రీఫిల్", sInstallation:"ఇన్‌స్టాలేషన్",
+  sInteriorPainting:"ఇంటీరియర్ పెయింటింగ్", sWaterproofing:"వాటర్‌ప్రూఫింగ్", sWiringCheck:"వైరింగ్ చెక్",
+  sBlouseStitching:"బ్లౌజ్ కుట్టు", sAlteration:"ఆల్టరేషన్", sKidsWear:"పిల్లల దుస్తులు",
+  sCityDrive:"సిటీ డ్రైవ్", sOutstationTrip:"అవుట్‌స్టేషన్ ట్రిప్", sAirportDrop:"ఎయిర్‌పోర్ట్ డ్రాప్",
+  sDailyTiffin:"రోజువారీ టిఫిన్", sPartyCooking:"పార్టీ వంట", sLawnMaintenance:"లాన్ నిర్వహణ",
+  sPlantSetup:"మొక్కల సెటప్",
+  r1:"వేగవంతమైన స్పందన, 20 నిమిషాల్లో లీక్ అవుతున్న ట్యాప్ బాగుచేశారు.", r2:"ధర సరైనది, మళ్లీ పిలుస్తాను.",
+  r3:"పని బాగుంది, కొంచెం ఆలస్యంగా వచ్చారు.", r4:"చాలా వృత్తిపరంగా, సమయానికి వచ్చారు.",
+  r5:"సమస్యను స్పష్టంగా వివరించారు.", r6:"ఫర్వాలేదు, ధర ఇంకా తగ్గించవచ్చు.",
+  r7:"పనితనం అద్భుతం.", r8:"అదే రోజు సర్వీస్, ఇప్పుడు చాలా చల్లగా ఉంది!",
+  r9:"సహేతుకం మరియు వేగం.", r10:"శుభ్రమైన ఫినిషింగ్, మంచి బృందం.",
+  r11:"మొత్తంమీద ఫర్వాలేదు.", r12:"ఫిట్టింగ్ చాలా బాగుంది, ధర కూడా సహేతుకం.",
+  r13:"సురక్షితమైన డ్రైవింగ్, సమయపాలన.", r14:"రుచికరమైన ఇంటి భోజనం.", r15:"తోట ఇప్పుడు చాలా బాగుంది.",
+},
+};
+
+let lang = 'en';
+const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : I18N.en[k];
+const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k]);
+
+/* ==================== DATA ==================== */
+const providers = [
+  {id:1, name:"Rajesh Kumar", cat:"Plumber", phone:"+91 98765 43210", rating:4.8, reviews:120, dist:1.2, exp:10, price:{n:250,u:'onwards'}, verified:true,
+    services:[["sTapRepair",{n:150}],["sPipelineFitting",{n:400}],["sBathroomInstall",{n:2500,u:'plus'}]],
+    rv:[["Priya S.","r1"],["Amit P.","r2"]]},
+  {id:2, name:"Suresh Bhai", cat:"Plumber", phone:"+91 97234 11890", rating:4.5, reviews:76, dist:2.5, exp:6, price:{n:200,u:'onwards'}, verified:false,
+    services:[["sTapRepair",{n:120}],["sDrainCleaning",{n:350}]],
+    rv:[["Neha K.","r3"]]},
+  {id:3, name:"Manoj Solanki", cat:"Electrician", phone:"+91 90999 22341", rating:4.9, reviews:210, dist:0.8, exp:12, price:{n:300,u:'onwards'}, verified:true,
+    services:[["sWiringRepair",{n:300}],["sSwitchboardInstall",{n:500}],["sFanInstallation",{n:200}]],
+    rv:[["Kunal D.","r4"],["Sana R.","r5"]]},
+  {id:4, name:"Iqbal Khan", cat:"Electrician", phone:"+91 88123 67540", rating:4.3, reviews:54, dist:3.1, exp:5, price:{n:250,u:'onwards'}, verified:false,
+    services:[["sShortCircuitFix",{n:350}],["sInverterSetup",{n:800}]],
+    rv:[["Vikram T.","r6"]]},
+  {id:5, name:"Bharat Vaghela", cat:"Carpenter", phone:"+91 99250 78123", rating:4.7, reviews:98, dist:1.9, exp:15, price:{n:400,u:'onwards'}, verified:true,
+    services:[["sFurnitureRepair",{n:400}],["sCustomWardrobe",{n:8000,u:'plus'}],["sDoorFitting",{n:600}]],
+    rv:[["Meera J.","r7"]]},
+  {id:6, name:"Farhan Sheikh", cat:"AC repair", phone:"+91 91234 55678", rating:4.6, reviews:143, dist:2.0, exp:8, price:{n:350,u:'onwards'}, verified:true,
+    services:[["sAcServicing",{n:350}],["sGasRefill",{n:1800}],["sInstallation",{n:1200}]],
+    rv:[["Rohit M.","r8"],["Farah A.","r9"]]},
+  {id:7, name:"Deepak Sharma", cat:"Painter", phone:"+91 96543 12098", rating:4.4, reviews:61, dist:3.6, exp:9, price:{n:15,u:'sqft'}, verified:false,
+    services:[["sInteriorPainting",{n:15,u:'sqft'}],["sWaterproofing",{n:40,u:'sqft'}]],
+    rv:[["Deepak V.","r10"]]},
+  {id:8, name:"Ramesh Chauhan", cat:"AC repair", phone:"+91 93280 44567", rating:4.1, reviews:33, dist:4.2, exp:4, price:{n:300,u:'onwards'}, verified:false,
+    services:[["sAcServicing",{n:300}],["sWiringCheck",{n:250}]],
+    rv:[["Isha B.","r11"]]},
+  {id:9, name:"Kavita Ben", cat:"Tailor", phone:"+91 90123 88451", rating:4.9, reviews:87, dist:1.5, exp:14, price:{n:100,u:'onwards'}, verified:true,
+    services:[["sBlouseStitching",{n:300}],["sAlteration",{n:100}],["sKidsWear",{n:250}]],
+    rv:[["Rina P.","r12"]]},
+  {id:10, name:"Anil Yadav", cat:"Driver", phone:"+91 89765 34120", rating:4.6, reviews:52, dist:2.9, exp:7, price:{n:150,u:'hr'}, verified:true,
+    services:[["sCityDrive",{n:150,u:'hr'}],["sOutstationTrip",{n:12,u:'km'}],["sAirportDrop",{n:500}]],
+    rv:[["Sameer G.","r13"]]},
+  {id:11, name:"Meena Prajapati", cat:"Cook", phone:"+91 94567 12309", rating:4.8, reviews:64, dist:1.1, exp:11, price:{n:4000,u:'mo'}, verified:true,
+    services:[["sDailyTiffin",{n:4000,u:'mo'}],["sPartyCooking",{n:800,u:'event'}]],
+    rv:[["Anjali D.","r14"]]},
+  {id:12, name:"Ramu Mali", cat:"Gardener", phone:"+91 97890 65412", rating:4.5, reviews:29, dist:3.3, exp:9, price:{n:500,u:'visit'}, verified:false,
+    services:[["sLawnMaintenance",{n:500,u:'visit'}],["sPlantSetup",{n:1500,u:'plus'}]],
+    rv:[["Kiran S.","r15"]]},
+];
+
+const bookingHistory = [
+  {name:"Rajesh Kumar", cat:"Plumber", d:{d:12,m:6,y:2026}, status:"done"},
+  {name:"Meena Prajapati", cat:"Cook", d:{d:5,m:6,y:2026}, status:"done"},
+  {name:"Deepak Sharma", cat:"Painter", d:{d:28,m:5,y:2026}, status:"cancel"},
+  {name:"Manoj Solanki", cat:"Electrician", d:{d:14,m:5,y:2026}, status:"pending"},
+];
+
+/* canonical category -> translation key */
+const CAT_KEY = {"All":"cAll","Plumber":"cPlumber","Electrician":"cElectrician","Carpenter":"cCarpenter",
+  "AC repair":"cAcRepair","Painter":"cPainter","Tailor":"cTailor","Driver":"cDriver","Cook":"cCook","Gardener":"cGardener"};
+const categories = Object.keys(CAT_KEY);
+const NAV_SCREENS = ['home', 'saved', 'history', 'profile'];
+
+let activeCategory = "All";
+let selectedProvider = null;
+let savedIds = new Set([3, 9]);
+let stack = ['splash'];
+let toastTimer = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const telHref = p => 'tel:' + p.replace(/[^\d+]/g, '');
+const currentScreen = () => stack[stack.length - 1];
+
+const catName = c => t(CAT_KEY[c] || 'cAll');
+const fmtDate = d => `${d.d} ${t('months')[d.m]} ${d.y}`;
+const UNIT = {onwards:() => ' ' + t('onwards'), plus:() => '+', sqft:() => t('perSqft'),
+  hr:() => t('perHr'), mo:() => t('perMo'), visit:() => t('perVisit'), km:() => t('perKm'),
+  event:() => t('perEvent')};
+const price = p => '₹' + p.n.toLocaleString('en-IN') + (UNIT[p.u] ? UNIT[p.u]() : '');
+
+/* ==================== LANGUAGE SWITCHER ==================== */
+function renderLangPop(){
+  $('langPop').innerHTML =
+    `<div class="head">${esc(t('languageRow'))}</div>` +
+    LANGS.map(l => `<button class="langopt ${l.code === lang ? 'active' : ''}" role="menuitem"
+      onclick="event.stopPropagation(); setLang('${l.code}')">
+      <span class="native">${esc(l.native)}</span><span class="en">${esc(l.en)}</span></button>`).join('');
+}
+
+function toggleLangPop(){
+  const pop = $('langPop');
+  if(pop.hidden){ renderLangPop(); pop.hidden = false; $('langFab').setAttribute('aria-expanded', 'true'); }
+  else closeLangPop();
+}
+function closeLangPop(){
+  $('langPop').hidden = true;
+  $('langFab').setAttribute('aria-expanded', 'false');
+}
+
+function setLang(code){
+  if(!I18N[code]) return;
+  lang = code;
+  applyLang();
+  closeLangPop();
+  toast(fill(t('langSet'), {lang: LANGS.find(l => l.code === code).native}));
+}
+
+/* one click retranslates the whole app */
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.title = 'LocalPro Customer — ' + t('splashTitle');
+
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+
+  $('langCode').textContent = lang.toUpperCase();
+  $('langRowValue').textContent = LANGS.find(l => l.code === lang).native;
+  $('otpSub').textContent = fill(t('otpSub'), {phone: $('loginPhone').value.trim() || '98765 43210'});
+
+  renderResults();
+  renderSaved();
+  renderHistory();
+  if(selectedProvider) fillDetail(selectedProvider);
+  if(!$('langPop').hidden) renderLangPop();
+}
+
+document.addEventListener('click', closeLangPop);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeLangPop(); });
+$('langPop').addEventListener('click', e => e.stopPropagation());
+
+/* ==================== NAVIGATION ==================== */
+function showScreen(key){
+  const target = $('screen-' + key);
+  if(!target){ console.warn('Screen missing:', key); return false; }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  target.classList.add('active');
+  target.scrollTop = 0;
+  closeLangPop();
+
+  const hasNav = NAV_SCREENS.includes(key);
+  $('bottomNav').classList.toggle('hidden', !hasNav);
+  $('toastEl').classList.toggle('low', !hasNav);
+  $('langFab').classList.toggle('low', !hasNav);
+  $('langPop').classList.toggle('low', !hasNav);
+  document.querySelectorAll('.navitem[data-nav]').forEach(b =>
+    b.classList.toggle('active', b.dataset.nav === key));
+
+  if(key === 'home') renderResults();
+  if(key === 'saved') renderSaved();
+  if(key === 'history') renderHistory();
+  if(key === 'otp') $('otpSub').textContent = fill(t('otpSub'), {phone: $('loginPhone').value.trim() || '98765 43210'});
+  return true;
+}
+
+function goTo(key){
+  if(!showScreen(key)) return;
+  if(NAV_SCREENS.includes(key)) stack = [key];
+  else if(currentScreen() !== key) stack.push(key);
+}
+
+function goBack(){
+  if(stack.length > 1) stack.pop();
+  showScreen(currentScreen() || 'home');
+}
+
+function openNotifications(){
+  $('notifDot').classList.add('hidden');
+  goTo('notifications');
+}
+
+function logout(){
+  stack = ['splash'];
+  showScreen('splash');
+  $('searchInput').value = '';
+  activeCategory = 'All';
+  selectedProvider = null;
+}
+
+/* ==================== AUTH ==================== */
+function phoneDigits(){ return $('loginPhone').value.replace(/\D/g, ''); }
+function validatePhone(){
+  const digits = phoneDigits();
+  const ok = digits.length === 10;
+  $('loginPhoneErr').classList.toggle('show', !ok && digits.length > 0);
+  $('sendOtpBtn').disabled = !ok;
+  return ok;
+}
+function sendOtp(){
+  if(!validatePhone()){ $('loginPhoneErr').classList.add('show'); return; }
+  goTo('otp');
+  const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
+  boxes.forEach(b => b.value = '');
+  boxes[0].focus();
+}
+function verifyOtp(){
+  const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
+  if(boxes.some(b => !b.value.trim())){ toast(t('otpIncomplete')); return; }
+  goTo('home');
+}
+
+$('otpRow').addEventListener('input', e => {
+  const el = e.target;
+  el.value = el.value.replace(/\D/g, '').slice(0, 1);
+  if(el.value && el.nextElementSibling) el.nextElementSibling.focus();
+});
+$('otpRow').addEventListener('keydown', e => {
+  if(e.key === 'Backspace' && !e.target.value && e.target.previousElementSibling){
+    e.target.previousElementSibling.focus();
+  }
+});
+
+/* ==================== SEARCH + LISTS ==================== */
+function clearSearch(){
+  $('searchInput').value = '';
+  renderResults();
+  $('searchInput').focus();
+}
+
+function renderChips(){
+  $('chipRow').innerHTML = categories.map((c, i) =>
+    `<button class="chip ${c === activeCategory ? 'active' : ''}" onclick="setCategory(${i})">${esc(catName(c))}</button>`
+  ).join('');
+}
+function setCategory(i){ activeCategory = categories[i]; renderResults(); }
+
+function providerCardHtml(p){
+  const saved = savedIds.has(p.id);
+  return `
+    <div class="pcard" tabindex="0" role="button" onclick="openDetail(${p.id})" onkeydown="if(event.key==='Enter'){event.preventDefault();openDetail(${p.id});}">
+      <div class="pcard-top">
+        <div>
+          <p class="pcard-name">${esc(p.name)}</p>
+          <p class="pcard-cat">${esc(catName(p.cat))} · ${esc(price(p.price))}</p>
+        </div>
+        <div class="pcard-right">
+          <span class="dist-badge">${esc(p.dist + ' ' + t('km'))}</span>
+          <button class="heart ${saved ? 'on' : ''}" aria-label="${esc(saved ? t('unsaveAria') : t('saveAria'))}"
+            onclick="event.stopPropagation(); toggleSaveById(${p.id})">${saved ? '&#9829;' : '&#9825;'}</button>
+        </div>
+      </div>
+      <div class="pcard-meta"><span class="star">&#9733;</span> ${p.rating} (${p.reviews} ${esc(t('reviews'))})</div>
+      <div class="pcard-phone"><span>&#128222;</span> ${esc(p.phone)}</div>
+      <div class="pcard-actions">
+        <button class="btn" onclick="event.stopPropagation(); openDetail(${p.id})">${esc(t('viewProfile'))}</button>
+        <a class="btn btn-primary" style="text-decoration:none"
+           href="${telHref(p.phone)}" onclick="event.stopPropagation(); logBookingFor(${p.id})">${esc(t('call'))}</a>
+      </div>
+    </div>`;
+}
+
+function renderResults(){
+  renderChips();
+  const q = $('searchInput').value.trim().toLowerCase();
+  $('searchClear').classList.toggle('show', q.length > 0);
+  const filtered = providers.filter(p =>
+    (activeCategory === "All" || p.cat === activeCategory) &&
+    (p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q) || catName(p.cat).toLowerCase().includes(q))
+  );
+  $('resultCount').textContent = filtered.length === 1
+    ? t('resultOne') : fill(t('resultMany'), {n: filtered.length});
+  $('resultsList').innerHTML = filtered.length === 0
+    ? `<div class="empty">${t('noResults')}</div>`
+    : filtered.map(providerCardHtml).join('');
+}
+
+function renderSaved(){
+  const saved = providers.filter(p => savedIds.has(p.id));
+  $('savedCount').textContent = saved.length === 1
+    ? t('savedOne') : fill(t('savedMany'), {n: saved.length});
+  $('savedList').innerHTML = saved.length === 0
+    ? `<div class="empty">${t('noSaved')}</div>`
+    : saved.map(providerCardHtml).join('');
+}
+
+function renderHistory(){
+  const label = {done:'stDone', cancel:'stCancel', pending:'stPending'};
+  $('historyList').innerHTML = bookingHistory.length === 0
+    ? `<div class="empty">${t('noHistory')}</div>`
+    : bookingHistory.map(b => `
+    <div class="book-card">
+      <div class="book-top">
+        <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.name)}</p><p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(catName(b.cat))} · ${esc(fmtDate(b.d))}</p></div>
+        <span class="badge ${b.status}">${esc(t(label[b.status]))}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ==================== DETAIL ==================== */
+function fillDetail(p){
+  $('detailAvatar').textContent = p.name[0];
+  $('detailName').textContent = p.name;
+  $('detailVerified').classList.toggle('hidden', !p.verified);
+  $('detailCat').textContent = catName(p.cat) + " · " + price(p.price);
+  $('detailPhone').textContent = p.phone;
+  $('detailPhoneLink').href = telHref(p.phone);
+  $('detailCallBtn').href = telHref(p.phone);
+  $('detailCallBtn').textContent = t('call') + " " + p.phone;
+  $('detailRating').textContent = p.rating;
+  $('detailReviews').textContent = p.reviews;
+  $('detailDist').textContent = p.dist + ' ' + t('km');
+  $('detailExp').textContent = p.exp + ' ' + t('yrs');
+  $('detailServices').innerHTML = p.services.map(s =>
+    `<div class="service-row"><span>${esc(t(s[0]))}</span><span>${esc(price(s[1]))}</span></div>`).join('');
+  $('detailReviewsList').innerHTML = p.rv.map(r =>
+    `<div class="review"><div class="review-top"><span class="review-name">${esc(r[0])}</span></div><div class="review-body">${esc(t(r[1]))}</div></div>`).join('');
+  syncSaveBtn();
+}
+
+function openDetail(id){
+  const p = providers.find(x => x.id === id);
+  if(!p) return;
+  selectedProvider = p;
+  fillDetail(p);
+  goTo('detail');
+}
+
+function syncSaveBtn(){
+  if(!selectedProvider) return;
+  const on = savedIds.has(selectedProvider.id);
+  $('saveBtn').innerHTML = on ? '&#9829;' : '&#9825;';
+  $('saveBtn').style.color = on ? 'var(--danger)' : 'var(--ink)';
+  $('saveBtn').setAttribute('aria-label', on ? t('unsaveAria') : t('saveAria'));
+}
+
+function toggleSaveById(id){
+  if(savedIds.has(id)){ savedIds.delete(id); toast(t('unsavedToast')); }
+  else { savedIds.add(id); toast(t('savedToast')); }
+  if(selectedProvider && selectedProvider.id === id) syncSaveBtn();
+  const cur = currentScreen();
+  if(cur === 'home') renderResults();
+  if(cur === 'saved') renderSaved();
+}
+function toggleSave(){ if(selectedProvider) toggleSaveById(selectedProvider.id); }
+
+/* ==================== MISC ==================== */
+function today(){
+  const d = new Date();
+  return {d: d.getDate(), m: d.getMonth(), y: d.getFullYear()};
+}
+
+function logBookingFor(id){
+  const p = providers.find(x => x.id === id);
+  if(!p) return;
+  bookingHistory.unshift({name:p.name, cat:p.cat, d:today(), status:"pending"});
+  toast(t('callLogged'));
+}
+function logBooking(){ if(selectedProvider) logBookingFor(selectedProvider.id); }
+
+function saveProfile(){
+  $('profileName').textContent = $('epName').value.trim() || 'Sanjay Mehta';
+  $('profilePhone').textContent = $('epPhone').value.trim();
+  toast(t('profileUpdated'));
+  goBack();
+}
+
+function toggleSwitch(el){
+  const on = el.classList.toggle('on');
+  el.setAttribute('aria-checked', String(on));
+}
+
+function toast(msg){
+  const el = $('toastEl');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+/* ==================== BOOT ==================== */
+validatePhone();
+applyLang();
+$('langFab').classList.add('low');
+$('langPop').classList.add('low');

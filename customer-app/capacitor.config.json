@@ -1,0 +1,11 @@
+{
+  "appId": "com.localpro.customer",
+  "appName": "LocalPro",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
