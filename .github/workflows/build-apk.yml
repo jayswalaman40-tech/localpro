@@ -91,3 +91,33 @@ jobs:
           name: ${{ matrix.artifact }}-apk
           path: ${{ matrix.app }}/out/${{ matrix.artifact }}-debug.apk
           if-no-files-found: error
+
+  # Publishes both APKs to a single "apk-latest" release so they can be
+  # downloaded directly (one tap, no zip) from the Releases page.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built APKs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-apk'
+          merge-multiple: true
+          path: apks
+
+      - name: List APKs
+        run: ls -la apks
+
+      - name: Publish to "apk-latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: LocalPro APKs (latest build)
+          body: |
+            Latest debug APKs built from the feature branch.
+            - LocalPro-Customer-debug.apk
+            - LocalPro-Provider-debug.apk
+          prerelease: true
+          files: apks/*.apk
