@@ -546,18 +546,26 @@ begin
   loop
     select id into v_cat from public.categories where key = r.cat;
 
-    -- create demo auth user (trigger creates the profile)
-    v_uid := gen_random_uuid();
-    insert into auth.users (
-      instance_id, id, aud, role, phone, phone_confirmed_at,
-      created_at, updated_at, raw_app_meta_data, raw_user_meta_data
-    ) values (
-      '00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
-      r.phone, now(), now(), now(),
-      '{"provider":"phone"}',
-      jsonb_build_object('full_name', r.name, 'role', 'provider')
-    )
-    on conflict (phone) do nothing;
+    -- reuse an existing demo auth user with this phone, else create one
+    select id into v_uid from auth.users where phone = r.phone;
+    if v_uid is null then
+      v_uid := gen_random_uuid();
+      insert into auth.users (
+        instance_id, id, aud, role, phone, phone_confirmed_at,
+        created_at, updated_at, raw_app_meta_data, raw_user_meta_data
+      ) values (
+        '00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
+        r.phone, now(), now(), now(),
+        '{"provider":"phone"}',
+        jsonb_build_object('full_name', r.name, 'role', 'provider')
+      );
+    end if;
+
+    -- ensure the profile exists (don't rely on the trigger alone — a manual
+    -- insert into auth.users may not fire it, and a reused phone won't re-fire).
+    insert into public.profiles (id, phone, full_name, role)
+    values (v_uid, r.phone, r.name, 'provider')
+    on conflict (id) do nothing;
 
     -- listing
     insert into public.providers (
