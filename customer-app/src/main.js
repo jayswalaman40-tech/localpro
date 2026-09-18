@@ -35,6 +35,12 @@ const catNameById = (id) => {
   if (!c) return '';
   return (c.translations && (c.translations[lang] || c.translations.en)) || c.key;
 };
+// Provider's trade label: DB category, else their custom "Other" text.
+const providerCatLabel = (p) => {
+  if (p?.category_id) return catNameById(p.category_id);
+  if (p?.custom_category) return p.custom_category;
+  return '';
+};
 const UNIT = {
   onwards: () => ' ' + t('onwards'), plus: () => '+', sqft: () => t('perSqft'),
   hr: () => t('perHr'), mo: () => t('perMo'), visit: () => t('perVisit'),
@@ -224,7 +230,7 @@ function providerCardHtml(p) {
       <div class="pcard-top">
         <div>
           <p class="pcard-name">${esc(p.name)}</p>
-          <p class="pcard-cat">${esc(catNameById(p.category_id))} · ${esc(priceNU(p.starting_price, p.price_unit))}</p>
+          <p class="pcard-cat">${esc(providerCatLabel(p))} · ${esc(priceNU(p.starting_price, p.price_unit))}</p>
         </div>
         <div class="pcard-right">
           ${dist}
@@ -300,7 +306,7 @@ async function renderHistory() {
       <div class="book-card">
         <div class="book-top">
           <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.provider?.name || '')}</p>
-          <p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(catNameById(b.provider?.category_id))} · ${esc(fmtDateISO(b.created_at))}</p></div>
+          <p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(providerCatLabel(b.provider))} · ${esc(fmtDateISO(b.created_at))}</p></div>
           <span class="badge ${badge[b.status] || 'pending'}">${esc(t(label[b.status] || 'stPending'))}</span>
         </div>
       </div>`).join('');
@@ -311,7 +317,7 @@ async function fillDetail(p) {
   $('detailAvatar').textContent = (p.name || '?')[0];
   $('detailName').textContent = p.name;
   $('detailVerified').classList.toggle('hidden', !p.verified);
-  $('detailCat').textContent = catNameById(p.category_id) + ' · ' + priceNU(p.starting_price, p.price_unit);
+  $('detailCat').textContent = providerCatLabel(p) + ' · ' + priceNU(p.starting_price, p.price_unit);
   $('detailPhone').textContent = p.phone;
   $('detailPhoneLink').href = telHref(p.phone);
   $('detailCallBtn').href = telHref(p.phone);

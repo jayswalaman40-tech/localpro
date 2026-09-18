@@ -22,7 +22,8 @@ let leadChannel = null;
 let stack = ['splash'];
 let toastTimer = null;
 
-const NAV_SCREENS = ['dashboard', 'leads', 'edit', 'profile'];
+const NAV_SCREENS = ['dashboard', 'leads', 'history', 'profile'];
+const OTHER_SKILL = '__other__';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const telHref = p => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
@@ -32,6 +33,56 @@ const catNameById = (id) => {
   const c = categories.find(x => x.id === id);
   return c ? ((c.translations && (c.translations[lang] || c.translations.en)) || c.key) : t('cOther');
 };
+// Provider's trade label: DB category, else their custom "Other" text.
+function providerSkillLabel(p) {
+  if (p && p.category_id) return catNameById(p.category_id);
+  if (p && p.custom_category) return p.custom_category;
+  return t('cOther');
+}
+// <option>s for a skill <select>: all categories + an "Other" choice.
+function skillOptionsHtml() {
+  return categories.map(c => `<option value="${c.id}">${esc(catNameById(c.id))}</option>`).join('')
+    + `<option value="${OTHER_SKILL}">${esc(t('skillOther') || 'Other')}</option>`;
+}
+
+/* ---------- Gujarat cities & towns (for the City field) ---------- */
+const GUJARAT_CITIES = [
+  'Ahmedabad','Surat','Vadodara','Rajkot','Bhavnagar','Jamnagar','Junagadh','Gandhinagar',
+  'Anand','Nadiad','Morbi','Mehsana','Bharuch','Vapi','Navsari','Veraval','Porbandar',
+  'Godhra','Bhuj','Gandhidham','Palanpur','Valsad','Patan','Dahod','Botad','Amreli','Deesa',
+  'Jetpur','Gondal','Surendranagar','Wadhwan','Kalol','Himatnagar','Modasa','Visnagar','Unjha',
+  'Sidhpur','Wankaner','Dhoraji','Upleta','Mahuva','Sihor','Palitana','Keshod','Mangrol',
+  'Una','Kodinar','Talaja','Savarkundla','Bagasara','Vyara','Bardoli','Vadnagar','Kadi',
+  'Chhota Udaipur','Rajpipla','Dabhoi','Halol','Kapadvanj','Petlad','Khambhat','Borsad',
+  'Dholka','Bavla','Viramgam','Mandvi','Anjar','Rapar','Mundra','Okha','Dwarka','Khambhalia',
+  'Jodiya','Dhrol','Kutiyana','Ranavav','Talala','Vallabhipur','Gadhada','Barwala','Ranpur',
+  'Limbdi','Chotila','Muli','Thangadh','Halvad','Dhrangadhra','Vijapur','Kheralu','Harij',
+  'Chanasma','Radhanpur','Tharad','Dhanera','Vadgam','Idar','Khedbrahma','Bhiloda','Prantij',
+  'Talod','Bayad','Dehgam','Mansa','Kalol (Panchmahal)','Lunawada','Santrampur','Zalod',
+  'Limkheda','Devgadh Baria','Jambusar','Amod','Ankleshwar','Jhagadia','Rajula','Jafrabad',
+  'Damnagar','Lathi','Kadodara','Mandvi (Surat)','Songadh','Vansda','Dharampur','Pardi',
+  'Umbergaon','Kaprada','Nizar','Uchchhal','Dolvan','Mahuva (Surat)','Kamrej','Olpad',
+  'Choryasi','Palsana','Mangrol (Surat)','Umreth','Sojitra','Tarapur','Matar','Mahemdavad',
+  'Kathlal','Balasinor','Virpur','Thasra','Savli','Karjan','Sinor','Padra','Waghodia',
+  'Naswadi','Kawant','Sankheda','Pavi Jetpur','Garbada','Fatepura','Ghoghamba','Kalol'
+];
+function populateGujaratCities() {
+  const dl = $('gujCities'); if (!dl || dl.dataset.filled) return;
+  const seen = new Set();
+  dl.innerHTML = GUJARAT_CITIES.filter(c => !seen.has(c) && seen.add(c))
+    .map(c => `<option value="${esc(c)}"></option>`).join('');
+  dl.dataset.filled = '1';
+}
+
+/* ---------- "Other" skill toggles ---------- */
+function onObSkillChange() {
+  const wrap = $('obSkillOtherWrap');
+  if (wrap) wrap.hidden = $('obSkill').value !== OTHER_SKILL;
+}
+function onEdSkillChange() {
+  const wrap = $('edSkillOtherWrap');
+  if (wrap) wrap.hidden = $('edSkill').value !== OTHER_SKILL;
+}
 function agoFromISO(iso) {
   const then = new Date(iso).getTime();
   const h = Math.max(0, Math.floor((Date.now() - then) / 3600000));
@@ -45,7 +96,7 @@ const leadsThisWeek = () => leads.filter(l => (Date.now() - new Date(l.created_a
 function providerName() { return myProvider?.name || t('cOther'); }
 function syncProfileTexts() {
   $('greeting').textContent = fill(t('greeting'), { name: providerName() });
-  const skill = myProvider ? catNameById(myProvider.category_id) : t('cOther');
+  const skill = myProvider ? providerSkillLabel(myProvider) : t('cOther');
   const area = myProvider?.service_area || '';
   $('greetingSub').textContent = skill + (area ? ' · ' + area : '');
   $('profileName').textContent = providerName();
@@ -82,12 +133,18 @@ function applyLang() {
   $('langRowValue').textContent = LANGS.find(l => l.code === lang).native;
   const sub = $('otpSub'); if (sub) sub.textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
 
-  // skill dropdown from DB categories (keep selection)
+  // skill dropdowns from DB categories + "Other" (keep selection)
   const sel = $('edSkill');
   if (sel) {
-    const cur = sel.value || myProvider?.category_id || '';
-    sel.innerHTML = categories.map(c => `<option value="${c.id}">${esc(catNameById(c.id))}</option>`).join('');
+    const cur = sel.value || (myProvider ? (myProvider.category_id || (myProvider.custom_category ? OTHER_SKILL : '')) : '');
+    sel.innerHTML = skillOptionsHtml();
     if (cur) sel.value = cur;
+    onEdSkillChange();
+  }
+  const osel = $('obSkill');
+  if (osel && osel.options.length) {
+    const cur = osel.value; osel.innerHTML = skillOptionsHtml(); if (cur) osel.value = cur;
+    onObSkillChange();
   }
   renderDashboardStats();
   syncProfileTexts();
@@ -118,6 +175,7 @@ function showScreen(key) {
   document.querySelectorAll('.navitem[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === key));
   if (key === 'dashboard') { renderDashboardStats(); refreshLeadLists(); }
   if (key === 'leads') refreshLeadLists();
+  if (key === 'history') refreshLeadLists();
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
   if (key === 'edit') { fillListingForm(); renderServices(); }
@@ -197,14 +255,14 @@ async function afterLogin() {
 
 /* ==================== ONBOARDING ==================== */
 function fillOnboardingForm() {
+  populateGujaratCities();
   const sel = $('obSkill');
-  if (sel) {
-    sel.innerHTML = categories.map(c => `<option value="${c.id}">${esc(catNameById(c.id))}</option>`).join('');
-  }
+  if (sel) sel.innerHTML = skillOptionsHtml();
   $('obPhone').value = myProvider?.phone || pendingPhone || '';
   if (myProvider) {
     $('obName').value = myProvider.name || '';
-    if (myProvider.category_id && sel) sel.value = myProvider.category_id;
+    if (sel) sel.value = myProvider.category_id || (myProvider.custom_category ? OTHER_SKILL : '');
+    $('obSkillOther').value = myProvider.custom_category || '';
     $('obWhatsapp').value = myProvider.whatsapp || '';
     if (myProvider.gender) $('obGender').value = myProvider.gender;
     $('obDob').value = myProvider.dob || '';
@@ -216,10 +274,14 @@ function fillOnboardingForm() {
     $('obAadhaarNo').value = myProvider.aadhaar_no || '';
     $('obPanNo').value = myProvider.pan_no || '';
   }
+  onObSkillChange();
 }
 async function submitOnboarding() {
   const name = $('obName').value.trim();
-  const category_id = $('obSkill').value || null;
+  const skillVal = $('obSkill').value;
+  const isOther = skillVal === OTHER_SKILL;
+  const customCategory = isOther ? $('obSkillOther').value.trim() : null;
+  const category_id = isOther ? null : (skillVal || null);
   const price = Number($('obPrice').value);
   const aadhaarNo = $('obAadhaarNo').value.replace(/\D/g, '');
   const panNo = $('obPanNo').value.trim().toUpperCase();
@@ -228,7 +290,8 @@ async function submitOnboarding() {
   const panFile = $('obPan').files[0];
 
   if (!name) { toast(t('obErrName')); return; }
-  if (!category_id) { toast(t('obErrSkill')); return; }
+  if (!skillVal) { toast(t('obErrSkill')); return; }
+  if (isOther && !customCategory) { toast(t('obErrOther') || t('obErrSkill')); return; }
   if (!Number.isFinite(price) || price < 0) { toast(t('priceError')); return; }
   if (aadhaarNo.length !== 12) { toast(t('obErrAadhaar')); return; }
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNo)) { toast(t('obErrPan')); return; }
@@ -251,6 +314,7 @@ async function submitOnboarding() {
       name,
       phone: $('obPhone').value.trim() || pendingPhone,
       category_id,
+      custom_category: customCategory,
       service_area: $('obArea').value.trim(),
       city: $('obCity').value.trim() || null,
       whatsapp: $('obWhatsapp').value.trim() || null,
@@ -331,8 +395,9 @@ function renderLeads(container, data) {
     }).join('');
 }
 function refreshLeadLists() {
-  renderLeads($('leadsListPreview'), leads.slice(0, 2));
-  renderLeads($('leadsListFull'), leads);
+  renderLeads($('leadsListPreview'), leads.slice(0, 5));            // dashboard: recent 5
+  renderLeads($('leadsListFull'), leads.filter(l => l.status !== 'completed')); // Leads: active
+  renderLeads($('historyListFull'), leads);                        // History: everything
 }
 async function markContacted(id, silent) {
   const l = leads.find(x => x.id === id);
@@ -397,7 +462,13 @@ function fillListingForm() {
   $('edArea').value = myProvider.service_area || '';
   $('edPrice').value = myProvider.starting_price ?? '';
   $('edAbout').value = myProvider.about || '';
-  const sel = $('edSkill'); if (sel && myProvider.category_id) sel.value = myProvider.category_id;
+  const sel = $('edSkill');
+  if (sel) {
+    if (!sel.options.length) sel.innerHTML = skillOptionsHtml();
+    sel.value = myProvider.category_id || (myProvider.custom_category ? OTHER_SKILL : '');
+  }
+  $('edSkillOther').value = myProvider.custom_category || '';
+  onEdSkillChange();
 }
 async function saveListing() {
   const price = Number($('edPrice').value);
@@ -405,11 +476,16 @@ async function saveListing() {
   const name = $('edName').value.trim();
   const phone = $('edPhone').value.trim();
   if (!name || !phone) { toast(t('priceError')); return; }
+  const skillVal = $('edSkill').value;
+  const isOther = skillVal === OTHER_SKILL;
+  const customCategory = isOther ? $('edSkillOther').value.trim() : null;
+  if (isOther && !customCategory) { toast(t('obErrOther') || t('obErrSkill')); return; }
   try {
     await api.saveMyProvider({
       name,
       phone,
-      category_id: $('edSkill').value || null,
+      category_id: isOther ? null : (skillVal || null),
+      custom_category: customCategory,
       service_area: $('edArea').value.trim(),
       starting_price: price,
       about: $('edAbout').value.trim(),
@@ -479,11 +555,13 @@ Object.assign(window, {
   openLead, markContacted, markContactedCurrent,
   saveListing, toggleSwitch, toggleLangPop, setLang,
   submitOnboarding, addServiceRow, removeServiceRow,
+  onObSkillChange, onEdSkillChange,
 });
 
 /* ==================== BOOT ==================== */
 async function boot() {
   try { categories = await api.getCategories(); } catch (e) { categories = []; }
+  populateGujaratCities();
   applyLang();
   $('langFab').classList.add('low');
   $('langPop').classList.add('low');

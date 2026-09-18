@@ -212,7 +212,8 @@
 
       <p class="section-label" data-i18n="obSectionPersonal">Personal details</p>
       <div class="field"><label for="obName" data-i18n="fullName">Full name</label><input id="obName"></div>
-      <div class="field"><label for="obSkill" data-i18n="yourSkill">Your skill / trade</label><select id="obSkill"></select></div>
+      <div class="field"><label for="obSkill" data-i18n="yourSkill">Your skill / trade</label><select id="obSkill" onchange="onObSkillChange()"></select></div>
+      <div class="field" id="obSkillOtherWrap" hidden><label for="obSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="obSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
       <div class="field"><label for="obPhone" data-i18n="mobileNumber">Mobile number</label><input id="obPhone" type="tel" inputmode="numeric" readonly></div>
       <div class="field"><label for="obWhatsapp" data-i18n="whatsappNumber">WhatsApp number (optional)</label><input id="obWhatsapp" type="tel" inputmode="numeric"></div>
       <div class="field"><label for="obGender" data-i18n="gender">Gender</label>
@@ -221,7 +222,8 @@
       <div class="field"><label for="obDob" data-i18n="dob">Date of birth</label><input id="obDob" type="date"></div>
 
       <p class="section-label" data-i18n="obSectionWork">Work details</p>
-      <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity"></div>
+      <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity" list="gujCities" autocomplete="off" data-i18n-ph="cityPh" placeholder="Select or type your city"></div>
+      <datalist id="gujCities"></datalist>
       <div class="field"><label for="obArea" data-i18n="serviceArea">Service area</label><input id="obArea" data-i18n-ph="serviceAreaPh" placeholder="e.g. Satellite, Bodakdev"></div>
       <div class="field"><label for="obExp" data-i18n="experienceYrs">Experience (years)</label><input id="obExp" type="number" min="0" step="1" value="0"></div>
       <div class="field"><label for="obPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="obPrice" type="number" min="0" step="10"></div>
@@ -254,14 +256,20 @@
         <button class="stat-card" onclick="goTo('leads')"><div class="num" id="statResponse">92%</div><div class="lbl" data-i18n="responseRate">Response rate</div></button>
         <button class="stat-card" onclick="goTo('earnings')"><div class="num" id="statEarned">&#8377;18,400</div><div class="lbl" data-i18n="earnedThisMonth">Earned this month</div></button>
       </div>
-      <p class="section-label"><span data-i18n="recentLeads">Recent leads</span> <button class="link" data-i18n="viewAll" onclick="goTo('leads')">View all</button></p>
+      <p class="section-label"><span data-i18n="recentLeads">Recent leads</span> <button class="link" data-i18n="viewAll" onclick="goTo('history')">View all</button></p>
       <div id="leadsListPreview"></div>
     </div>
 
-    <!-- LEADS LIST -->
+    <!-- LEADS LIST (active leads to act on) -->
     <div class="screen" id="screen-leads">
       <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="allLeads">All leads</span></div>
       <div id="leadsListFull"></div>
+    </div>
+
+    <!-- HISTORY (all leads / jobs, newest first) -->
+    <div class="screen" id="screen-history">
+      <div class="topbar"><span class="title" data-i18n="historyTitle">History</span></div>
+      <div id="historyListFull"></div>
     </div>
 
     <!-- LEAD DETAIL -->
@@ -287,16 +295,18 @@
       <a class="btn btn-block" style="text-decoration:none" id="leadCallBtn" href="#">Call customer</a>
     </div>
 
-    <!-- LISTING EDIT -->
-    <div class="screen" id="screen-edit">
+    <!-- LISTING EDIT (reached from Profile) -->
+    <div class="screen nonav" id="screen-edit">
       <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
         <span class="title" data-i18n="editListing">Edit listing</span>
       </div>
       <div class="note" data-i18n="listingNote">No shop registration needed — any individual can list their work. This form is a UI demo; saving does not store data anywhere.</div>
       <div class="field"><label for="edName" data-i18n="yourName">Your name</label><input id="edName" value="Rajesh Kumar"></div>
       <div class="field"><label for="edSkill" data-i18n="yourSkill">Your skill / trade</label>
-        <select id="edSkill"></select>
+        <select id="edSkill" onchange="onEdSkillChange()"></select>
       </div>
+      <div class="field" id="edSkillOtherWrap" hidden><label for="edSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="edSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
       <div class="field"><label for="edPhone" data-i18n="phoneShownLabel">Mobile number (shown to customers)</label><input id="edPhone" type="tel" inputmode="numeric" value="+91 98765 43210"></div>
       <div class="field"><label for="edArea" data-i18n="serviceArea">Service area</label><input id="edArea" value="Satellite, Bodakdev, Vastrapur"></div>
       <div class="field"><label for="edPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="edPrice" type="number" min="0" step="10" value="250"></div>
@@ -389,7 +399,7 @@
     <nav class="bottomnav hidden" id="bottomNav">
       <button class="navitem" data-nav="dashboard" onclick="goTo('dashboard')"><span class="ic">&#128202;</span><span data-i18n="navDashboard">Dashboard</span></button>
       <button class="navitem" data-nav="leads" onclick="goTo('leads')"><span class="ic">&#128172;</span><span data-i18n="navLeads">Leads</span></button>
-      <button class="navitem" data-nav="edit" onclick="goTo('edit')"><span class="ic">&#9998;</span><span data-i18n="navListing">Listing</span></button>
+      <button class="navitem" data-nav="history" onclick="goTo('history')"><span class="ic">&#128337;</span><span data-i18n="navHistory">History</span></button>
       <button class="navitem" data-nav="profile" onclick="goTo('profile')"><span class="ic">&#128100;</span><span data-i18n="navProfile">Profile</span></button>
     </nav>
 

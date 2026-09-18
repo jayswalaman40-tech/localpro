@@ -72,6 +72,9 @@ en:{
   servicesLabel:"Services & prices", addService:"Add a service", serviceNamePh:"e.g. Tap repair",
   addBtn:"Add", noServices:"No services added yet.", removeBtn:"Remove",
   serviceNameErr:"Enter a service name", serviceAdded:"Service added",
+  navHistory:"History", historyTitle:"History",
+  skillOther:"Other", otherSkillLabel:"Your trade (Other)", otherSkillPh:"e.g. Welder, CCTV installer",
+  cityPh:"Select or type your city", obErrOther:"Type your trade name",
 },
 hi:{
   splashTitle:"अपना काम लिस्ट करें",
@@ -138,6 +141,9 @@ hi:{
   servicesLabel:"सेवाएँ और दाम", addService:"सेवा जोड़ें", serviceNamePh:"जैसे नल की मरम्मत",
   addBtn:"जोड़ें", noServices:"अभी कोई सेवा नहीं जोड़ी।", removeBtn:"हटाएँ",
   serviceNameErr:"सेवा का नाम डालें", serviceAdded:"सेवा जोड़ी गई",
+  navHistory:"हिस्ट्री", historyTitle:"हिस्ट्री",
+  skillOther:"अन्य", otherSkillLabel:"आपका काम (अन्य)", otherSkillPh:"जैसे वेल्डर, CCTV इंस्टॉलर",
+  cityPh:"अपना शहर चुनें या टाइप करें", obErrOther:"अपने काम का नाम लिखें",
 },
 gu:{
   splashTitle:"તમારું કામ લિસ્ટ કરો",
@@ -204,6 +210,9 @@ gu:{
   servicesLabel:"સેવાઓ અને ભાવ", addService:"સેવા ઉમેરો", serviceNamePh:"દા.ત. નળ રિપેર",
   addBtn:"ઉમેરો", noServices:"હજી કોઈ સેવા ઉમેરી નથી.", removeBtn:"દૂર કરો",
   serviceNameErr:"સેવાનું નામ દાખલ કરો", serviceAdded:"સેવા ઉમેરાઈ",
+  navHistory:"હિસ્ટ્રી", historyTitle:"હિસ્ટ્રી",
+  skillOther:"અન્ય", otherSkillLabel:"તમારું કામ (અન્ય)", otherSkillPh:"દા.ત. વેલ્ડર, CCTV ઇન્સ્ટોલર",
+  cityPh:"તમારું શહેર પસંદ કરો અથવા લખો", obErrOther:"તમારા કામનું નામ લખો",
 },
 mr:{
   splashTitle:"तुमचे काम लिस्ट करा",
@@ -270,6 +279,9 @@ mr:{
   servicesLabel:"सेवा आणि दर", addService:"सेवा जोडा", serviceNamePh:"उदा. नळ दुरुस्ती",
   addBtn:"जोडा", noServices:"अजून कोणतीही सेवा जोडलेली नाही.", removeBtn:"काढा",
   serviceNameErr:"सेवेचे नाव टाका", serviceAdded:"सेवा जोडली",
+  navHistory:"हिस्ट्री", historyTitle:"हिस्ट्री",
+  skillOther:"इतर", otherSkillLabel:"तुमचे काम (इतर)", otherSkillPh:"उदा. वेल्डर, CCTV इन्स्टॉलर",
+  cityPh:"तुमचे शहर निवडा किंवा टाइप करा", obErrOther:"तुमच्या कामाचे नाव लिहा",
 },
 te:{
   splashTitle:"మీ పనిని జాబితా చేయండి",
@@ -336,5 +348,8 @@ te:{
   servicesLabel:"సేవలు & ధరలు", addService:"సేవను జోడించండి", serviceNamePh:"ఉదా. ట్యాప్ రిపేర్",
   addBtn:"జోడించు", noServices:"ఇంకా సేవలు జోడించలేదు.", removeBtn:"తీసివేయి",
   serviceNameErr:"సేవ పేరును నమోదు చేయండి", serviceAdded:"సేవ జోడించబడింది",
+  navHistory:"హిస్టరీ", historyTitle:"హిస్టరీ",
+  skillOther:"ఇతర", otherSkillLabel:"మీ పని (ఇతర)", otherSkillPh:"ఉదా. వెల్డర్, CCTV ఇన్‌స్టాలర్",
+  cityPh:"మీ నగరాన్ని ఎంచుకోండి లేదా టైప్ చేయండి", obErrOther:"మీ పని పేరును టైప్ చేయండి",
 },
 };
