@@ -145,6 +145,8 @@ async function logout() {
   savedIds = new Set(); providers = []; selectedProvider = null;
   stack = ['splash']; activeCategory = 'all';
   const si = $('searchInput'); if (si) si.value = '';
+  const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
+  const lp = $('loginPhone'); if (lp) lp.value = '';
   showScreen('splash');
 }
 
@@ -163,9 +165,12 @@ async function sendOtp() {
   const btn = $('sendOtpBtn'); btn.disabled = true;
   try {
     pendingPhone = await api.sendOtp(phoneDigits());
-    goTo('otp');
+    // reveal the OTP boxes on the SAME page (no screen change)
+    $('otpSection').hidden = false;
+    $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
     const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
     boxes.forEach(b => b.value = ''); boxes[0].focus();
+    toast(t('otpSentToast') || 'OTP sent');
   } catch (e) {
     toast(e.message || 'Could not send OTP');
   } finally { btn.disabled = false; }

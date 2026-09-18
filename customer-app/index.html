@@ -210,35 +210,33 @@
       </div>
     </div>
 
-    <!-- LOGIN -->
+    <!-- LOGIN + OTP (same page) -->
     <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:60px;">
+      <div class="center-col" style="justify-content:flex-start;padding-top:48px;">
+        <div class="logo-big">L</div>
         <p class="h-title" data-i18n="loginTitle">Enter your number</p>
         <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
         <div class="form-col">
           <div class="field">
             <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" value="98765 43210" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
           </div>
           <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
           <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- OTP -->
-    <div class="screen nonav" id="screen-otp">
-      <div class="center-col">
-        <p class="h-title" data-i18n="verifyTitle">Verify</p>
-        <p class="h-sub" id="otpSub">Enter the 4-digit code sent to +91</p>
-        <div class="otp-row" id="otpRow">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+          <!-- OTP appears here on the same page after Send OTP -->
+          <div id="otpSection" hidden style="margin-top:24px">
+            <p class="h-sub" id="otpSub" style="max-width:none;margin:0 0 12px;text-align:center">Enter the 4-digit code sent to +91</p>
+            <div class="otp-row" id="otpRow">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+            </div>
+            <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:14px;text-align:center"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="sendOtp()">Resend</button></p>
+          </div>
         </div>
-        <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
-        <p style="font-size:11.5px;color:var(--muted);margin-top:14px"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="toast(t('resendToast'))">Resend</button></p>
       </div>
     </div>
 
