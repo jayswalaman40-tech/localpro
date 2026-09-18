@@ -1,6 +1,6 @@
 {
   "appId": "com.localpro.customer",
-  "appName": "LocalPro",
+  "appName": "Helpzo",
   "webDir": "dist",
   "android": {
     "allowMixedContent": false

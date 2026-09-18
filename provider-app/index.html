@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LocalPro Provider — manage your leads</title>
+<title>Helpzo Partner — manage your leads</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -108,6 +108,19 @@
   .otp-box{width:44px;height:52px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:18px;font-family:'Space Grotesk',sans-serif;outline:none;color:var(--ink);background:var(--card);}
   .otp-box:focus{border-color:var(--ink);}
 
+  /* Helpzo splash + logo */
+  .splash-hz{gap:0;}
+  .hz-stage{position:relative;width:260px;height:300px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+  .hz-logo{width:230px;max-width:72vw;border-radius:26px;box-shadow:0 18px 44px rgba(11,37,107,.28);opacity:0;transform:scale(.6);animation:hzLogoIn .7s .9s ease-out forwards;}
+  @keyframes hzLogoIn{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+  .hz-ic{position:absolute;left:50%;top:50%;font-size:36px;--x:0;--y:0;animation:hzFly 1.5s ease-in-out forwards;}
+  @keyframes hzFly{0%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(.5)}25%{opacity:1}70%{opacity:1;transform:translate(-50%,-50%) scale(.4)}85%{opacity:0;transform:translate(-50%,-50%) scale(.15)}100%{opacity:0}}
+  .hz-loader{width:130px;height:4px;border-radius:8px;background:rgba(27,36,64,.12);overflow:hidden;margin:16px 0 2px;opacity:0;animation:hzUp .5s 1.7s forwards;}
+  .hz-loader span{display:block;height:100%;width:40%;border-radius:8px;background:#1267FF;animation:hzLoad 1.4s 1.7s infinite;}
+  @keyframes hzLoad{from{transform:translateX(-120%)}to{transform:translateX(360%)}}
+  @keyframes hzUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .hz-login-logo{width:92px;border-radius:20px;box-shadow:0 10px 24px rgba(11,37,107,.22);margin-bottom:16px;}
+
   .profile-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
   .avatar-lg{width:56px;height:56px;border-radius:16px;background:#FBEFDD;color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
   .list-row{display:flex;align-items:center;gap:12px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);cursor:pointer;background:none;text-align:left;font-family:inherit;color:var(--ink);}
@@ -167,18 +180,25 @@
 
     <!-- SPLASH -->
     <div class="screen active nonav" id="screen-splash">
-      <div class="center-col">
-        <div class="logo-big">L</div>
-        <p class="h-title" data-i18n="splashTitle">List your work</p>
-        <p class="h-sub" data-i18n="splashSub">Whatever your skill — plumber, tailor, driver, cook — let customers find you directly.</p>
-        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')">Get started</button>
+      <div class="center-col splash-hz">
+        <div class="hz-stage">
+          <span class="hz-ic" style="--x:-96px;--y:-104px">&#128295;</span>
+          <span class="hz-ic" style="--x:98px;--y:-92px;animation-delay:.08s">&#128268;</span>
+          <span class="hz-ic" style="--x:-108px;--y:44px;animation-delay:.04s">&#127912;</span>
+          <span class="hz-ic" style="--x:104px;--y:52px;animation-delay:.14s">&#129529;</span>
+          <span class="hz-ic" style="--x:-42px;--y:120px;animation-delay:.2s">&#9986;&#65039;</span>
+          <span class="hz-ic" style="--x:46px;--y:126px;animation-delay:.26s">&#127859;</span>
+          <img class="hz-logo" src="/helpzo-logo.jpg" alt="Helpzo Partner — Your Help, Our Priority">
+        </div>
+        <div class="hz-loader"><span></span></div>
+        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')" style="margin-top:18px">Get started</button>
       </div>
     </div>
 
     <!-- LOGIN + OTP (same page) -->
     <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:48px;">
-        <div class="logo-big">L</div>
+      <div class="center-col" style="justify-content:flex-start;padding-top:44px;">
+        <img class="hz-login-logo" src="/helpzo-logo.jpg" alt="Helpzo Partner">
         <p class="h-title" data-i18n="loginTitle">Enter your number</p>
         <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
         <div class="form-col">
