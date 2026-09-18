@@ -43,6 +43,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Pin explicit packages — the default includes the obsolete "tools"
+          # package which no longer exists and fails the step. Capacitor 6
+          # targets Android SDK 34 / build-tools 34.0.0.
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Install dependencies
         working-directory: ${{ matrix.app }}
