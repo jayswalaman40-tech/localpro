@@ -20,24 +20,24 @@
   *{box-sizing:border-box;}
   body{
     margin:0; font-family:'Inter',system-ui,sans-serif;
-    background:radial-gradient(circle at 18px 18px, rgba(27,36,64,0.045) 1.5px, transparent 1.5px) 0 0/36px 36px, var(--bg);
-    color:var(--ink); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:32px 16px;
+    background:var(--bg); color:var(--ink);
+    min-height:100dvh; display:flex; justify-content:center;
   }
   h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
-  .stage{width:100%;max-width:1000px;}
-  .stage-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:0 4px;}
+  .stage{width:100%;max-width:520px;}
+  .stage-header{display:none;}
   .brand{display:flex;align-items:center;gap:10px;}
   .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--amber);display:flex;align-items:center;justify-content:center;color:var(--amber-ink);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
   .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
   .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
 
-  .phone{width:380px;max-width:100%;margin:0 auto;background:var(--card);border-radius:36px;border:8px solid var(--ink);box-shadow:var(--shadow);overflow:hidden;position:relative;}
-  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:var(--ink);border-bottom-left-radius:14px;border-bottom-right-radius:14px;z-index:5;}
+  .phone{position:relative;width:100%;height:100dvh;background:var(--card);overflow:hidden;box-shadow:var(--shadow);}
+  .notch{display:none;}
 
-  .screen{display:none;height:720px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:34px 18px 90px;position:relative;scrollbar-width:none;}
+  .screen{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 92px;scrollbar-width:none;}
   .screen::-webkit-scrollbar{display:none;}
   .screen.active{display:block;}
-  .screen.nonav{padding-bottom:34px;}
+  .screen.nonav{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));}
 
   .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
   .topbar .title{font-size:14.5px;font-weight:600;}
@@ -88,7 +88,7 @@
   .field input[readonly]{background:var(--bg);color:var(--ink-soft);}
   .note{background:#FBEFDD;border:1px solid #F0D9A8;color:#5A3A0B;font-size:11px;padding:9px 11px;border-radius:10px;margin:0 0 14px;line-height:1.5;}
 
-  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px 14px;z-index:10;}
+  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px calc(14px + env(safe-area-inset-bottom,0px));z-index:10;}
   .bottomnav.hidden{display:none;}
   .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
   .navitem.active{color:var(--ink);}
@@ -97,7 +97,7 @@
   .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
   .toast.low{bottom:24px;}
   .toast.show{opacity:1;transform:translateY(0);}
-  footer{text-align:center;font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6;}
+  footer{display:none;}
 
   .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
   .logo-big{width:64px;height:64px;border-radius:18px;background:var(--amber);color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;margin-bottom:18px;}
@@ -175,36 +175,67 @@
       </div>
     </div>
 
-    <!-- LOGIN -->
+    <!-- LOGIN + OTP (same page) -->
     <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:60px;">
+      <div class="center-col" style="justify-content:flex-start;padding-top:48px;">
+        <div class="logo-big">L</div>
         <p class="h-title" data-i18n="loginTitle">Enter your number</p>
         <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
         <div class="form-col">
           <div class="field">
             <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" value="98765 43210" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
           </div>
           <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
           <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
+
+          <!-- OTP appears here on the same page after Send OTP -->
+          <div id="otpSection" hidden style="margin-top:24px">
+            <p class="h-sub" id="otpSub" style="max-width:none;margin:0 0 12px;text-align:center">Enter the 4-digit code sent to +91</p>
+            <div class="otp-row" id="otpRow">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
+              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
+            </div>
+            <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:14px;text-align:center"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="sendOtp()">Resend</button></p>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- OTP -->
-    <div class="screen nonav" id="screen-otp">
-      <div class="center-col">
-        <p class="h-title" data-i18n="verifyTitle">Verify</p>
-        <p class="h-sub" id="otpSub">Enter the 4-digit code sent to +91</p>
-        <div class="otp-row" id="otpRow">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
-          <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
-        </div>
-        <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
-        <p style="font-size:11.5px;color:var(--muted);margin-top:14px"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="toast(t('resendToast'))">Resend</button></p>
+    <!-- ONBOARDING (provider fills all details + uploads documents) -->
+    <div class="screen nonav" id="screen-onboarding">
+      <div class="topbar"><span class="title" data-i18n="obTitle">Create your profile</span></div>
+      <div class="note" data-i18n="obNote">Fill your details and upload documents. Your listing goes live after verification.</div>
+
+      <p class="section-label" data-i18n="obSectionPersonal">Personal details</p>
+      <div class="field"><label for="obName" data-i18n="fullName">Full name</label><input id="obName"></div>
+      <div class="field"><label for="obSkill" data-i18n="yourSkill">Your skill / trade</label><select id="obSkill"></select></div>
+      <div class="field"><label for="obPhone" data-i18n="mobileNumber">Mobile number</label><input id="obPhone" type="tel" inputmode="numeric" readonly></div>
+      <div class="field"><label for="obWhatsapp" data-i18n="whatsappNumber">WhatsApp number (optional)</label><input id="obWhatsapp" type="tel" inputmode="numeric"></div>
+      <div class="field"><label for="obGender" data-i18n="gender">Gender</label>
+        <select id="obGender"><option value="">—</option><option value="male" data-i18n="genderMale">Male</option><option value="female" data-i18n="genderFemale">Female</option><option value="other" data-i18n="genderOther">Other</option></select>
       </div>
+      <div class="field"><label for="obDob" data-i18n="dob">Date of birth</label><input id="obDob" type="date"></div>
+
+      <p class="section-label" data-i18n="obSectionWork">Work details</p>
+      <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity"></div>
+      <div class="field"><label for="obArea" data-i18n="serviceArea">Service area</label><input id="obArea" data-i18n-ph="serviceAreaPh" placeholder="e.g. Satellite, Bodakdev"></div>
+      <div class="field"><label for="obExp" data-i18n="experienceYrs">Experience (years)</label><input id="obExp" type="number" min="0" step="1" value="0"></div>
+      <div class="field"><label for="obPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="obPrice" type="number" min="0" step="10"></div>
+      <div class="field"><label for="obAbout" data-i18n="aboutYou">About</label><textarea id="obAbout"></textarea></div>
+
+      <p class="section-label" data-i18n="obSectionKyc">Verification documents</p>
+      <div class="field"><label for="obAadhaarNo" data-i18n="aadhaarNo">Aadhaar number</label><input id="obAadhaarNo" inputmode="numeric" maxlength="12"></div>
+      <div class="field"><label for="obPanNo" data-i18n="panNo">PAN number</label><input id="obPanNo" maxlength="10" style="text-transform:uppercase"></div>
+      <div class="field"><label for="obSelfie" data-i18n="uploadSelfie">Selfie</label><input id="obSelfie" type="file" accept="image/*" capture="user"></div>
+      <div class="field"><label for="obAadhaar" data-i18n="uploadAadhaar">Aadhaar card photo</label><input id="obAadhaar" type="file" accept="image/*,application/pdf"></div>
+      <div class="field"><label for="obPan" data-i18n="uploadPan">PAN card photo</label><input id="obPan" type="file" accept="image/*,application/pdf"></div>
+
+      <button class="btn btn-primary btn-block" id="obSubmitBtn" data-i18n="obSubmit" onclick="submitOnboarding()">Submit for verification</button>
+      <button class="btn btn-block" style="margin-top:8px" data-i18n="logout" onclick="logout()">Log out</button>
     </div>
 
     <!-- DASHBOARD -->
@@ -229,7 +260,7 @@
 
     <!-- LEADS LIST -->
     <div class="screen" id="screen-leads">
-      <div class="topbar"><span class="title" data-i18n="allLeads">All leads</span></div>
+      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="allLeads">All leads</span></div>
       <div id="leadsListFull"></div>
     </div>
 
@@ -271,6 +302,15 @@
       <div class="field"><label for="edPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="edPrice" type="number" min="0" step="10" value="250"></div>
       <div class="field"><label for="edAbout" data-i18n="aboutYou">About</label><textarea id="edAbout" data-i18n="aboutDefault">10+ years of experience — tap repair, pipeline fitting, bathroom installation.</textarea></div>
       <button class="btn btn-primary btn-block" data-i18n="saveChanges" onclick="saveListing()">Save changes</button>
+
+      <!-- Services / price list — customers see these on your profile -->
+      <p class="section-label" style="margin-top:22px" data-i18n="servicesLabel">Services &amp; prices</p>
+      <div id="svcList"></div>
+      <div class="field" style="margin-top:8px"><label for="svcName" data-i18n="addService">Add a service</label><input id="svcName" data-i18n-ph="serviceNamePh" placeholder="e.g. Tap repair"></div>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input id="svcPrice" type="number" min="0" step="10" placeholder="&#8377;" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;">
+        <button class="btn btn-primary" style="flex-shrink:0" data-i18n="addBtn" onclick="addServiceRow()">Add</button>
+      </div>
     </div>
 
     <!-- REVIEWS -->

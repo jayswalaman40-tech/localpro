@@ -20,24 +20,24 @@
   *{box-sizing:border-box;}
   body{
     margin:0; font-family:'Inter',system-ui,sans-serif;
-    background:radial-gradient(circle at 18px 18px, rgba(27,36,64,0.045) 1.5px, transparent 1.5px) 0 0/36px 36px, var(--bg);
-    color:var(--ink); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:32px 16px;
+    background:var(--bg); color:var(--ink);
+    min-height:100dvh; display:flex; justify-content:center;
   }
   h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
-  .stage{width:100%;max-width:1000px;}
-  .stage-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:0 4px;}
+  .stage{width:100%;max-width:520px;}
+  .stage-header{display:none;}
   .brand{display:flex;align-items:center;gap:10px;}
   .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
   .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
   .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
 
-  .phone{width:380px;max-width:100%;margin:0 auto;background:var(--card);border-radius:36px;border:8px solid var(--ink);box-shadow:var(--shadow);overflow:hidden;position:relative;}
-  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:var(--ink);border-bottom-left-radius:14px;border-bottom-right-radius:14px;z-index:5;}
+  .phone{position:relative;width:100%;height:100dvh;background:var(--card);overflow:hidden;box-shadow:var(--shadow);}
+  .notch{display:none;}
 
-  .screen{display:none;height:720px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:34px 18px 90px;position:relative;scrollbar-width:none;}
+  .screen{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 92px;scrollbar-width:none;}
   .screen::-webkit-scrollbar{display:none;}
   .screen.active{display:block;}
-  .screen.nonav{padding-bottom:34px;}
+  .screen.nonav{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));}
 
   .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
   .topbar .title{font-size:14.5px;font-weight:600;}
@@ -111,7 +111,7 @@
   .review-body{color:var(--ink-soft);}
   .sticky-cta{position:sticky;bottom:0;display:flex;gap:8px;background:linear-gradient(to top, var(--card) 70%, transparent);padding:14px 0 4px;margin-top:12px;}
 
-  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px 14px;z-index:10;}
+  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px calc(14px + env(safe-area-inset-bottom,0px));z-index:10;}
   .bottomnav.hidden{display:none;}
   .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
   .navitem.active{color:var(--ink);}
@@ -120,7 +120,7 @@
   .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
   .toast.low{bottom:24px;}
   .toast.show{opacity:1;transform:translateY(0);}
-  footer{text-align:center;font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6;}
+  footer{display:none;}
 
   /* onboarding / auth */
   .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
@@ -298,14 +298,14 @@
 
     <!-- SAVED -->
     <div class="screen" id="screen-saved">
-      <div class="topbar"><span class="title" data-i18n="savedTitle">Saved</span></div>
+      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="savedTitle">Saved</span></div>
       <p class="result-count" id="savedCount"></p>
       <div id="savedList"></div>
     </div>
 
     <!-- HISTORY -->
     <div class="screen" id="screen-history">
-      <div class="topbar"><span class="title" data-i18n="historyTitle">Booking history</span></div>
+      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="historyTitle">Booking history</span></div>
       <div id="historyList"></div>
     </div>
 

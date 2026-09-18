@@ -494,6 +494,52 @@ begin
 end;
 $$;
 
+-- ============ 0005 PROVIDER KYC + ONBOARDING ============
+-- =====================================================================
+-- LocalPro — Migration 0005: Provider KYC + onboarding
+--   Providers must complete onboarding (selfie + Aadhaar + PAN) before
+--   their listing goes live. Documents live in a PRIVATE storage bucket;
+--   only the owner (and admins) can read them. Safe to re-run.
+-- =====================================================================
+
+alter table public.providers add column if not exists selfie_path   text;
+alter table public.providers add column if not exists aadhaar_path  text;
+alter table public.providers add column if not exists pan_path      text;
+alter table public.providers add column if not exists onboarded     boolean not null default false;
+alter table public.providers add column if not exists whatsapp   text;
+alter table public.providers add column if not exists gender     text;
+alter table public.providers add column if not exists dob        date;
+alter table public.providers add column if not exists city       text;
+alter table public.providers add column if not exists aadhaar_no text;
+alter table public.providers add column if not exists pan_no     text;
+
+insert into storage.buckets (id, name, public)
+values ('kyc', 'kyc', false)
+on conflict (id) do nothing;
+
+drop policy if exists "kyc owner read"   on storage.objects;
+drop policy if exists "kyc owner insert" on storage.objects;
+drop policy if exists "kyc owner update" on storage.objects;
+drop policy if exists "kyc owner delete" on storage.objects;
+drop policy if exists "kyc admin read"   on storage.objects;
+
+create policy "kyc owner read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner insert" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner update" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc owner delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'kyc' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "kyc admin read" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'kyc' and public.is_admin());
+
 -- ============ SEED (9 categories + 12 demo providers) ============
 -- =====================================================================
 -- LocalPro — DEMO seed data (categories + 12 sample providers)

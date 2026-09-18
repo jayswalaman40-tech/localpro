@@ -8,7 +8,7 @@ import { hasSupabase } from './supabase.js';
 
 /* ---------- i18n ---------- */
 let lang = 'en';
-const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : I18N.en[k];
+const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.en[k] != null ? I18N.en[k] : k);
 const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k]);
 
 /* ---------- state ---------- */
@@ -120,7 +120,7 @@ function showScreen(key) {
   if (key === 'leads') refreshLeadLists();
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
-  if (key === 'edit') fillListingForm();
+  if (key === 'edit') { fillListingForm(); renderServices(); }
   if (key === 'otp') $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
   return true;
 }
@@ -129,12 +129,17 @@ function goTo(key) {
   if (NAV_SCREENS.includes(key)) stack = [key];
   else if (currentScreen() !== key) stack.push(key);
 }
-function goBack() { if (stack.length > 1) stack.pop(); showScreen(currentScreen() || 'dashboard'); }
+function goBack() {
+  if (stack.length > 1) { stack.pop(); showScreen(currentScreen()); }
+  else { stack = ['dashboard']; showScreen('dashboard'); }
+}
 async function openNotifications() { $('notifDot').classList.add('hidden'); goTo('notifications'); }
 async function logout() {
   try { if (leadChannel) { leadChannel.unsubscribe(); leadChannel = null; } } catch (e) {}
   try { await api.signOut(); } catch (e) {}
   myProvider = null; leads = []; reviews = []; selectedLeadId = null; stack = ['splash'];
+  const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
+  const lp = $('loginPhone'); if (lp) lp.value = '';
   showScreen('splash');
 }
 
@@ -153,9 +158,12 @@ async function sendOtp() {
   const btn = $('sendOtpBtn'); btn.disabled = true;
   try {
     pendingPhone = await api.sendOtp(phoneDigits());
-    goTo('otp');
+    // reveal the OTP boxes on the SAME page (no screen change)
+    $('otpSection').hidden = false;
+    $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
     const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
     boxes.forEach(b => b.value = ''); boxes[0].focus();
+    toast(t('otpSentToast') || 'OTP sent');
   } catch (e) { toast(e.message || 'Could not send OTP'); }
   finally { btn.disabled = false; }
 }
@@ -177,8 +185,95 @@ $('otpRow').addEventListener('keydown', e => {
 
 async function afterLogin() {
   await loadMyData();
+  // New / unverified providers must finish onboarding before the app opens.
+  if (!myProvider || !myProvider.onboarded) {
+    fillOnboardingForm();
+    goTo('onboarding');
+    return;
+  }
   goTo('dashboard');
   subscribeRealtime();
+}
+
+/* ==================== ONBOARDING ==================== */
+function fillOnboardingForm() {
+  const sel = $('obSkill');
+  if (sel) {
+    sel.innerHTML = categories.map(c => `<option value="${c.id}">${esc(catNameById(c.id))}</option>`).join('');
+  }
+  $('obPhone').value = myProvider?.phone || pendingPhone || '';
+  if (myProvider) {
+    $('obName').value = myProvider.name || '';
+    if (myProvider.category_id && sel) sel.value = myProvider.category_id;
+    $('obWhatsapp').value = myProvider.whatsapp || '';
+    if (myProvider.gender) $('obGender').value = myProvider.gender;
+    $('obDob').value = myProvider.dob || '';
+    $('obCity').value = myProvider.city || '';
+    $('obArea').value = myProvider.service_area || '';
+    $('obExp').value = myProvider.experience_yrs ?? 0;
+    $('obPrice').value = myProvider.starting_price ?? '';
+    $('obAbout').value = myProvider.about || '';
+    $('obAadhaarNo').value = myProvider.aadhaar_no || '';
+    $('obPanNo').value = myProvider.pan_no || '';
+  }
+}
+async function submitOnboarding() {
+  const name = $('obName').value.trim();
+  const category_id = $('obSkill').value || null;
+  const price = Number($('obPrice').value);
+  const aadhaarNo = $('obAadhaarNo').value.replace(/\D/g, '');
+  const panNo = $('obPanNo').value.trim().toUpperCase();
+  const selfieFile = $('obSelfie').files[0];
+  const aadhaarFile = $('obAadhaar').files[0];
+  const panFile = $('obPan').files[0];
+
+  if (!name) { toast(t('obErrName')); return; }
+  if (!category_id) { toast(t('obErrSkill')); return; }
+  if (!Number.isFinite(price) || price < 0) { toast(t('priceError')); return; }
+  if (aadhaarNo.length !== 12) { toast(t('obErrAadhaar')); return; }
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNo)) { toast(t('obErrPan')); return; }
+  const haveSelfie = selfieFile || myProvider?.selfie_path;
+  const haveAadhaar = aadhaarFile || myProvider?.aadhaar_path;
+  const havePan = panFile || myProvider?.pan_path;
+  if (!haveSelfie || !haveAadhaar || !havePan) { toast(t('obErrDocs')); return; }
+
+  const btn = $('obSubmitBtn'); const oldLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = t('obUploading') || 'Uploading…';
+  try {
+    let selfie_path = myProvider?.selfie_path || null;
+    let aadhaar_path = myProvider?.aadhaar_path || null;
+    let pan_path = myProvider?.pan_path || null;
+    if (selfieFile) selfie_path = await api.uploadKyc(selfieFile, 'selfie');
+    if (aadhaarFile) aadhaar_path = await api.uploadKyc(aadhaarFile, 'aadhaar');
+    if (panFile) pan_path = await api.uploadKyc(panFile, 'pan');
+
+    await api.saveMyProvider({
+      name,
+      phone: $('obPhone').value.trim() || pendingPhone,
+      category_id,
+      service_area: $('obArea').value.trim(),
+      city: $('obCity').value.trim() || null,
+      whatsapp: $('obWhatsapp').value.trim() || null,
+      gender: $('obGender').value || null,
+      dob: $('obDob').value || null,
+      experience_yrs: Number($('obExp').value) || 0,
+      starting_price: price,
+      about: $('obAbout').value.trim(),
+      aadhaar_no: aadhaarNo,
+      pan_no: panNo,
+      selfie_path, aadhaar_path, pan_path,
+      onboarded: true,
+      kyc_status: 'pending',
+      available: true,
+    });
+    myProvider = await api.getMyProvider();
+    applyLang(); syncAvailabilityToggle();
+    toast(t('obDone') || 'Submitted for verification');
+    goTo('dashboard');
+    subscribeRealtime();
+  } catch (e) {
+    toast(e.message || 'Could not submit');
+  } finally { btn.disabled = false; btn.textContent = oldLabel; }
 }
 async function loadMyData() {
   try { myProvider = await api.getMyProvider(); } catch (e) { myProvider = null; }
@@ -325,6 +420,33 @@ async function saveListing() {
   } catch (e) { toast(e.message || 'Could not save'); }
 }
 
+/* ==================== SERVICES (price list) ==================== */
+async function renderServices() {
+  const box = $('svcList'); if (!box) return;
+  let svcs = [];
+  try { svcs = await api.getMyServices(); } catch (e) { svcs = []; }
+  box.innerHTML = svcs.length === 0
+    ? `<div class="empty" style="padding:14px">${t('noServices') || '—'}</div>`
+    : svcs.map(s => `<div class="earn-row"><span>${esc(s.name)} · ${inr(s.price)}</span>
+        <button class="btn-link" style="color:var(--danger)" onclick="removeServiceRow('${s.id}')">${esc(t('removeBtn') || 'Remove')}</button></div>`).join('');
+}
+async function addServiceRow() {
+  const name = $('svcName').value.trim();
+  const price = Number($('svcPrice').value);
+  if (!name) { toast(t('serviceNameErr') || 'Enter a service name'); return; }
+  if (!Number.isFinite(price) || price < 0) { toast(t('priceError')); return; }
+  try {
+    await api.addService(name, price);
+    $('svcName').value = ''; $('svcPrice').value = '';
+    renderServices();
+    toast(t('serviceAdded') || 'Service added');
+  } catch (e) { toast(e.message || 'Could not add'); }
+}
+async function removeServiceRow(id) {
+  try { await api.deleteService(id); renderServices(); }
+  catch (e) { toast(e.message || 'Could not remove'); }
+}
+
 /* ==================== SETTINGS ==================== */
 function toggleSwitch(el) {
   const on = el.classList.toggle('on');
@@ -356,6 +478,7 @@ Object.assign(window, {
   sendOtp, verifyOtp, validatePhone,
   openLead, markContacted, markContactedCurrent,
   saveListing, toggleSwitch, toggleLangPop, setLang,
+  submitOnboarding, addServiceRow, removeServiceRow,
 });
 
 /* ==================== BOOT ==================== */

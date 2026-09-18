@@ -8,7 +8,7 @@ import { hasSupabase } from './supabase.js';
 
 /* ==================== i18n ==================== */
 let lang = 'en';
-const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : I18N.en[k];
+const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.en[k] != null ? I18N.en[k] : k);
 const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k]);
 
 /* ==================== state ==================== */
@@ -119,8 +119,8 @@ function goTo(key) {
   else if (currentScreen() !== key) stack.push(key);
 }
 function goBack() {
-  if (stack.length > 1) stack.pop();
-  showScreen(currentScreen() || 'home');
+  if (stack.length > 1) { stack.pop(); showScreen(currentScreen()); }
+  else { stack = ['home']; showScreen('home'); }
 }
 async function openNotifications() {
   $('notifDot').classList.add('hidden');
