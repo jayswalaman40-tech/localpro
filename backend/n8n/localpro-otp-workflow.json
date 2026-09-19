@@ -1,5 +1,5 @@
 {
-  "name": "LocalPro OTP sender (Supabase Send SMS Hook -> Fast2SMS)",
+  "name": "Helpzo OTP sender (Supabase Send SMS Hook -> Fast2SMS)",
   "nodes": [
     {
       "parameters": {

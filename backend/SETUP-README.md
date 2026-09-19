@@ -1,4 +1,4 @@
-# LocalPro — full setup on any computer (test-ready)
+# Helpzo — full setup on any computer (test-ready)
 
 Follow this on the other computer to get both apps running against Supabase.
 Real SMS/WhatsApp OTP is NOT needed for testing — we use a Supabase **test phone

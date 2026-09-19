@@ -1,6 +1,6 @@
-# LocalPro — Backend (Supabase)
+# Helpzo — Backend (Supabase)
 
-Yeh LocalPro ka **real database** hai — customer app aur provider app dono isi se judenge.
+Yeh Helpzo ka **real database** hai — customer app aur provider app dono isi se judenge.
 Abhi tak prototype me data hardcoded tha; ab yeh Postgres me aa jayega.
 
 ## Files (isi order me run karo)
@@ -15,7 +15,7 @@ Abhi tak prototype me data hardcoded tha; ab yeh Postgres me aa jayega.
 ## Setup (2 tareeke)
 
 ### A) Supabase Dashboard se (sabse aasaan)
-1. [supabase.com/dashboard](https://supabase.com/dashboard) → apna **LocalPro** project kholo
+1. [supabase.com/dashboard](https://supabase.com/dashboard) → apna **Helpzo** project kholo
 2. Left menu → **SQL Editor** → **New query**
 3. Har file ka content copy-paste karke **Run** karo, isi order me:
    `0001` → `0002` → `0003` → `seed.sql`

@@ -1,5 +1,5 @@
 // =====================================================================
-// LocalPro Admin — data layer. All reads rely on the admin RLS policies
+// Helpzo Admin — data layer. All reads rely on the admin RLS policies
 // (is_admin() must be true for the signed-in user).
 // =====================================================================
 import { supabase } from './supabase.js';

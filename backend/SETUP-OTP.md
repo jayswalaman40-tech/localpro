@@ -15,7 +15,7 @@ Do this once. ~1–2 hours of work + 1–7 days waiting for DLT approval.
 3. Register a **Header (Sender ID)** — 6 letters, e.g. `LCLPRO`.
 4. Register a **Content Template** for the OTP, for example:
    ```
-   {#var#} is your LocalPro verification code. Do not share it with anyone.
+   {#var#} is your Helpzo verification code. Do not share it with anyone.
    ```
    Category: **Service Implicit** / **Transactional**.
 5. Note the **DLT Template ID** and **Sender ID** once approved.

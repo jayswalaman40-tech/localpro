@@ -20,7 +20,7 @@ Files: import `n8n/localpro-otp-workflow.json` into n8n.
 Register Enterprise + a **Sender ID** (e.g. `LCLPRO`) + an OTP **content template**
 on a DLT portal (Jio/Airtel/Vodafone). Example template:
 ```
-{#var#} is your LocalPro verification code. Do not share it with anyone.
+{#var#} is your Helpzo verification code. Do not share it with anyone.
 ```
 Add the same Sender ID + template inside Fast2SMS. Note the **DLT Template ID**.
 (WhatsApp OTP later needs no DLT — different route.)

@@ -1,5 +1,5 @@
 // =====================================================================
-// LocalPro Customer — data + auth layer
+// Helpzo Customer — data + auth layer
 // All talking to Supabase happens here. The UI (main.js) calls these
 // functions and never touches the database directly.
 // =====================================================================

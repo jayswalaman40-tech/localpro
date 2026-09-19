@@ -1,5 +1,5 @@
 // =====================================================================
-// LocalPro — Supabase "Send SMS Hook" -> WhatsApp Cloud API
+// Helpzo — Supabase "Send SMS Hook" -> WhatsApp Cloud API
 // Replaces n8n entirely. Supabase makes + verifies the OTP; this function
 // only delivers it over WhatsApp. Deploy with verify_jwt = false.
 //

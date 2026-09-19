@@ -1,4 +1,4 @@
-# LocalPro — Customer App
+# Helpzo — Customer App
 
 Real customer app (find nearby help). Reuses the polished prototype UI, but now
 wired to **Supabase** for real data + phone-OTP login, and packaged with

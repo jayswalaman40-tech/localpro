@@ -1,5 +1,5 @@
 // =====================================================================
-// LocalPro Provider — data + auth layer (Supabase)
+// Helpzo Provider — data + auth layer (Supabase)
 // The provider lists their work and receives leads created by customers.
 // =====================================================================
 import { supabase } from './supabase.js';

@@ -1,7 +1,7 @@
 {
   "name": "localpro-customer",
   "version": "0.1.0",
-  "description": "LocalPro — Customer app (find nearby help)",
+  "description": "Helpzo — Customer app (find nearby help)",
   "type": "module",
   "scripts": {
     "dev": "vite",

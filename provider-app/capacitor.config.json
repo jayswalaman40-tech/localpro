@@ -1,6 +1,6 @@
 {
-  "appId": "com.localpro.provider",
-  "appName": "LocalPro Partner",
+  "appId": "com.helpzo.provider",
+  "appName": "Helpzo Partner",
   "webDir": "dist",
   "android": {
     "allowMixedContent": false

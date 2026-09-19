@@ -1,5 +1,5 @@
 // =====================================================================
-// LocalPro Customer — app logic (wired to Supabase via api.js)
+// Helpzo Customer — app logic (wired to Supabase via api.js)
 // UI markup/CSS live in index.html; translations in i18n.js.
 // =====================================================================
 import { LANGS, I18N } from './i18n.js';
@@ -73,7 +73,7 @@ function setLang(code) {
 
 function applyLang() {
   document.documentElement.lang = lang;
-  document.title = 'LocalPro Customer — ' + t('splashTitle');
+  document.title = 'Helpzo Customer — ' + t('splashTitle');
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });

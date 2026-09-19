@@ -1,7 +1,7 @@
 {
   "name": "localpro-admin",
   "version": "0.1.0",
-  "description": "LocalPro — Admin dashboard (customers, providers, leads, KYC)",
+  "description": "Helpzo — Admin dashboard (customers, providers, leads, KYC)",
   "type": "module",
   "scripts": {
     "dev": "vite",

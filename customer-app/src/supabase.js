@@ -5,7 +5,7 @@ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!url || !anon) {
   // Helps during setup — shows clearly if .env is missing.
-  console.warn('[LocalPro] Supabase env missing. Copy .env.example -> .env and add your keys.');
+  console.warn('[Helpzo] Supabase env missing. Copy .env.example -> .env and add your keys.');
 }
 
 export const supabase = createClient(url ?? '', anon ?? '', {

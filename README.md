@@ -1,4 +1,4 @@
-# LocalPro
+# Helpzo
 
 Hyperlocal services marketplace for India — customers find nearby skilled workers
 (plumber, electrician, tailor, cook…) and call them directly. Every call becomes a

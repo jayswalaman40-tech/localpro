@@ -1,7 +1,7 @@
 {
   "name": "localpro-provider",
   "version": "0.1.0",
-  "description": "LocalPro — Provider app (list your work, get leads)",
+  "description": "Helpzo — Provider app (list your work, get leads)",
   "type": "module",
   "scripts": {
     "dev": "vite",

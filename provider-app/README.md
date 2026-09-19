@@ -1,4 +1,4 @@
-# LocalPro — Provider App ("Partner")
+# Helpzo — Provider App ("Partner")
 
 The app skilled workers use to **list their work and receive leads**. Reuses the
 prototype UI, wired to the same **Supabase** backend as the customer app, and

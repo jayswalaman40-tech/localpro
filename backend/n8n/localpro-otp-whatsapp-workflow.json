@@ -1,5 +1,5 @@
 {
-  "name": "LocalPro OTP sender (Supabase Send SMS Hook -> WhatsApp Cloud API)",
+  "name": "Helpzo OTP sender (Supabase Send SMS Hook -> WhatsApp Cloud API)",
   "nodes": [
     {
       "parameters": {

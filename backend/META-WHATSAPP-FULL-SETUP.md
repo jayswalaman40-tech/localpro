@@ -33,7 +33,7 @@ Sirf (a) OTP messages per-message charge hote hain (~₹0.11–0.35/OTP India), 
 
 > **Solo ho, koi registered business nahi?** Sabse aasaan: **Udyam Registration**
 > ([udyamregistration.gov.in](https://udyamregistration.gov.in)) — free, Aadhaar+PAN se
-> online, turant. Business naam "LocalPro" (ya jo chaho) rakh lo. Yahi document
+> online, turant. Business naam "Helpzo" (ya jo chaho) rakh lo. Yahi document
 > Meta verification me chalega.
 
 ---
@@ -46,7 +46,7 @@ Sirf (a) OTP messages per-message charge hote hain (~₹0.11–0.35/OTP India), 
 
 ## STAGE 2 — Meta Business Portfolio banao
 1. [business.facebook.com](https://business.facebook.com) → **Create account**.
-2. Bharo: **Business name** (jaise "LocalPro"), tumhara naam, **business email**.
+2. Bharo: **Business name** (jaise "Helpzo"), tumhara naam, **business email**.
 3. Ban gaya → ye tumhara **Business Portfolio** (purana naam: Business Manager) hai.
 4. **Business Settings → Business Info** me address, website daal do.
 
@@ -68,7 +68,7 @@ Sirf (a) OTP messages per-message charge hote hain (~₹0.11–0.35/OTP India), 
 ## STAGE 5 — WhatsApp Business Account + sender number
 1. WhatsApp setup me ek **WABA** automatically ban jata hai (tumhare business ke andar).
 2. **"Add phone number"** → apna sender number (Stage 0 wala) daalo → **OTP se verify** karo.
-3. **Display name** do (jaise "LocalPro") → Meta review karega (thoda time).
+3. **Display name** do (jaise "Helpzo") → Meta review karega (thoda time).
 4. Ab tumhare paas hai: **Phone Number ID** + **WABA ID** (API Setup page pe dikhte hain).
 
 ## STAGE 6 — Permanent Access Token (n8n ke liye — kabhi expire na ho)
