@@ -9,6 +9,7 @@ Hyperlocal services marketplace for India — customers find nearby skilled work
 ```
 customer-app/     Customer app (find + call providers)   — Vite + Capacitor
 provider-app/     Provider app (listings + live leads)   — Vite + Capacitor
+admin-app/        Admin dashboard (customers/providers/leads/KYC) — Vite web
 backend/          Supabase SQL + setup guides
   localpro-full-setup.sql     run once in Supabase SQL Editor (whole DB)
   SETUP-README.md             set up + test on any computer (test OTP)
@@ -32,6 +33,7 @@ See **`backend/SETUP-README.md`**. Short version:
 - ✅ Backend live (Supabase): schema, RLS, `nearby_providers` RPC, seed data
 - ✅ Both apps built + connected; debug APKs in `builds/`
 - ✅ Realtime leads (call → provider dashboard)
+- ✅ Admin dashboard (`admin-app/`) — see all users/providers/leads, verify KYC (see `backend/ADMIN-SETUP.md`)
 - ⏳ Real OTP: WhatsApp via Supabase Edge Function (Meta business verification pending)
 - ⏳ Play Store: signed release `.aab`
 

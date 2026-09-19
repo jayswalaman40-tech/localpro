@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LocalPro — Admin</title>
+<style>
+  :root{
+    --ink:#1B2440; --ink-soft:#4B5375; --muted:#7C8299;
+    --bg:#EEF1F6; --card:#FFFFFF; --amber:#E8A33D; --amber-ink:#5A3A0B;
+    --teal:#1F8A70; --teal-bg:#E4F4EF; --line:#DFE3EC;
+    --danger:#C1462E; --danger-bg:#FBEAE7; --radius:14px;
+    --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+  h1,h2,h3{font-family:'Space Grotesk','Inter',sans-serif;}
+  a{color:var(--teal);}
+  .hidden{display:none !important;}
+
+  /* login */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:28px;width:100%;max-width:360px;}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .brand-mark{width:34px;height:34px;border-radius:10px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+  .brand-name{font-weight:700;font-size:16px;}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 20px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:12px 0 6px;}
+  input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;color:var(--ink);outline:none;background:var(--card);}
+  input:focus{border-color:var(--ink);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:600;padding:10px 14px;cursor:pointer;color:var(--ink);}
+  .btn:hover{border-color:var(--ink);}
+  .btn-primary{background:var(--teal);color:#fff;border-color:var(--teal);width:100%;padding:12px;margin-top:18px;}
+  .btn-primary:hover{background:#1A7761;}
+  .btn-sm{padding:6px 10px;font-size:12px;}
+  .btn-teal{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .btn-danger{background:var(--danger-bg);color:var(--danger);border-color:var(--danger);}
+  .err{color:var(--danger);font-size:12.5px;margin-top:12px;min-height:16px;}
+
+  /* app shell */
+  header.top{background:var(--card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;}
+  header .spacer{flex:1;}
+  header .who{font-size:12.5px;color:var(--muted);}
+  .tabs{display:flex;gap:4px;padding:10px 16px 0;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto;position:sticky;top:57px;z-index:9;}
+  .tab{border:none;background:none;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--teal);}
+  main{padding:20px;max-width:1100px;margin:0 auto;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+  .stat .n{font-size:26px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin:10px 0 14px;flex-wrap:wrap;}
+  .toolbar input{max-width:280px;}
+  .count{font-size:12px;color:var(--muted);}
+
+  .table-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px;}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;background:#F7F9FC;position:sticky;top:0;}
+  tbody tr{cursor:default;}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:#F7F9FC;}
+  td.num{text-align:right;}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9px;}
+  .pill.ok{background:var(--teal-bg);color:var(--teal);}
+  .pill.no{background:var(--danger-bg);color:var(--danger);}
+  .pill.pending{background:#FBEFDD;color:var(--amber-ink);}
+  .pill.grey{background:#EEF1F6;color:var(--muted);}
+  .empty{padding:30px;text-align:center;color:var(--muted);font-size:13px;}
+  .muted{color:var(--muted);}
+
+  /* drawer */
+  .drawer-back{position:fixed;inset:0;background:rgba(27,36,64,.4);z-index:40;display:flex;justify-content:flex-end;}
+  .drawer{background:var(--bg);width:min(520px,100%);height:100%;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.15);}
+  .drawer-head{background:var(--card);border-bottom:1px solid var(--line);padding:16px 18px;display:flex;align-items:center;gap:10px;position:sticky;top:0;}
+  .drawer-body{padding:18px;}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;}
+  .section h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line);}
+  .kv:last-child{border-bottom:none;}
+  .kv b{font-weight:600;}
+  .row-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+  .avatar{width:44px;height:44px;border-radius:12px;background:var(--teal-bg);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+  .doc-item{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .doc-item:last-child{border-bottom:none;}
+</style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div class="login-wrap" id="loginView">
+    <form class="login-card" id="loginForm">
+      <div class="brand"><div class="brand-mark">L</div><div class="brand-name">LocalPro Admin</div></div>
+      <p class="sub">Founder / co-founder access only.</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" placeholder="you@localpro.app" />
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <button class="btn btn-primary" type="submit" id="loginBtn">Sign in</button>
+      <p class="err" id="loginErr"></p>
+    </form>
+  </div>
+
+  <!-- APP -->
+  <div id="appView" class="hidden">
+    <header class="top">
+      <div class="brand"><div class="brand-mark">L</div><div class="brand-name">LocalPro Admin</div></div>
+      <div class="spacer"></div>
+      <span class="who" id="whoami"></span>
+      <button class="btn btn-sm" id="refreshBtn">↻ Refresh</button>
+      <button class="btn btn-sm" id="logoutBtn">Log out</button>
+    </header>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="customers">Customers</button>
+      <button class="tab" data-tab="providers">Providers</button>
+      <button class="tab" data-tab="leads">Leads</button>
+    </nav>
+    <main id="content"></main>
+  </div>
+
+  <div id="drawerRoot"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
