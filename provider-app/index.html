@@ -309,6 +309,7 @@
       <button class="list-row" onclick="goTo('edit')"><span class="ic">&#9998;</span><span class="lbl" data-i18n="editListing">Edit listing</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="goTo('earnings')"><span class="ic">&#8377;</span><span class="lbl" data-i18n="earnings">Earnings</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="goTo('reviews')"><span class="ic">&#11088;</span><span class="lbl" data-i18n="reviewsReceived">Reviews received</span><span class="chev">&#8250;</span></button>
+      <button class="list-row" onclick="goTo('documents')"><span class="ic">&#128196;</span><span class="lbl" id="docsRowLbl">KYC / Documents</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="openNotifications()"><span class="ic">&#128276;</span><span class="lbl" data-i18n="notifications">Notifications</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="goTo('settings')"><span class="ic">&#9881;</span><span class="lbl" data-i18n="settings">Settings</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="toast(t('supportToast'))"><span class="ic">&#128172;</span><span class="lbl" data-i18n="helpSupport">Help and support</span><span class="chev">&#8250;</span></button>
@@ -343,6 +344,15 @@
       </div>
       <button class="list-row" onclick="toast(t('payoutToast'))"><span class="ic">&#128179;</span><span class="lbl" data-i18n="payoutDetails">Payout details</span><span class="chev">&#8250;</span></button>
       <button class="list-row" onclick="toast(t('aboutToast'))"><span class="ic">&#8505;</span><span class="lbl" data-i18n="about">About</span><span class="chev">&#8250;</span></button>
+    </div>
+
+    <!-- DOCUMENTS / KYC -->
+    <div class="screen nonav" id="screen-documents">
+      <div class="topbar">
+        <button class="iconbtn" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" id="docsTitle">KYC / Documents</span>
+      </div>
+      <div id="docsContent"></div>
     </div>
 
     <!-- SHARED BOTTOM NAV -->

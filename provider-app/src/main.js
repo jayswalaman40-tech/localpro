@@ -90,6 +90,7 @@ function applyLang() {
     if (cur) sel.value = cur;
   }
   renderDashboardStats();
+  { const S = ds(); const rl = $('docsRowLbl'); if (rl) rl.textContent = S.title; const dt = $('docsTitle'); if (dt) dt.textContent = S.title; }
   syncProfileTexts();
   refreshLeadLists();
   renderEarnings();
@@ -121,6 +122,7 @@ function showScreen(key) {
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
   if (key === 'edit') fillListingForm();
+  if (key === 'documents') renderDocuments();
   if (key === 'otp') $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
   return true;
 }
@@ -292,6 +294,73 @@ function renderEarnings() {
   const lbl = $('earnTotalLbl'); if (lbl) lbl.textContent = fill(t('earnTotalLbl'), { n: done.length });
   const tot = $('earnTotal'); if (tot) tot.textContent = String(done.length);
   const em = $('earnMonth'); if (em) em.textContent = String(done.length);
+}
+
+/* ==================== KYC DOCUMENTS ==================== */
+const DOCS_STR = {
+  en: { title: 'KYC / Documents', note: 'Upload your ID for verification. Only admins can see these.', type: 'Document type', aadhaar: 'Aadhaar', pan: 'PAN card', photo: 'Photo', other: 'Other', choose: 'Choose file', upload: 'Upload', uploading: 'Uploading…', none: 'No documents uploaded yet.', pending: 'Pending', approved: 'Approved', rejected: 'Rejected', ok: 'Document uploaded', fail: 'Upload failed', big: 'File too large (max 5 MB)', pick: 'Pick a file first' },
+  hi: { title: 'KYC / दस्तावेज़', note: 'वेरिफिकेशन के लिए अपनी ID अपलोड करें। सिर्फ़ एडमिन देख सकते हैं।', type: 'दस्तावेज़ प्रकार', aadhaar: 'आधार', pan: 'पैन कार्ड', photo: 'फ़ोटो', other: 'अन्य', choose: 'फ़ाइल चुनें', upload: 'अपलोड करें', uploading: 'अपलोड हो रहा है…', none: 'अभी कोई दस्तावेज़ नहीं।', pending: 'लंबित', approved: 'स्वीकृत', rejected: 'अस्वीकृत', ok: 'दस्तावेज़ अपलोड हुआ', fail: 'अपलोड विफल', big: 'फ़ाइल बहुत बड़ी (अधिकतम 5 MB)', pick: 'पहले फ़ाइल चुनें' },
+  gu: { title: 'KYC / દસ્તાવેજ', note: 'ચકાસણી માટે તમારું ID અપલોડ કરો. ફક્ત એડમિન જોઈ શકે.', type: 'દસ્તાવેજ પ્રકાર', aadhaar: 'આધાર', pan: 'પાન કાર્ડ', photo: 'ફોટો', other: 'અન્ય', choose: 'ફાઇલ પસંદ કરો', upload: 'અપલોડ કરો', uploading: 'અપલોડ થાય છે…', none: 'હજી કોઈ દસ્તાવેજ નથી.', pending: 'બાકી', approved: 'મંજૂર', rejected: 'નકારેલ', ok: 'દસ્તાવેજ અપલોડ થયો', fail: 'અપલોડ નિષ્ફળ', big: 'ફાઇલ બહુ મોટી (મહત્તમ 5 MB)', pick: 'પહેલા ફાઇલ પસંદ કરો' },
+  mr: { title: 'KYC / कागदपत्रे', note: 'पडताळणीसाठी तुमचे ID अपलोड करा. फक्त अ‍ॅडमिन पाहू शकतात.', type: 'कागदपत्र प्रकार', aadhaar: 'आधार', pan: 'पॅन कार्ड', photo: 'फोटो', other: 'इतर', choose: 'फाइल निवडा', upload: 'अपलोड करा', uploading: 'अपलोड होत आहे…', none: 'अजून कोणतेही कागदपत्र नाही.', pending: 'प्रलंबित', approved: 'मंजूर', rejected: 'नाकारले', ok: 'कागदपत्र अपलोड झाले', fail: 'अपलोड अयशस्वी', big: 'फाइल खूप मोठी (कमाल 5 MB)', pick: 'आधी फाइल निवडा' },
+  te: { title: 'KYC / పత్రాలు', note: 'ధృవీకరణ కోసం మీ ID అప్‌లోడ్ చేయండి. అడ్మిన్‌లు మాత్రమే చూడగలరు.', type: 'పత్రం రకం', aadhaar: 'ఆధార్', pan: 'పాన్ కార్డ్', photo: 'ఫోటో', other: 'ఇతర', choose: 'ఫైల్ ఎంచుకోండి', upload: 'అప్‌లోడ్', uploading: 'అప్‌లోడ్ అవుతోంది…', none: 'ఇంకా పత్రాలు లేవు.', pick: 'ముందు ఫైల్ ఎంచుకోండి', ok: 'పత్రం అప్‌లోడ్ అయింది', fail: 'అప్‌లోడ్ విఫలమైంది', big: 'ఫైల్ చాలా పెద్దది (గరిష్ఠం 5 MB)', pending: 'పెండింగ్', approved: 'ఆమోదించబడింది', rejected: 'తిరస్కరించబడింది' },
+};
+const ds = () => DOCS_STR[lang] || DOCS_STR.en;
+const docStatusPill = (s) => `<span class="badge ${s === 'approved' ? 'contacted' : (s === 'rejected' ? 'new' : '')}">${esc(ds()[s] || s)}</span>`;
+
+async function renderDocuments() {
+  const S = ds();
+  $('docsTitle').textContent = S.title;
+  const box = $('docsContent');
+  box.innerHTML = `
+    <div class="note">${esc(S.note)}</div>
+    <div class="field"><label>${esc(S.type)}</label>
+      <select id="docType">
+        <option value="aadhaar">${esc(S.aadhaar)}</option>
+        <option value="pan">${esc(S.pan)}</option>
+        <option value="photo">${esc(S.photo)}</option>
+        <option value="other">${esc(S.other)}</option>
+      </select>
+    </div>
+    <div class="field"><input id="docFile" type="file" accept="image/*,application/pdf"></div>
+    <button class="btn btn-primary btn-block" id="docUploadBtn">${esc(S.upload)}</button>
+    <p class="section-label" style="margin-top:18px">${esc(S.title)}</p>
+    <div id="docList"><div class="empty">${esc(S.none)}</div></div>`;
+
+  $('docUploadBtn').addEventListener('click', doUpload);
+  await refreshDocList();
+}
+
+async function refreshDocList() {
+  const S = ds();
+  let rows = [];
+  try { rows = await api.getMyDocuments(); } catch (e) { rows = []; }
+  const el = $('docList'); if (!el) return;
+  const typeLabel = (t) => ({ aadhaar: S.aadhaar, pan: S.pan, photo: S.photo, other: S.other }[t] || t);
+  el.innerHTML = rows.length === 0
+    ? `<div class="empty">${esc(S.none)}</div>`
+    : rows.map(d => `
+      <div class="book-card"><div class="book-top">
+        <div><p style="font-weight:600;font-size:13px;margin:0">${esc(typeLabel(d.doc_type))}</p>
+        <p style="font-size:11px;color:var(--muted);margin:2px 0 0">${esc(new Date(d.created_at).toLocaleDateString('en-IN'))}</p></div>
+        ${docStatusPill(d.status)}
+      </div></div>`).join('');
+}
+
+async function doUpload() {
+  const S = ds();
+  const fileEl = $('docFile'); const btn = $('docUploadBtn');
+  const file = fileEl?.files?.[0];
+  if (!file) { toast(S.pick); return; }
+  if (file.size > 5 * 1024 * 1024) { toast(S.big); return; }
+  btn.disabled = true; btn.textContent = S.uploading;
+  try {
+    await api.uploadDocument(file, $('docType').value);
+    toast(S.ok);
+    fileEl.value = '';
+    await refreshDocList();
+  } catch (e) {
+    toast((S.fail) + (e.message ? ': ' + e.message : ''));
+  } finally { btn.disabled = false; btn.textContent = S.upload; }
 }
 
 /* ==================== LISTING EDIT ==================== */

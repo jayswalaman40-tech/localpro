@@ -129,6 +129,41 @@ export async function getMyReviews() {
   return data ?? [];
 }
 
+// ---------------- KYC DOCUMENTS ----------------
+export async function getMyDocuments() {
+  const id = await uid();
+  if (!id) return [];
+  const { data, error } = await supabase.from('provider_documents')
+    .select('*').eq('user_id', id).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Uploads a file to the private kyc-docs bucket and records it.
+export async function uploadDocument(file, docType) {
+  const id = await uid();
+  if (!id) throw new Error('Not signed in');
+  const prov = await getMyProvider();
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${id}/${docType}-${Date.now()}.${ext}`;
+
+  const up = await supabase.storage.from('kyc-docs').upload(path, file, {
+    upsert: false, contentType: file.type || undefined,
+  });
+  if (up.error) throw up.error;
+
+  const { data, error } = await supabase.from('provider_documents')
+    .insert({ provider_id: prov?.id ?? null, user_id: id, doc_type: docType, file_path: path, status: 'pending' })
+    .select().single();
+  if (error) throw error;
+
+  // move the provider into the KYC queue if not already verified
+  if (prov && prov.kyc_status === 'none') {
+    await supabase.from('providers').update({ kyc_status: 'pending' }).eq('id', prov.id);
+  }
+  return data;
+}
+
 // ---------------- NOTIFICATIONS ----------------
 export async function getNotifications() {
   const id = await uid();
