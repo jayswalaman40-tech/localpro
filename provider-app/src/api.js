@@ -122,11 +122,56 @@ export async function getMyReviews() {
   const prov = await getMyProvider();
   if (!prov) return [];
   const { data, error } = await supabase
-    .from('reviews').select('rating, body, reviewer_name, created_at')
+    .from('reviews').select('id, rating, body, reviewer_name, created_at, provider_reply, provider_reply_at')
     .eq('provider_id', prov.id).eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+// Provider replies to a review on their listing.
+export async function replyToReview(reviewId, text) {
+  const { error } = await supabase.from('reviews')
+    .update({ provider_reply: text, provider_reply_at: new Date().toISOString() })
+    .eq('id', reviewId);
+  if (error) throw error;
+}
+
+// ---------------- WORK PORTFOLIO (photos) ----------------
+export async function getMyPhotos() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase
+    .from('provider_photos').select('*')
+    .eq('provider_id', prov.id).order('sort_order');
+  if (error) throw error;
+  return (data ?? []).map(p => ({ ...p, url: publicPhotoUrl(p.path) }));
+}
+export function publicPhotoUrl(path) {
+  return supabase.storage.from('portfolio').getPublicUrl(path).data.publicUrl;
+}
+export async function addPhoto(file) {
+  const id = await uid();
+  const prov = await getMyProvider();
+  if (!id || !prov) throw new Error('Create your listing first');
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${id}/${Date.now()}.${ext}`;
+  const up = await supabase.storage.from('portfolio')
+    .upload(path, file, { upsert: true, contentType: file.type || undefined });
+  if (up.error) throw up.error;
+  const { data: existing } = await supabase
+    .from('provider_photos').select('sort_order')
+    .eq('provider_id', prov.id).order('sort_order', { ascending: false }).limit(1);
+  const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
+  const { data, error } = await supabase
+    .from('provider_photos').insert({ provider_id: prov.id, path, sort_order: nextSort })
+    .select().single();
+  if (error) throw error;
+  return { ...data, url: publicPhotoUrl(data.path) };
+}
+export async function deletePhoto(photo) {
+  try { await supabase.storage.from('portfolio').remove([photo.path]); } catch (e) {}
+  const { error } = await supabase.from('provider_photos').delete().eq('id', photo.id);
+  if (error) throw error;
 }
 
 // ---------------- KYC DOCUMENT UPLOAD ----------------

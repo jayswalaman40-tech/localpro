@@ -103,11 +103,19 @@ export async function getProviderServices(providerId) {
 export async function getProviderReviews(providerId) {
   const { data, error } = await supabase
     .from('reviews')
-    .select('rating, body, created_at, reviewer_name')
+    .select('rating, body, created_at, reviewer_name, provider_reply, provider_reply_at')
     .eq('provider_id', providerId).eq('status', 'approved')
     .order('created_at', { ascending: false }).limit(20);
   if (error) throw error;
   return data ?? [];
+}
+
+// Work photos shown on a provider's profile (public 'portfolio' bucket).
+export async function getProviderPhotos(providerId) {
+  const { data, error } = await supabase
+    .from('provider_photos').select('path').eq('provider_id', providerId).order('sort_order');
+  if (error) throw error;
+  return (data ?? []).map(p => supabase.storage.from('portfolio').getPublicUrl(p.path).data.publicUrl);
 }
 
 // ---------------- LEADS (call = lead) ----------------

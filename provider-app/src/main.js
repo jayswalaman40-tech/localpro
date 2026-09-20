@@ -151,6 +151,7 @@ function applyLang() {
   refreshLeadLists();
   renderEarnings();
   renderReviews();
+  syncAvailabilityToggle();
   if (selectedLeadId) syncLeadDetail();
   if (!$('langPop').hidden) renderLangPop();
 }
@@ -178,7 +179,7 @@ function showScreen(key) {
   if (key === 'history') refreshLeadLists();
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
-  if (key === 'edit') { fillListingForm(); renderServices(); }
+  if (key === 'edit') { fillListingForm(); renderServices(); renderPhotos(); }
   if (key === 'otp') $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
   return true;
 }
@@ -383,7 +384,7 @@ function renderLeads(container, data) {
       <div class="lead-card" tabindex="0" role="button" onclick="openLead('${l.id}')" onkeydown="if(event.key==='Enter'){event.preventDefault();openLead('${l.id}');}">
         <div class="lead-top">${esc(leadName(l))}<span class="lead-time">${esc(agoFromISO(l.created_at))}</span></div>
         <p class="lead-note">${esc(l.note || t('l1'))}</p>
-        <div style="margin-bottom:8px"><span class="badge ${done ? 'contacted' : 'new'}">${esc(done ? t('badgeContacted') : t('badgeNew'))}</span></div>
+        <div style="margin-bottom:8px">${statusBadgeHtml(l)}</div>
         <div class="lead-actions">
           <button class="btn" ${done ? 'disabled' : ''} onclick="event.stopPropagation(); markContacted('${l.id}')">
             ${esc(done ? t('badgeContacted') : t('markContacted'))}
@@ -409,6 +410,21 @@ async function markContacted(id, silent) {
   if (!silent) toast(fill(t('contactedToast'), { name: leadName(l) }));
 }
 function markContactedCurrent() { if (selectedLeadId) markContacted(selectedLeadId); }
+async function markCompleted(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l || l.status === 'completed') return;
+  l.status = 'completed';
+  refreshLeadLists(); renderDashboardStats(); renderEarnings();
+  if (selectedLeadId === id) syncLeadDetail();
+  try { await api.markLeadCompleted(id); } catch (e) {}
+  toast(t('completedJobToast') || 'Job marked completed');
+}
+function markCompletedCurrent() { if (selectedLeadId) markCompleted(selectedLeadId); }
+function statusBadgeHtml(l) {
+  if (l.status === 'completed') return `<span class="badge completed">${esc(t('badgeCompleted') || 'Completed')}</span>`;
+  const done = l.status !== 'new';
+  return `<span class="badge ${done ? 'contacted' : 'new'}">${esc(done ? t('badgeContacted') : t('badgeNew'))}</span>`;
+}
 function openLead(id) {
   const l = leads.find(x => x.id === id);
   if (!l) return;
@@ -425,23 +441,67 @@ function syncLeadDetail() {
   $('leadCallBtn').href = telHref(leadPhone(l));
   $('leadCallBtn').textContent = t('callCustomer');
   const done = l.status !== 'new';
+  const completed = l.status === 'completed';
   const badge = $('leadBadge');
-  badge.className = 'badge ' + (done ? 'contacted' : 'new');
-  badge.textContent = done ? t('badgeContacted') : t('badgeNew');
+  badge.className = 'badge ' + (completed ? 'completed' : (done ? 'contacted' : 'new'));
+  badge.textContent = completed ? (t('badgeCompleted') || 'Completed') : (done ? t('badgeContacted') : t('badgeNew'));
   const btn = $('leadMarkBtn');
   btn.disabled = done;
   btn.textContent = done ? t('alreadyContacted') : t('markContacted');
+  const cbtn = $('leadCompleteBtn');
+  if (cbtn) { cbtn.disabled = completed; cbtn.textContent = completed ? (t('alreadyCompleted') || 'Completed') : (t('markCompleted2') || 'Mark job completed'); }
 }
 
 /* ==================== REVIEWS / EARNINGS ==================== */
 function renderReviews() {
   const box = $('reviewsList'); if (!box) return;
   box.innerHTML = reviews.length === 0
-    ? `<div class="empty">${t('noLeads') || '—'}</div>`
-    : reviews.map(r =>
-      `<div class="review"><div class="review-top"><span>${esc(r.reviewer_name || t('cOther'))}</span>
-       <span class="star">${'&#9733;'.repeat(Math.max(1, Math.min(5, r.rating)))}</span></div>
-       <div class="review-body">${esc(r.body || '')}</div></div>`).join('');
+    ? `<div class="empty">${t('noReviews') || '—'}</div>`
+    : reviews.map(r => {
+      const stars = '&#9733;'.repeat(Math.max(1, Math.min(5, r.rating)));
+      const reply = r.provider_reply
+        ? `<div class="review-reply"><b>${esc(t('yourReply') || 'Your reply')}:</b> ${esc(r.provider_reply)}</div>`
+        : `<div style="margin-top:8px">
+             <textarea id="reply-${r.id}" rows="2" data-i18n-ph="replyPh" placeholder="${esc(t('replyPh') || 'Write a reply…')}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:12px;color:var(--ink);background:var(--card);outline:none"></textarea>
+             <button class="btn btn-primary" style="margin-top:6px;padding:9px 14px;font-size:12.5px" onclick="replyReview('${r.id}')">${esc(t('replyBtn') || 'Reply')}</button>
+           </div>`;
+      return `<div class="review"><div class="review-top"><span>${esc(r.reviewer_name || t('cOther'))}</span>
+       <span class="star">${stars}</span></div>
+       <div class="review-body">${esc(r.body || '')}</div>${reply}</div>`;
+    }).join('');
+}
+async function replyReview(id) {
+  const el = $('reply-' + id);
+  const text = (el && el.value || '').trim();
+  if (!text) { toast(t('replyEmpty') || 'Write a reply first'); return; }
+  try {
+    await api.replyToReview(id, text);
+    const r = reviews.find(x => x.id === id); if (r) { r.provider_reply = text; r.provider_reply_at = new Date().toISOString(); }
+    renderReviews();
+    toast(t('replySaved') || 'Reply saved');
+  } catch (e) { toast(e.message || 'Could not reply'); }
+}
+
+/* ==================== WORK PORTFOLIO ==================== */
+let myPhotos = [];
+async function renderPhotos() {
+  const box = $('photoGrid'); if (!box) return;
+  try { myPhotos = await api.getMyPhotos(); } catch (e) { myPhotos = []; }
+  box.innerHTML = myPhotos.length === 0
+    ? `<div class="empty" style="grid-column:1/-1;padding:10px">${t('noPhotos') || 'No work photos yet.'}</div>`
+    : myPhotos.map(p => `<div class="photo-cell"><img src="${esc(p.url)}" alt=""><button class="rm" onclick="removePhoto('${p.id}')">&#10005;</button></div>`).join('');
+}
+async function uploadPhoto() {
+  const inp = $('photoInput'); const f = inp.files[0]; if (!f) return;
+  inp.disabled = true;
+  try { await api.addPhoto(f); await renderPhotos(); toast(t('photoAdded') || 'Photo added'); }
+  catch (e) { toast(e.message || 'Could not upload'); }
+  finally { inp.value = ''; inp.disabled = false; }
+}
+async function removePhoto(id) {
+  const p = myPhotos.find(x => x.id === id); if (!p) return;
+  try { await api.deletePhoto(p); await renderPhotos(); }
+  catch (e) { toast(e.message || 'Could not remove'); }
 }
 function renderEarnings() {
   const box = $('earnList'); if (!box) return;
@@ -529,15 +589,21 @@ function toggleSwitch(el) {
   el.setAttribute('aria-checked', String(on));
 }
 function syncAvailabilityToggle() {
-  const el = document.querySelector('[data-i18n-aria="availableForWork"]');
-  if (!el || !myProvider) return;
-  el.classList.toggle('on', !!myProvider.available);
-  el.setAttribute('aria-checked', String(!!myProvider.available));
+  const on = !!(myProvider && myProvider.available);
+  document.querySelectorAll('[data-i18n-aria="availableForWork"]').forEach(el => {
+    el.classList.toggle('on', on); el.setAttribute('aria-checked', String(on));
+  });
+  const card = $('onlineCard'); if (card) card.classList.toggle('on', on);
+  const b = document.querySelector('#onlineCard .oc-txt b');
+  const s = document.querySelector('#onlineCard .oc-txt span');
+  if (b) b.textContent = on ? (t('youreOnline') || 'You are Online') : (t('youreOffline') || 'You are Offline');
+  if (s) s.textContent = on ? (t('onlineHint') || 'Receiving new leads') : (t('offlineHint') || 'Not receiving leads');
 }
-async function toggleAvailability(el) {
-  const on = el.classList.toggle('on');
-  el.setAttribute('aria-checked', String(on));
-  try { await api.setAvailable(on); if (myProvider) myProvider.available = on; } catch (e) { toast('Sign in first'); }
+async function toggleAvailability() {
+  const on = !(myProvider && myProvider.available);
+  try { await api.setAvailable(on); if (myProvider) myProvider.available = on; }
+  catch (e) { toast('Sign in first'); return; }
+  syncAvailabilityToggle();
 }
 
 function toast(msg) {
@@ -552,10 +618,11 @@ function toast(msg) {
 Object.assign(window, {
   goTo, goBack, openNotifications, logout,
   sendOtp, verifyOtp, validatePhone,
-  openLead, markContacted, markContactedCurrent,
+  openLead, markContacted, markContactedCurrent, markCompletedCurrent,
   saveListing, toggleSwitch, toggleLangPop, setLang,
   submitOnboarding, addServiceRow, removeServiceRow,
   onObSkillChange, onEdSkillChange,
+  uploadPhoto, removePhoto, replyReview, toggleAvailability,
 });
 
 /* ==================== BOOT ==================== */
@@ -568,8 +635,9 @@ async function boot() {
   validatePhone();
 
   // wire the "Available for work" toggle to the DB (replaces generic toggleSwitch)
-  const av = document.querySelector('[data-i18n-aria="availableForWork"]');
-  if (av) { av.setAttribute('onclick', ''); av.onclick = () => toggleAvailability(av); }
+  document.querySelectorAll('[data-i18n-aria="availableForWork"]').forEach(el => {
+    el.setAttribute('onclick', ''); el.onclick = () => toggleAvailability();
+  });
 
   try {
     const session = await api.getSession();

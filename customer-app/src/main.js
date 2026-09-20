@@ -213,12 +213,27 @@ async function afterLogin() {
 /* ==================== SEARCH + LISTS ==================== */
 function clearSearch() { $('searchInput').value = ''; renderResults(); $('searchInput').focus(); }
 
-function renderChips() {
-  const chips = [{ id: 'all', label: t('cAll') }]
-    .concat(categories.map(c => ({ id: c.id, label: catNameById(c.id) })));
-  $('chipRow').innerHTML = chips.map(c =>
-    `<button class="chip ${c.id === activeCategory ? 'active' : ''}" onclick="setCategory('${c.id}')">${esc(c.label)}</button>`
-  ).join('');
+const CAT_ICON = { plumber:'🔧', electrician:'⚡', carpenter:'🪚', ac_repair:'❄️', painter:'🎨', tailor:'✂️', driver:'🚗', cook:'🍳', gardener:'🌿' };
+let activeSort = 'all';
+function renderServiceGrid() {
+  const grid = $('svcGrid'); if (!grid) return;
+  const tiles = [{ id:'all', label:t('cAll'), icon:'🧰' }]
+    .concat(categories.map(c => ({ id:c.id, label:catNameById(c.id), icon:CAT_ICON[c.key] || '🛠️' })));
+  grid.innerHTML = tiles.map(c =>
+    `<button class="svc-tile ${c.id===activeCategory?'active':''}" onclick="setCategory('${c.id}')"><span class="svc-ic">${c.icon}</span><span class="svc-lbl">${esc(c.label)}</span></button>`).join('');
+}
+function renderSortRow() {
+  const row = $('sortRow'); if (!row) return;
+  const tabs = [['all', t('sortAll') || 'All'], ['rating', t('sortTop') || 'Top Rated'], ['near', t('sortNear') || 'Nearest'], ['price', t('sortPrice') || 'Price Low']];
+  row.innerHTML = tabs.map(([k, l]) => `<button class="sort-tab ${k===activeSort?'active':''}" onclick="setSort('${k}')">${esc(l)}</button>`).join('');
+}
+function setSort(k) { activeSort = k; renderResults(); }
+function sortProviders(list) {
+  const a = [...list];
+  if (activeSort === 'rating') a.sort((x, y) => (y.rating_avg || 0) - (x.rating_avg || 0));
+  else if (activeSort === 'near') a.sort((x, y) => (x.distance_km ?? 1e9) - (y.distance_km ?? 1e9));
+  else if (activeSort === 'price') a.sort((x, y) => (x.starting_price ?? 1e9) - (y.starting_price ?? 1e9));
+  return a;
 }
 function setCategory(id) { activeCategory = id; renderResults(); }
 
@@ -249,7 +264,8 @@ function providerCardHtml(p) {
 }
 
 async function renderResults() {
-  renderChips();
+  renderServiceGrid();
+  renderSortRow();
   const q = ($('searchInput').value || '').trim();
   $('searchClear').classList.toggle('show', q.length > 0);
   $('resultCount').textContent = '…';
@@ -269,7 +285,7 @@ async function renderResults() {
     ? t('resultOne') : fill(t('resultMany'), { n: providers.length });
   $('resultsList').innerHTML = providers.length === 0
     ? `<div class="empty">${t('noResults')}</div>`
-    : providers.map(providerCardHtml).join('');
+    : sortProviders(providers).map(providerCardHtml).join('');
 }
 
 async function renderSaved() {
@@ -327,6 +343,15 @@ async function fillDetail(p) {
   $('detailDist').textContent = (p.distance_km != null ? p.distance_km : '—') + ' ' + t('km');
   $('detailExp').textContent = (p.experience_yrs ?? 0) + ' ' + t('yrs');
   syncSaveBtn();
+  // work photos (async)
+  try {
+    const photos = await api.getProviderPhotos(p.id);
+    const pb = $('detailPhotos'), lbl = $('detailPhotosLabel');
+    if (photos.length) {
+      pb.innerHTML = `<div class="photo-strip">${photos.map(u => `<img src="${esc(u)}" alt="">`).join('')}</div>`;
+      pb.style.display = ''; if (lbl) lbl.style.display = '';
+    } else { pb.innerHTML = ''; pb.style.display = 'none'; if (lbl) lbl.style.display = 'none'; }
+  } catch (e) { const pb = $('detailPhotos'); if (pb) pb.style.display = 'none'; const lbl = $('detailPhotosLabel'); if (lbl) lbl.style.display = 'none'; }
   // services + reviews (async)
   try {
     const services = await api.getProviderServices(p.id);
@@ -338,7 +363,8 @@ async function fillDetail(p) {
     const reviews = await api.getProviderReviews(p.id);
     $('detailReviewsList').innerHTML = reviews.map(r =>
       `<div class="review"><div class="review-top"><span class="review-name">${esc(r.reviewer_name || 'Customer')}</span>
-       <span class="star">&#9733; ${r.rating}</span></div><div class="review-body">${esc(r.body || '')}</div></div>`).join('')
+       <span class="star">&#9733; ${r.rating}</span></div><div class="review-body">${esc(r.body || '')}</div>
+       ${r.provider_reply ? `<div class="detail-reply"><b>${esc(t('providerReplied') || 'Provider replied')}:</b> ${esc(r.provider_reply)}</div>` : ''}</div>`).join('')
       || `<div class="empty" style="padding:16px">${esc(t('recentReviews'))} —</div>`;
   } catch (e) { $('detailReviewsList').innerHTML = ''; }
 }
@@ -422,7 +448,7 @@ if (searchInput) {
 Object.assign(window, {
   goTo, goBack, openNotifications, logout,
   sendOtp, verifyOtp, validatePhone,
-  clearSearch, setCategory, openDetail, toggleSave, toggleSaveById,
+  clearSearch, setCategory, setSort, openDetail, toggleSave, toggleSaveById,
   logBooking, logBookingFor, saveProfile, toggleSwitch,
   toggleLangPop, setLang, renderResults,
 });

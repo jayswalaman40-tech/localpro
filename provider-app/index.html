@@ -9,10 +9,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1B2440; --ink-soft:#4B5375; --muted:#7C8299;
-    --bg:#EEF1F6; --card:#FFFFFF;
-    --amber:#E8A33D; --amber-ink:#5A3A0B;
-    --teal:#1F8A70; --teal-bg:#E4F4EF;
+    --ink:#0B2450; --ink-soft:#3B4A6B; --muted:#8A93A8;
+    --bg:#F2F6FD; --card:#FFFFFF;
+    --amber:#F0A93B; --amber-ink:#5A3A0B;
+    --teal:#16A34A; --teal-bg:#E7F6EC;
+    --blue:#1267FF; --blue-bg:#E8F0FF;
     --line:#DFE3EC; --danger:#C1462E; --danger-bg:#FBEAE7;
     --radius:16px;
     --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
@@ -50,6 +51,21 @@
   .greeting{font-size:17px;font-weight:600;margin:0 0 3px;font-family:'Space Grotesk',sans-serif;}
   .greeting-sub{font-size:12px;color:var(--muted);margin:0 0 18px;}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+  .online-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;}
+  .online-card .oc-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+  .online-card.on .oc-dot{background:var(--teal);box-shadow:0 0 0 4px var(--teal-bg);}
+  .online-card .oc-txt{flex:1;} .online-card .oc-txt b{font-size:13.5px;} .online-card .oc-txt span{display:block;font-size:11px;color:var(--muted);}
+  .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 20px;}
+  .qa{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;font-family:inherit;color:var(--ink);text-align:left;}
+  .qa:hover{border-color:var(--blue);} .qa .qic{width:34px;height:34px;border-radius:10px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .qa .qlbl{font-size:12.5px;font-weight:600;}
+  .photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+  .photo-cell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--bg);border:1px solid var(--line);}
+  .photo-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-cell .rm{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(11,36,80,.72);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0;}
+  .review-reply{margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);}
+  .review-reply b{color:var(--blue);}
+  .badge.completed{background:var(--teal-bg);color:var(--teal);}
   .stat-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);width:100%;}
   .stat-card.static{cursor:default;}
   .stat-card .num{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
@@ -270,6 +286,17 @@
         <div class="spacer"></div>
         <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
       </div>
+      <div class="online-card" id="onlineCard">
+        <span class="oc-dot"></span>
+        <div class="oc-txt"><b data-i18n="youreOnline">You are Online</b><span data-i18n="onlineHint">Receiving new leads</span></div>
+        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="availableForWork" aria-label="Available for work" id="onlineToggle"><span class="knob"></span></button>
+      </div>
+      <div class="qa-grid">
+        <button class="qa" onclick="goTo('leads')"><span class="qic">&#128203;</span><span class="qlbl" data-i18n="qaLeads">View Leads</span></button>
+        <button class="qa" onclick="goTo('earnings')"><span class="qic">&#8377;</span><span class="qlbl" data-i18n="qaEarnings">Earnings</span></button>
+        <button class="qa" onclick="goTo('edit')"><span class="qic">&#9998;</span><span class="qlbl" data-i18n="qaListing">My Listing</span></button>
+        <button class="qa" onclick="goTo('reviews')"><span class="qic">&#11088;</span><span class="qlbl" data-i18n="qaReviews">Reviews</span></button>
+      </div>
       <div class="stat-grid">
         <button class="stat-card" onclick="goTo('leads')"><div class="num" id="statLeads">18</div><div class="lbl" data-i18n="leadsThisWeek">Leads this week</div></button>
         <button class="stat-card" onclick="goTo('reviews')"><div class="num">4.8</div><div class="lbl" id="ratingLbl">Rating (120 reviews)</div></button>
@@ -312,7 +339,8 @@
       <p class="section-label" data-i18n="contact">Contact</p>
       <div class="field"><label for="leadPhone" data-i18n="customerNumber">Customer number</label><input id="leadPhone" readonly></div>
       <button class="btn btn-primary btn-block" id="leadMarkBtn" style="margin-bottom:10px" onclick="markContactedCurrent()">Mark as contacted</button>
-      <a class="btn btn-block" style="text-decoration:none" id="leadCallBtn" href="#">Call customer</a>
+      <a class="btn btn-block" style="text-decoration:none;margin-bottom:10px" id="leadCallBtn" href="#">Call customer</a>
+      <button class="btn btn-block" id="leadCompleteBtn" onclick="markCompletedCurrent()" data-i18n="markCompleted2">Mark job completed</button>
     </div>
 
     <!-- LISTING EDIT (reached from Profile) -->
@@ -341,6 +369,14 @@
         <input id="svcPrice" type="number" min="0" step="10" placeholder="&#8377;" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;">
         <button class="btn btn-primary" style="flex-shrink:0" data-i18n="addBtn" onclick="addServiceRow()">Add</button>
       </div>
+
+      <!-- Work portfolio — customers see these on your profile -->
+      <p class="section-label" style="margin-top:22px" data-i18n="portfolioLabel">Work photos</p>
+      <div class="photo-grid" id="photoGrid"></div>
+      <label class="btn btn-block" style="cursor:pointer">
+        <span data-i18n="addPhoto">+ Add work photo</span>
+        <input id="photoInput" type="file" accept="image/*" hidden onchange="uploadPhoto()">
+      </label>
     </div>
 
     <!-- REVIEWS -->

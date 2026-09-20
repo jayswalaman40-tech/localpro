@@ -75,6 +75,13 @@ en:{
   navHistory:"History", historyTitle:"History",
   skillOther:"Other", otherSkillLabel:"Your trade (Other)", otherSkillPh:"e.g. Welder, CCTV installer",
   cityPh:"Select or type your city", obErrOther:"Type your trade name",
+  youreOnline:"You are Online", youreOffline:"You are Offline",
+  onlineHint:"Receiving new leads", offlineHint:"Not receiving leads",
+  qaLeads:"View Leads", qaEarnings:"Earnings", qaListing:"My Listing", qaReviews:"Reviews",
+  markCompleted2:"Mark job completed", alreadyCompleted:"Completed", badgeCompleted:"Completed",
+  completedJobToast:"Job marked completed",
+  portfolioLabel:"Work photos", addPhoto:"+ Add work photo", noPhotos:"No work photos yet.", photoAdded:"Photo added",
+  noReviews:"No reviews yet.", yourReply:"Your reply", replyBtn:"Reply", replyPh:"Write a reply…", replyEmpty:"Write a reply first", replySaved:"Reply saved",
 },
 hi:{
   splashTitle:"अपना काम लिस्ट करें",

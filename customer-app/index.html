@@ -9,10 +9,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1B2440; --ink-soft:#4B5375; --muted:#7C8299;
-    --bg:#EEF1F6; --card:#FFFFFF;
-    --amber:#E8A33D; --amber-ink:#5A3A0B;
-    --teal:#1F8A70; --teal-bg:#E4F4EF;
+    --ink:#0B2450; --ink-soft:#3B4A6B; --muted:#8A93A8;
+    --bg:#F2F6FD; --card:#FFFFFF;
+    --amber:#F0A93B; --amber-ink:#5A3A0B;
+    --teal:#16A34A; --teal-bg:#E7F6EC;
+    --blue:#1267FF; --blue-bg:#E8F0FF;
     --line:#DFE3EC; --danger:#C1462E; --danger-bg:#FBEAE7;
     --radius:16px;
     --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
@@ -60,6 +61,17 @@
   .chips::-webkit-scrollbar{display:none;}
   .chip{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
   .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .grid-label{font-size:12.5px;font-weight:700;color:var(--ink);margin:2px 0 10px;}
+  .svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+  .svc-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 4px;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .svc-tile.active{border-color:var(--blue);background:var(--blue-bg);}
+  .svc-ic{font-size:22px;line-height:1;} .svc-lbl{font-size:10px;text-align:center;line-height:1.1;color:var(--ink-soft);}
+  .sort-row{display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;} .sort-row::-webkit-scrollbar{display:none;}
+  .sort-tab{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
+  .sort-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .photo-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;} .photo-strip::-webkit-scrollbar{display:none;}
+  .photo-strip img{width:112px;height:112px;object-fit:cover;border-radius:12px;flex-shrink:0;border:1px solid var(--line);}
+  .detail-reply{margin-top:6px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);} .detail-reply b{color:var(--blue);}
 
   .result-count{font-size:11.5px;color:var(--muted);margin-bottom:10px;}
 
@@ -273,7 +285,9 @@
         <input id="searchInput" type="search" data-i18n-ph="searchPlaceholder" placeholder="Search plumber, electrician..." oninput="renderResults()">
         <button class="clear" id="searchClear" data-i18n-aria="searchClear" aria-label="Clear search" onclick="clearSearch()">&#10005;</button>
       </div>
-      <div class="chips" id="chipRow"></div>
+      <p class="grid-label" data-i18n="popularServices">Popular services</p>
+      <div class="svc-grid" id="svcGrid"></div>
+      <div class="sort-row" id="sortRow"></div>
       <p class="result-count" id="resultCount"></p>
       <div id="resultsList"></div>
     </div>
@@ -301,6 +315,9 @@
           <div class="stat"><b id="detailDist"></b><span data-i18n="distance">Distance</span></div>
           <div class="stat"><b id="detailExp"></b><span data-i18n="experience">Experience</span></div>
         </div>
+
+        <p class="section-label" data-i18n="workPhotos" id="detailPhotosLabel">Work photos</p>
+        <div id="detailPhotos"></div>
 
         <p class="section-label" data-i18n="servicesOffered">Services offered</p>
         <div id="detailServices"></div>

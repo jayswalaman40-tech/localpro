@@ -17,6 +17,8 @@ en:{
   verifyTitle:"Verify", otpSub:"Enter the 4-digit code sent to +91 {phone}",
   verifyNext:"Verify & continue", noCode:"Didn't get the code?", resend:"Resend",
   resendToast:"OTP sent again (demo)", otpIncomplete:"Enter the full 4-digit code", otpSentToast:"OTP sent",
+  popularServices:"Popular services", workPhotos:"Work photos", providerReplied:"Provider replied",
+  sortAll:"All", sortTop:"Top Rated", sortNear:"Nearest", sortPrice:"Price Low",
   notifications:"Notifications", searchPlaceholder:"Search plumber, electrician...",
   searchClear:"Clear search", back:"Back", saveAria:"Save", unsaveAria:"Remove from saved",
   verified:"Verified", rating:"Rating", reviews:"Reviews", distance:"Distance", experience:"Experience",
