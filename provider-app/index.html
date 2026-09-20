@@ -84,6 +84,14 @@
   .ob-nav{display:flex;gap:10px;margin-top:18px;} .ob-nav .btn{flex:1;}
   .ob-sum-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
   .ob-sum-row span:first-child{color:var(--muted);} .ob-sum-row span:last-child{font-weight:600;text-align:right;}
+  .chat-body{padding-bottom:72px;}
+  .msg{max-width:78%;padding:8px 12px;border-radius:14px;font-size:13px;margin-bottom:8px;line-height:1.4;word-wrap:break-word;}
+  .msg.me{background:var(--blue);color:#fff;margin-left:auto;border-bottom-right-radius:4px;}
+  .msg.them{background:var(--bg);color:var(--ink);margin-right:auto;border-bottom-left-radius:4px;}
+  .msg .mt{display:block;font-size:9.5px;opacity:.7;margin-top:3px;}
+  .chat-input{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);}
+  .chat-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:20px;padding:10px 14px;font-family:inherit;font-size:13px;outline:none;color:var(--ink);background:var(--card);}
+  .chat-input .btn{padding:10px 16px;flex-shrink:0;}
   .stat-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);width:100%;}
   .stat-card.static{cursor:default;}
   .stat-card .num{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
@@ -367,6 +375,19 @@
       <div id="historyListFull"></div>
     </div>
 
+    <!-- CHAT -->
+    <div class="screen nonav" id="screen-chat">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" id="chatTitle">Chat</span>
+      </div>
+      <div id="chatBody" class="chat-body"></div>
+      <div class="chat-input">
+        <input id="chatInput" data-i18n-ph="typeMsg" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-primary" onclick="sendChat()" data-i18n="sendMsg">Send</button>
+      </div>
+    </div>
+
     <!-- SERVICE REQUESTS (bookings) -->
     <div class="screen nonav" id="screen-requests">
       <div class="topbar">
@@ -398,6 +419,7 @@
       <button class="btn btn-primary btn-block" id="leadMarkBtn" style="margin-bottom:10px" onclick="markContactedCurrent()">Mark as contacted</button>
       <a class="btn btn-block" style="text-decoration:none;margin-bottom:10px" id="leadCallBtn" href="#">Call customer</a>
       <button class="btn btn-block" id="leadCompleteBtn" onclick="markCompletedCurrent()" data-i18n="markCompleted2">Mark job completed</button>
+      <button class="btn btn-block" style="margin-top:10px" onclick="openLeadChat()" data-i18n="chatBtn">Chat with customer</button>
     </div>
 
     <!-- LISTING EDIT (reached from Profile) -->

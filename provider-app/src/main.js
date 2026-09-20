@@ -264,6 +264,7 @@ async function openNotifications() { $('notifDot').classList.add('hidden'); goTo
 async function logout() {
   try { if (leadChannel) { leadChannel.unsubscribe(); leadChannel = null; } } catch (e) {}
   try { if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; } } catch (e) {}
+  try { if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; } } catch (e) {}
   try { await api.signOut(); } catch (e) {}
   myProvider = null; leads = []; reviews = []; bookings = []; selectedLeadId = null; stack = ['splash'];
   const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
@@ -467,6 +468,7 @@ function renderRequests() {
         actions = `${ph ? `<a class="btn" style="text-decoration:none" href="${telHref(ph)}">${esc(t('call'))}</a>` : ''}
                    <button class="btn btn-primary" onclick="completeBooking('${b.id}')">${esc(t('markCompleted2') || 'Complete')}</button>`;
       }
+      actions += `<button class="btn" onclick="openChatWith('${b.customer_id}')">${esc(t('chatBtn') || 'Chat')}</button>`;
       return `<div class="lead-card">
         <div class="lead-top">${esc(b.customer_name || t('cOther'))}<span class="lead-time">${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</span></div>
         <p class="lead-note">${esc(b.service || '')}${b.address ? ' · ' + esc(b.address) : ''}${b.note ? '<br>' + esc(b.note) : ''}${ph ? '<br>&#128222; ' + esc(ph) : ''}</p>
@@ -484,6 +486,37 @@ async function setBk(id, status, msg) {
 async function acceptBooking(id) { setBk(id, 'confirmed', t('bookingAccepted') || 'Booking accepted'); }
 async function rejectBooking(id) { setBk(id, 'cancelled', t('bookingRejected') || 'Booking rejected'); }
 async function completeBooking(id) { setBk(id, 'completed', t('completedJobToast') || 'Job completed'); }
+
+/* ==================== CHAT ==================== */
+let chatCustomerId = null, chatChannel = null;
+function chatFmtTime(iso) { try { return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+function chatBubble(m) { return `<div class="msg ${m.sender_role === 'provider' ? 'me' : 'them'}">${esc(m.body)}<span class="mt">${esc(chatFmtTime(m.created_at))}</span></div>`; }
+function openChatWith(customerId) {
+  const src = bookings.find(x => x.customer_id === customerId) || leads.find(x => x.customer_id === customerId);
+  chatCustomerId = customerId;
+  $('chatTitle').textContent = (src && src.customer_name) || t('cOther');
+  goTo('chat'); loadChat(); subscribeChat();
+}
+function openLeadChat() { const l = leads.find(x => x.id === selectedLeadId); if (l) openChatWith(l.customer_id); }
+async function loadChat() {
+  let msgs = []; try { msgs = await api.getMessages(chatCustomerId); } catch (e) {}
+  const box = $('chatBody'); if (box) box.innerHTML = msgs.length === 0 ? `<div class="empty">${t('noMessages') || 'Say hello 👋'}</div>` : msgs.map(chatBubble).join('');
+  scrollChat();
+}
+function appendMsg(m) { const box = $('chatBody'); const e = box.querySelector('.empty'); if (e) box.innerHTML = ''; box.insertAdjacentHTML('beforeend', chatBubble(m)); scrollChat(); }
+function scrollChat() { const s = $('screen-chat'); if (s) setTimeout(() => { s.scrollTop = s.scrollHeight; }, 30); }
+async function sendChat() {
+  const inp = $('chatInput'); const body = (inp.value || '').trim();
+  if (!body || !chatCustomerId) return;
+  inp.value = '';
+  try { const m = await api.sendMessage(chatCustomerId, body); appendMsg(m); } catch (e) { toast(e.message || 'Could not send'); }
+}
+async function subscribeChat() {
+  try {
+    if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; }
+    chatChannel = await api.subscribeMessages(chatCustomerId, (m) => { if (m.sender_role !== 'provider') appendMsg(m); });
+  } catch (e) {}
+}
 
 /* ==================== DASHBOARD STATS ==================== */
 function renderDashboardStats() {
@@ -751,6 +784,7 @@ Object.assign(window, {
   uploadPhoto, removePhoto, replyReview, toggleAvailability,
   acceptBooking, rejectBooking, completeBooking,
   obNext, obPrev, selectObSkill,
+  openChatWith, openLeadChat, sendChat,
 });
 
 /* ==================== BOOT ==================== */

@@ -147,6 +147,7 @@ async function openNotifications() {
   } catch (e) { /* keep static demo rows if not signed in */ }
 }
 async function logout() {
+  try { if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; } } catch (e) {}
   try { await api.signOut(); } catch (e) {}
   savedIds = new Set(); providers = []; selectedProvider = null;
   stack = ['splash']; activeCategory = 'all';
@@ -412,6 +413,33 @@ async function cancelMyBooking(id) {
   catch (e) { toast(e.message || 'Could not cancel'); }
 }
 
+/* ==================== CHAT ==================== */
+let chatProviderId = null, chatChannel = null;
+function fmtTime(iso) { try { return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+async function openChatCustomer() {
+  if (!selectedProvider) return;
+  chatProviderId = selectedProvider.id;
+  $('chatTitle').textContent = selectedProvider.name || t('chat') || 'Chat';
+  goTo('chat'); await loadChat(); subscribeChat();
+}
+function chatBubble(m) { return `<div class="msg ${m.sender_role === 'customer' ? 'me' : 'them'}">${esc(m.body)}<span class="mt">${esc(fmtTime(m.created_at))}</span></div>`; }
+async function loadChat() { let msgs = []; try { msgs = await api.getMessages(chatProviderId); } catch (e) {} renderChat(msgs); }
+function renderChat(msgs) { const box = $('chatBody'); if (!box) return; box.innerHTML = msgs.length === 0 ? `<div class="empty">${t('noMessages') || 'Say hello 👋'}</div>` : msgs.map(chatBubble).join(''); scrollChat(); }
+function appendMsg(m) { const box = $('chatBody'); const e = box.querySelector('.empty'); if (e) box.innerHTML = ''; box.insertAdjacentHTML('beforeend', chatBubble(m)); scrollChat(); }
+function scrollChat() { const s = $('screen-chat'); if (s) setTimeout(() => { s.scrollTop = s.scrollHeight; }, 30); }
+async function sendChat() {
+  const inp = $('chatInput'); const body = (inp.value || '').trim();
+  if (!body || !chatProviderId) return;
+  inp.value = '';
+  try { const m = await api.sendMessage(chatProviderId, body); appendMsg(m); } catch (e) { toast(e.message || 'Could not send'); }
+}
+async function subscribeChat() {
+  try {
+    if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; }
+    chatChannel = await api.subscribeMessages(chatProviderId, (m) => { if (m.sender_role !== 'customer') appendMsg(m); });
+  } catch (e) {}
+}
+
 /* ==================== DETAIL ==================== */
 async function fillDetail(p) {
   $('detailAvatar').textContent = (p.name || '?')[0];
@@ -536,6 +564,7 @@ Object.assign(window, {
   logBooking, logBookingFor, saveProfile, toggleSwitch,
   toggleLangPop, setLang, renderResults,
   openBooking, confirmBooking, pickDate, pickTime, setBookingTab, cancelMyBooking,
+  openChatCustomer, sendChat,
 });
 
 /* ==================== BOOT ==================== */

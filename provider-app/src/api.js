@@ -142,6 +142,34 @@ export async function subscribeBookings(cb) {
   return channel;
 }
 
+// ---------------- CHAT ----------------
+export async function getMessages(customerId) {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase.from('messages').select('*')
+    .eq('provider_id', prov.id).eq('customer_id', customerId).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function sendMessage(customerId, body) {
+  const prov = await getMyProvider();
+  if (!prov) throw new Error('Create your listing first');
+  const { data, error } = await supabase.from('messages')
+    .insert({ provider_id: prov.id, customer_id: customerId, sender_role: 'provider', body })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+export async function subscribeMessages(customerId, cb) {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const ch = supabase.channel('msg-' + prov.id + '-' + customerId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `provider_id=eq.${prov.id}` },
+      (payload) => { if (payload.new.customer_id === customerId) cb(payload.new); })
+    .subscribe();
+  return ch;
+}
+
 // ---------------- REVIEWS ----------------
 export async function getMyReviews() {
   const prov = await getMyProvider();

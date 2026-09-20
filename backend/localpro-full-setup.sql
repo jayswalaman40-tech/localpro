@@ -685,6 +685,29 @@ create trigger trg_bookings_insert after insert on public.bookings
 -- ============ 0009 PROVIDER EMAIL ============
 alter table public.providers add column if not exists email text;
 
+-- ============ 0010 CHAT MESSAGES ============
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.providers(id) on delete cascade,
+  customer_id uuid not null references public.profiles(id) on delete cascade,
+  sender_role text not null check (sender_role in ('customer','provider')),
+  body text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_messages_thread on public.messages(provider_id, customer_id, created_at);
+alter table public.messages enable row level security;
+drop policy if exists "messages read"   on public.messages;
+drop policy if exists "messages insert" on public.messages;
+create policy "messages read" on public.messages for select using (
+  customer_id = auth.uid()
+  or exists (select 1 from public.providers p where p.id = provider_id and p.user_id = auth.uid()));
+create policy "messages insert" on public.messages for insert with check (
+  (sender_role = 'customer' and customer_id = auth.uid())
+  or (sender_role = 'provider' and exists (select 1 from public.providers p where p.id = provider_id and p.user_id = auth.uid())));
+do $$ begin alter publication supabase_realtime add table public.messages; exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.leads;    exception when others then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.bookings; exception when others then null; end $$;
+
 -- ============ SEED (9 categories + 12 demo providers) ============
 -- =====================================================================
 -- LocalPro — DEMO seed data (categories + 12 sample providers)

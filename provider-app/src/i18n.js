@@ -90,6 +90,7 @@ en:{
   obSectionSkills:"Select your service & skill", obSectionReview:"Review & submit",
   obKycNote:"Upload your documents to get verified and start receiving leads.",
   emailOptional:"Email (optional)", backStep:"Back", nextStep:"Next",
+  chatBtn:"Chat", typeMsg:"Type a message…", sendMsg:"Send", noMessages:"Say hello 👋",
 },
 hi:{
   splashTitle:"अपना काम लिस्ट करें",

@@ -191,6 +191,34 @@ export async function cancelBooking(id) {
   if (error) throw error;
 }
 
+// ---------------- CHAT ----------------
+export async function getMessages(providerId) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase.from('messages').select('*')
+    .eq('provider_id', providerId).eq('customer_id', u.user.id).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function sendMessage(providerId, body) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  const { data, error } = await supabase.from('messages')
+    .insert({ provider_id: providerId, customer_id: u.user.id, sender_role: 'customer', body })
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+export async function subscribeMessages(providerId, cb) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return null;
+  const ch = supabase.channel('msg-' + providerId + '-' + u.user.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `customer_id=eq.${u.user.id}` },
+      (payload) => { if (payload.new.provider_id === providerId) cb(payload.new); })
+    .subscribe();
+  return ch;
+}
+
 // ---------------- SAVED PROVIDERS ----------------
 
 export async function getSavedIds() {

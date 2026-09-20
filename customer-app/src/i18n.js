@@ -26,6 +26,7 @@ en:{
   myBookingsTitle:"My Bookings", tabUpcoming:"Upcoming", tabCompleted:"Completed", tabCancelled:"Cancelled",
   noBookings:"No bookings here yet.", stPendingB:"Pending", stConfirmed:"Confirmed",
   cancelBtn:"Cancel", bookingConfirmed:"Booking requested!", bookingCancelled:"Booking cancelled",
+  chat:"Chat", typeMsg:"Type a message…", sendMsg:"Send", noMessages:"Say hello 👋",
   notifications:"Notifications", searchPlaceholder:"Search plumber, electrician...",
   searchClear:"Clear search", back:"Back", saveAria:"Save", unsaveAria:"Remove from saved",
   verified:"Verified", rating:"Rating", reviews:"Reviews", distance:"Distance", experience:"Experience",
