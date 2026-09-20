@@ -69,6 +69,18 @@
   .sort-row{display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;} .sort-row::-webkit-scrollbar{display:none;}
   .sort-tab{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
   .sort-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .slot-row{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;} .slot-row::-webkit-scrollbar{display:none;}
+  .slot{flex-shrink:0;min-width:64px;text-align:center;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--card);cursor:pointer;font-family:inherit;color:var(--ink);}
+  .slot.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .slot .d1{font-size:11px;color:var(--muted);display:block;} .slot.active .d1{color:#dbe8ff;} .slot .d2{font-size:14px;font-weight:700;}
+  .slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+  .slot-grid .slot{min-width:0;font-size:13px;font-weight:600;padding:10px;}
+  .book-provider{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:16px;}
+  .book-provider .bp-av{width:44px;height:44px;border-radius:12px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
+  .book-provider .bp-name{font-weight:600;font-size:14px;} .book-provider .bp-sub{font-size:12px;color:var(--muted);}
+  .bk-card{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card);}
+  .bk-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
+  .bk-meta{font-size:12px;color:var(--ink-soft);margin:4px 0;} .bk-meta b{color:var(--ink);}
   .photo-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;} .photo-strip::-webkit-scrollbar{display:none;}
   .photo-strip img{width:112px;height:112px;object-fit:cover;border-radius:12px;flex-shrink:0;border:1px solid var(--line);}
   .detail-reply{margin-top:6px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);} .detail-reply b{color:var(--blue);}
@@ -326,10 +338,25 @@
         <div id="detailReviewsList"></div>
 
         <div class="sticky-cta">
-          <button class="btn btn-ghost" onclick="toast(t('whatsappToast'))">&#128172; WhatsApp</button>
-          <a class="btn btn-primary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()">Call now</a>
+          <button class="btn btn-primary" onclick="openBooking()" data-i18n="bookNow">Book Now</button>
+          <a class="btn" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()">Call</a>
         </div>
       </div>
+    </div>
+
+    <!-- BOOKING DETAILS -->
+    <div class="screen nonav" id="screen-booking">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="bookService">Book Service</span>
+      </div>
+      <div class="book-provider" id="bookProvider"></div>
+      <p class="section-label" data-i18n="selectDate">Select date &amp; time</p>
+      <div class="slot-row" id="dateRow"></div>
+      <div class="slot-grid" id="timeRow"></div>
+      <div class="field"><label for="bkAddress" data-i18n="serviceAddress">Service address</label><input id="bkAddress" data-i18n-ph="addressPh" placeholder="Your address"></div>
+      <div class="field"><label for="bkNote" data-i18n="additionalNote">Additional note (optional)</label><textarea id="bkNote" rows="2" data-i18n-ph="notePh" placeholder="Any specific requirement?"></textarea></div>
+      <button class="btn btn-primary btn-block" id="confirmBookingBtn" onclick="confirmBooking()" data-i18n="confirmBooking">Confirm Booking</button>
     </div>
 
     <!-- SAVED -->
@@ -339,10 +366,11 @@
       <div id="savedList"></div>
     </div>
 
-    <!-- HISTORY -->
+    <!-- MY BOOKINGS -->
     <div class="screen" id="screen-history">
-      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="historyTitle">Booking history</span></div>
-      <div id="historyList"></div>
+      <div class="topbar"><span class="title" data-i18n="myBookingsTitle">My Bookings</span></div>
+      <div class="sort-row" id="bookingTabs"></div>
+      <div id="bookingsList"></div>
     </div>
 
     <!-- PROFILE -->

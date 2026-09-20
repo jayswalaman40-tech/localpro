@@ -117,6 +117,31 @@ export async function subscribeLeads(cb) {
   return channel;
 }
 
+// ---------------- BOOKINGS (scheduled requests) ----------------
+export async function getMyBookings() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase
+    .from('bookings').select('*').eq('provider_id', prov.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function setBookingStatus(id, status) {
+  const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
+  if (error) throw error;
+}
+export async function subscribeBookings(cb) {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const channel = supabase.channel('bk-' + prov.id)
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'bookings', filter: `provider_id=eq.${prov.id}` },
+      (payload) => cb(payload.new))
+    .subscribe();
+  return channel;
+}
+
 // ---------------- REVIEWS ----------------
 export async function getMyReviews() {
   const prov = await getMyProvider();

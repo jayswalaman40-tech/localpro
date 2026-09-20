@@ -88,7 +88,7 @@ function applyLang() {
   const sub = $('otpSub'); if (sub) sub.textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
   renderResults();
   renderSaved();
-  renderHistory();
+  renderBookings();
   if (selectedProvider) fillDetail(selectedProvider);
   if (!$('langPop').hidden) renderLangPop();
 }
@@ -114,7 +114,7 @@ function showScreen(key) {
     b.classList.toggle('active', b.dataset.nav === key));
   if (key === 'home') renderResults();
   if (key === 'saved') renderSaved();
-  if (key === 'history') renderHistory();
+  if (key === 'history') renderBookings();
   if (key === 'profile') loadProfile();
   if (key === 'otp') $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
   return true;
@@ -328,6 +328,90 @@ async function renderHistory() {
       </div>`).join('');
 }
 
+/* ==================== BOOKING ==================== */
+let bkDate = null, bkTime = null, bookingTab = 'upcoming';
+const TIME_SLOTS = ['9:00 AM', '11:00 AM', '2:00 PM', '5:00 PM', '7:00 PM', '8:00 PM'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function bookingDates() {
+  const out = [], now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now); d.setDate(now.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const label = i === 0 ? (t('today') || 'Today') : i === 1 ? (t('tomorrow') || 'Tomorrow') : DOW[d.getDay()];
+    out.push({ iso, label, dom: d.getDate() });
+  }
+  return out;
+}
+function renderBookingSlots() {
+  bkDate = bkDate || bookingDates()[0].iso;
+  bkTime = bkTime || TIME_SLOTS[0];
+  $('dateRow').innerHTML = bookingDates().map(d =>
+    `<button class="slot ${d.iso === bkDate ? 'active' : ''}" onclick="pickDate('${d.iso}')"><span class="d1">${esc(d.label)}</span><span class="d2">${d.dom}</span></button>`).join('');
+  $('timeRow').innerHTML = TIME_SLOTS.map(tt =>
+    `<button class="slot ${tt === bkTime ? 'active' : ''}" onclick="pickTime('${tt}')">${esc(tt)}</button>`).join('');
+}
+function pickDate(iso) { bkDate = iso; renderBookingSlots(); }
+function pickTime(tt) { bkTime = tt; renderBookingSlots(); }
+async function openBooking() {
+  if (!selectedProvider) return;
+  const p = selectedProvider;
+  $('bookProvider').innerHTML =
+    `<div class="bp-av">${esc((p.name || '?')[0])}</div>
+     <div><div class="bp-name">${esc(p.name)}</div><div class="bp-sub">${esc(providerCatLabel(p))} · ${esc(priceNU(p.starting_price, p.price_unit))}</div></div>`;
+  bkDate = null; bkTime = null;
+  renderBookingSlots();
+  try { const me = await api.getMyProfile(); $('bkAddress').value = me?.home_area || ''; } catch (e) {}
+  $('bkNote').value = '';
+  goTo('booking');
+}
+async function confirmBooking() {
+  if (!selectedProvider) return;
+  if (!bkDate || !bkTime) { toast(t('pickSlot') || 'Pick a date and time'); return; }
+  const btn = $('confirmBookingBtn'); btn.disabled = true;
+  try {
+    await api.createBooking(selectedProvider.id, {
+      service: providerCatLabel(selectedProvider),
+      date: bkDate, time: bkTime,
+      address: $('bkAddress').value.trim(),
+      note: $('bkNote').value.trim(),
+    });
+    toast(t('bookingConfirmed') || 'Booking requested!');
+    bookingTab = 'upcoming';
+    goTo('history');
+    renderBookings();
+  } catch (e) { toast(e.message || 'Could not book'); }
+  finally { btn.disabled = false; }
+}
+function setBookingTab(k) { bookingTab = k; renderBookings(); }
+async function renderBookings() {
+  const tabs = [['upcoming', t('tabUpcoming') || 'Upcoming'], ['completed', t('tabCompleted') || 'Completed'], ['cancelled', t('tabCancelled') || 'Cancelled']];
+  const tr = $('bookingTabs'); if (tr) tr.innerHTML = tabs.map(([k, l]) => `<button class="sort-tab ${k === bookingTab ? 'active' : ''}" onclick="setBookingTab('${k}')">${esc(l)}</button>`).join('');
+  const box = $('bookingsList'); if (!box) return;
+  let rows = [];
+  try { rows = await api.getMyBookingList(); } catch (e) { rows = []; }
+  const inTab = (s) => bookingTab === 'upcoming' ? (s === 'pending' || s === 'confirmed') : bookingTab === 'completed' ? s === 'completed' : s === 'cancelled';
+  const list = rows.filter(b => inTab(b.status));
+  const badge = { pending: 'pending', confirmed: 'done', completed: 'done', cancelled: 'cancel' };
+  const stLabel = { pending: t('stPendingB') || 'Pending', confirmed: t('stConfirmed') || 'Confirmed', completed: t('stDone') || 'Completed', cancelled: t('stCancel') || 'Cancelled' };
+  box.innerHTML = list.length === 0
+    ? `<div class="empty">${t('noBookings') || 'No bookings here yet.'}</div>`
+    : list.map(b => `
+      <div class="bk-card">
+        <div class="bk-top">
+          <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.provider?.name || '')}</p>
+            <p class="bk-meta">${esc(providerCatLabel(b.provider))}${b.service ? '' : ''}</p></div>
+          <span class="badge ${badge[b.status] || 'pending'}">${esc(stLabel[b.status] || b.status)}</span>
+        </div>
+        <p class="bk-meta">&#128197; <b>${esc(b.scheduled_date || '')}</b> ${esc(b.scheduled_time || '')}</p>
+        ${b.address ? `<p class="bk-meta">&#128205; ${esc(b.address)}</p>` : ''}
+        ${b.status === 'pending' ? `<div class="bk-actions"><button class="btn btn-outline-danger" style="padding:9px" onclick="cancelMyBooking('${b.id}')">${esc(t('cancelBtn') || 'Cancel')}</button></div>` : ''}
+      </div>`).join('');
+}
+async function cancelMyBooking(id) {
+  try { await api.cancelBooking(id); renderBookings(); toast(t('bookingCancelled') || 'Booking cancelled'); }
+  catch (e) { toast(e.message || 'Could not cancel'); }
+}
+
 /* ==================== DETAIL ==================== */
 async function fillDetail(p) {
   $('detailAvatar').textContent = (p.name || '?')[0];
@@ -451,6 +535,7 @@ Object.assign(window, {
   clearSearch, setCategory, setSort, openDetail, toggleSave, toggleSaveById,
   logBooking, logBookingFor, saveProfile, toggleSwitch,
   toggleLangPop, setLang, renderResults,
+  openBooking, confirmBooking, pickDate, pickTime, setBookingTab, cancelMyBooking,
 });
 
 /* ==================== BOOT ==================== */

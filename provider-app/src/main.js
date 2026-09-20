@@ -19,6 +19,8 @@ let reviews = [];
 let selectedLeadId = null;
 let pendingPhone = null;
 let leadChannel = null;
+let bookings = [];
+let bookingChannel = null;
 let stack = ['splash'];
 let toastTimer = null;
 
@@ -177,6 +179,7 @@ function showScreen(key) {
   if (key === 'dashboard') { renderDashboardStats(); refreshLeadLists(); }
   if (key === 'leads') refreshLeadLists();
   if (key === 'history') refreshLeadLists();
+  if (key === 'requests') renderRequests();
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
   if (key === 'edit') { fillListingForm(); renderServices(); renderPhotos(); }
@@ -195,8 +198,9 @@ function goBack() {
 async function openNotifications() { $('notifDot').classList.add('hidden'); goTo('notifications'); }
 async function logout() {
   try { if (leadChannel) { leadChannel.unsubscribe(); leadChannel = null; } } catch (e) {}
+  try { if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; } } catch (e) {}
   try { await api.signOut(); } catch (e) {}
-  myProvider = null; leads = []; reviews = []; selectedLeadId = null; stack = ['splash'];
+  myProvider = null; leads = []; reviews = []; bookings = []; selectedLeadId = null; stack = ['splash'];
   const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
   const lp = $('loginPhone'); if (lp) lp.value = '';
   showScreen('splash');
@@ -344,6 +348,7 @@ async function loadMyData() {
   try { myProvider = await api.getMyProvider(); } catch (e) { myProvider = null; }
   try { leads = await api.getMyLeads(); } catch (e) { leads = []; }
   try { reviews = await api.getMyReviews(); } catch (e) { reviews = []; }
+  try { bookings = await api.getMyBookings(); } catch (e) { bookings = []; }
   applyLang();
   syncAvailabilityToggle();
 }
@@ -357,7 +362,59 @@ async function subscribeRealtime() {
       toast(fill(t('newLeadToast') || 'New lead from {name}', { name: newLead.customer_name || 'a customer' }));
     });
   } catch (e) {}
+  try {
+    if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; }
+    bookingChannel = await api.subscribeBookings((b) => {
+      bookings.unshift(b);
+      renderRequests();
+      $('notifDot').classList.remove('hidden');
+      toast(t('newBookingToast') || 'New booking request');
+    });
+  } catch (e) {}
 }
+
+/* ==================== SERVICE REQUESTS (bookings) ==================== */
+function bookingBadgeHtml(b) {
+  const m = {
+    pending:   ['new',       t('stPendingB') || 'Pending'],
+    confirmed: ['confirmed', t('stConfirmed') || 'Confirmed'],
+    completed: ['completed', t('badgeCompleted') || 'Completed'],
+    cancelled: ['cancel',    t('stCancelledB') || 'Cancelled'],
+  };
+  const [cls, lbl] = m[b.status] || ['new', b.status];
+  return `<span class="badge ${cls}">${esc(lbl)}</span>`;
+}
+function renderRequests() {
+  const box = $('requestsList'); if (!box) return;
+  box.innerHTML = bookings.length === 0
+    ? `<div class="empty">${t('noRequests') || 'No requests yet.'}</div>`
+    : bookings.map(b => {
+      const ph = b.customer_phone || '';
+      let actions = '';
+      if (b.status === 'pending') {
+        actions = `<button class="btn btn-primary" onclick="acceptBooking('${b.id}')">${esc(t('acceptBtn') || 'Accept')}</button>
+                   <button class="btn" onclick="rejectBooking('${b.id}')">${esc(t('rejectBtn') || 'Reject')}</button>`;
+      } else if (b.status === 'confirmed') {
+        actions = `${ph ? `<a class="btn" style="text-decoration:none" href="${telHref(ph)}">${esc(t('call'))}</a>` : ''}
+                   <button class="btn btn-primary" onclick="completeBooking('${b.id}')">${esc(t('markCompleted2') || 'Complete')}</button>`;
+      }
+      return `<div class="lead-card">
+        <div class="lead-top">${esc(b.customer_name || t('cOther'))}<span class="lead-time">${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</span></div>
+        <p class="lead-note">${esc(b.service || '')}${b.address ? ' · ' + esc(b.address) : ''}${b.note ? '<br>' + esc(b.note) : ''}${ph ? '<br>&#128222; ' + esc(ph) : ''}</p>
+        <div style="margin-bottom:8px">${bookingBadgeHtml(b)}</div>
+        ${actions ? `<div class="lead-actions">${actions}</div>` : ''}
+      </div>`;
+    }).join('');
+}
+async function setBk(id, status, msg) {
+  const b = bookings.find(x => x.id === id); if (!b) return;
+  b.status = status; renderRequests();
+  try { await api.setBookingStatus(id, status); } catch (e) {}
+  toast(msg);
+}
+async function acceptBooking(id) { setBk(id, 'confirmed', t('bookingAccepted') || 'Booking accepted'); }
+async function rejectBooking(id) { setBk(id, 'cancelled', t('bookingRejected') || 'Booking rejected'); }
+async function completeBooking(id) { setBk(id, 'completed', t('completedJobToast') || 'Job completed'); }
 
 /* ==================== DASHBOARD STATS ==================== */
 function renderDashboardStats() {
@@ -623,6 +680,7 @@ Object.assign(window, {
   submitOnboarding, addServiceRow, removeServiceRow,
   onObSkillChange, onEdSkillChange,
   uploadPhoto, removePhoto, replyReview, toggleAvailability,
+  acceptBooking, rejectBooking, completeBooking,
 });
 
 /* ==================== BOOT ==================== */

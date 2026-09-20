@@ -82,6 +82,10 @@ en:{
   completedJobToast:"Job marked completed",
   portfolioLabel:"Work photos", addPhoto:"+ Add work photo", noPhotos:"No work photos yet.", photoAdded:"Photo added",
   noReviews:"No reviews yet.", yourReply:"Your reply", replyBtn:"Reply", replyPh:"Write a reply…", replyEmpty:"Write a reply first", replySaved:"Reply saved",
+  qaRequests:"Requests", requestsTitle:"Service requests", noRequests:"No requests yet.",
+  acceptBtn:"Accept", rejectBtn:"Reject",
+  stPendingB:"Pending", stConfirmed:"Confirmed", stCancelledB:"Cancelled",
+  bookingAccepted:"Booking accepted", bookingRejected:"Booking rejected", newBookingToast:"New booking request",
 },
 hi:{
   splashTitle:"अपना काम लिस्ट करें",

@@ -66,6 +66,8 @@
   .review-reply{margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);}
   .review-reply b{color:var(--blue);}
   .badge.completed{background:var(--teal-bg);color:var(--teal);}
+  .badge.cancel{background:var(--danger-bg);color:var(--danger);}
+  .badge.confirmed{background:var(--blue-bg);color:var(--blue);}
   .stat-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);width:100%;}
   .stat-card.static{cursor:default;}
   .stat-card .num{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
@@ -292,9 +294,9 @@
         <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="availableForWork" aria-label="Available for work" id="onlineToggle"><span class="knob"></span></button>
       </div>
       <div class="qa-grid">
+        <button class="qa" onclick="goTo('requests')"><span class="qic">&#128197;</span><span class="qlbl" data-i18n="qaRequests">Requests</span></button>
         <button class="qa" onclick="goTo('leads')"><span class="qic">&#128203;</span><span class="qlbl" data-i18n="qaLeads">View Leads</span></button>
         <button class="qa" onclick="goTo('earnings')"><span class="qic">&#8377;</span><span class="qlbl" data-i18n="qaEarnings">Earnings</span></button>
-        <button class="qa" onclick="goTo('edit')"><span class="qic">&#9998;</span><span class="qlbl" data-i18n="qaListing">My Listing</span></button>
         <button class="qa" onclick="goTo('reviews')"><span class="qic">&#11088;</span><span class="qlbl" data-i18n="qaReviews">Reviews</span></button>
       </div>
       <div class="stat-grid">
@@ -317,6 +319,15 @@
     <div class="screen" id="screen-history">
       <div class="topbar"><span class="title" data-i18n="historyTitle">History</span></div>
       <div id="historyListFull"></div>
+    </div>
+
+    <!-- SERVICE REQUESTS (bookings) -->
+    <div class="screen nonav" id="screen-requests">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="requestsTitle">Service requests</span>
+      </div>
+      <div id="requestsList"></div>
     </div>
 
     <!-- LEAD DETAIL -->

@@ -155,6 +155,42 @@ export async function getMyBookings() {
   return data ?? [];
 }
 
+// ---------------- BOOKINGS (scheduled) ----------------
+export async function createBooking(providerId, { service, date, time, address, note }) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  let me = null;
+  try { me = await getMyProfile(); } catch (e) {}
+  const { data, error } = await supabase.from('bookings').insert({
+    customer_id: u.user.id,
+    provider_id: providerId,
+    service: service || null,
+    scheduled_date: date || null,
+    scheduled_time: time || null,
+    address: address || null,
+    note: note || null,
+    customer_name: me?.full_name || null,
+    customer_phone: me?.phone || u.user.phone || null,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function getMyBookingList() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('id, service, scheduled_date, scheduled_time, address, note, status, created_at, provider:providers(name, phone, category_id, custom_category)')
+    .eq('customer_id', u.user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function cancelBooking(id) {
+  const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+  if (error) throw error;
+}
+
 // ---------------- SAVED PROVIDERS ----------------
 
 export async function getSavedIds() {
