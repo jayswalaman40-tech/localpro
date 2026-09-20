@@ -85,6 +85,71 @@ function onEdSkillChange() {
   const wrap = $('edSkillOtherWrap');
   if (wrap) wrap.hidden = $('edSkill').value !== OTHER_SKILL;
 }
+
+/* ---------- Onboarding wizard (multi-step) ---------- */
+const CAT_ICON = { plumber:'🔧', electrician:'⚡', carpenter:'🪚', ac_repair:'❄️', painter:'🎨', tailor:'✂️', driver:'🚗', cook:'🍳', gardener:'🌿' };
+let obStep = 1;
+function obRenderSkillGrid() {
+  const grid = $('obSkillGrid'); if (!grid) return;
+  const cur = $('obSkill').value;
+  const tiles = categories.map(c => ({ id:c.id, label:catNameById(c.id), icon:CAT_ICON[c.key] || '🛠️' }))
+    .concat([{ id:OTHER_SKILL, label:t('skillOther') || 'Other', icon:'➕' }]);
+  grid.innerHTML = tiles.map(c =>
+    `<button type="button" class="skill-tile ${c.id===cur?'active':''}" onclick="selectObSkill('${c.id}')"><span class="sic">${c.icon}</span><span class="slb">${esc(c.label)}</span></button>`).join('');
+}
+function selectObSkill(id) { $('obSkill').value = id; onObSkillChange(); obRenderSkillGrid(); }
+function obGoStep(n) {
+  obStep = Math.max(1, Math.min(4, n));
+  document.querySelectorAll('#screen-onboarding .ob-step').forEach(el => { el.hidden = Number(el.dataset.step) !== obStep; });
+  document.querySelectorAll('#obStepper .step').forEach(el => {
+    const s = Number(el.dataset.s);
+    el.classList.toggle('active', s === obStep);
+    el.classList.toggle('done', s < obStep);
+  });
+  const back = $('obBackBtn'), next = $('obNextBtn');
+  if (back) back.style.visibility = obStep === 1 ? 'hidden' : 'visible';
+  if (next) next.style.display = obStep === 4 ? 'none' : '';
+  if (obStep === 4) obRenderSummary();
+  const scr = $('screen-onboarding'); if (scr) scr.scrollTop = 0;
+}
+function obNext() { if (obValidateStep(obStep)) obGoStep(obStep + 1); }
+function obPrev() { obGoStep(obStep - 1); }
+function obValidateStep(n) {
+  if (n === 1) { if (!$('obName').value.trim()) { toast(t('obErrName')); return false; } }
+  if (n === 2) {
+    const sk = $('obSkill').value;
+    if (!sk) { toast(t('obErrSkill')); return false; }
+    if (sk === OTHER_SKILL && !$('obSkillOther').value.trim()) { toast(t('obErrOther')); return false; }
+    const price = Number($('obPrice').value);
+    if (!Number.isFinite(price) || price < 0) { toast(t('priceError')); return false; }
+  }
+  if (n === 3) {
+    const aad = $('obAadhaarNo').value.replace(/\D/g, '');
+    if (aad.length !== 12) { toast(t('obErrAadhaar')); return false; }
+    const pan = $('obPanNo').value.trim().toUpperCase();
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) { toast(t('obErrPan')); return false; }
+    const haveS = $('obSelfie').files[0] || myProvider?.selfie_path;
+    const haveA = $('obAadhaar').files[0] || myProvider?.aadhaar_path;
+    const haveP = $('obPan').files[0] || myProvider?.pan_path;
+    if (!haveS || !haveA || !haveP) { toast(t('obErrDocs')); return false; }
+  }
+  return true;
+}
+function obRenderSummary() {
+  const g = id => ($(id).value || '').trim();
+  const skillLabel = $('obSkill').value === OTHER_SKILL ? g('obSkillOther') : (catNameById($('obSkill').value) || '—');
+  const rows = [
+    [t('fullName'), g('obName')],
+    [t('yourSkill'), skillLabel],
+    [t('mobileNumber'), $('obPhone').value],
+    [t('city'), g('obCity') || '—'],
+    [t('experienceYrs'), g('obExp') || '0'],
+    [t('startingPrice'), '₹' + (g('obPrice') || '0')],
+    [t('aadhaarNo'), g('obAadhaarNo') || '—'],
+    [t('panNo'), g('obPanNo') || '—'],
+  ];
+  $('obSummary').innerHTML = rows.map(([k, v]) => `<div class="ob-sum-row"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('');
+}
 function agoFromISO(iso) {
   const then = new Date(iso).getTime();
   const h = Math.max(0, Math.floor((Date.now() - then) / 3600000));
@@ -146,7 +211,7 @@ function applyLang() {
   const osel = $('obSkill');
   if (osel && osel.options.length) {
     const cur = osel.value; osel.innerHTML = skillOptionsHtml(); if (cur) osel.value = cur;
-    onObSkillChange();
+    onObSkillChange(); obRenderSkillGrid();
   }
   renderDashboardStats();
   syncProfileTexts();
@@ -278,8 +343,11 @@ function fillOnboardingForm() {
     $('obAbout').value = myProvider.about || '';
     $('obAadhaarNo').value = myProvider.aadhaar_no || '';
     $('obPanNo').value = myProvider.pan_no || '';
+    $('obEmail').value = myProvider.email || '';
   }
   onObSkillChange();
+  obRenderSkillGrid();
+  obGoStep(1);
 }
 async function submitOnboarding() {
   const name = $('obName').value.trim();
@@ -320,6 +388,7 @@ async function submitOnboarding() {
       phone: $('obPhone').value.trim() || pendingPhone,
       category_id,
       custom_category: customCategory,
+      email: $('obEmail').value.trim() || null,
       service_area: $('obArea').value.trim(),
       city: $('obCity').value.trim() || null,
       whatsapp: $('obWhatsapp').value.trim() || null,
@@ -681,6 +750,7 @@ Object.assign(window, {
   onObSkillChange, onEdSkillChange,
   uploadPhoto, removePhoto, replyReview, toggleAvailability,
   acceptBooking, rejectBooking, completeBooking,
+  obNext, obPrev, selectObSkill,
 });
 
 /* ==================== BOOT ==================== */

@@ -86,6 +86,10 @@ en:{
   acceptBtn:"Accept", rejectBtn:"Reject",
   stPendingB:"Pending", stConfirmed:"Confirmed", stCancelledB:"Cancelled",
   bookingAccepted:"Booking accepted", bookingRejected:"Booking rejected", newBookingToast:"New booking request",
+  stepBasic:"Basic", stepSkills:"Skills", stepDocs:"Documents", stepDone:"Complete",
+  obSectionSkills:"Select your service & skill", obSectionReview:"Review & submit",
+  obKycNote:"Upload your documents to get verified and start receiving leads.",
+  emailOptional:"Email (optional)", backStep:"Back", nextStep:"Next",
 },
 hi:{
   splashTitle:"अपना काम लिस्ट करें",

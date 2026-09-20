@@ -68,6 +68,22 @@
   .badge.completed{background:var(--teal-bg);color:var(--teal);}
   .badge.cancel{background:var(--danger-bg);color:var(--danger);}
   .badge.confirmed{background:var(--blue-bg);color:var(--blue);}
+  .stepper{display:flex;gap:4px;margin:2px 0 18px;}
+  .stepper .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;}
+  .stepper .step::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--line);z-index:0;}
+  .stepper .step:first-child::before{display:none;}
+  .stepper .step.done::before,.stepper .step.active::before{background:var(--blue);}
+  .stepper .sc{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);z-index:1;}
+  .stepper .step.active .sc{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .stepper .step.done .sc{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .stepper .sl{font-size:9.5px;color:var(--muted);} .stepper .step.active .sl{color:var(--ink);font-weight:600;}
+  .skill-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+  .skill-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 4px;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .skill-tile.active{border-color:var(--blue);background:var(--blue-bg);}
+  .skill-tile .sic{font-size:22px;} .skill-tile .slb{font-size:10px;text-align:center;line-height:1.1;color:var(--ink-soft);}
+  .ob-nav{display:flex;gap:10px;margin-top:18px;} .ob-nav .btn{flex:1;}
+  .ob-sum-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .ob-sum-row span:first-child{color:var(--muted);} .ob-sum-row span:last-child{font-weight:600;text-align:right;}
   .stat-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);width:100%;}
   .stat-card.static{cursor:default;}
   .stat-card .num{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
@@ -243,39 +259,69 @@
       </div>
     </div>
 
-    <!-- ONBOARDING (provider fills all details + uploads documents) -->
+    <!-- ONBOARDING — multi-step registration wizard -->
     <div class="screen nonav" id="screen-onboarding">
-      <div class="topbar"><span class="title" data-i18n="obTitle">Create your profile</span></div>
-      <div class="note" data-i18n="obNote">Fill your details and upload documents. Your listing goes live after verification.</div>
+      <div class="topbar"><span class="title" id="obStepTitle" data-i18n="obTitle">Create your profile</span></div>
 
-      <p class="section-label" data-i18n="obSectionPersonal">Personal details</p>
-      <div class="field"><label for="obName" data-i18n="fullName">Full name</label><input id="obName"></div>
-      <div class="field"><label for="obSkill" data-i18n="yourSkill">Your skill / trade</label><select id="obSkill" onchange="onObSkillChange()"></select></div>
-      <div class="field" id="obSkillOtherWrap" hidden><label for="obSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="obSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
-      <div class="field"><label for="obPhone" data-i18n="mobileNumber">Mobile number</label><input id="obPhone" type="tel" inputmode="numeric" readonly></div>
-      <div class="field"><label for="obWhatsapp" data-i18n="whatsappNumber">WhatsApp number (optional)</label><input id="obWhatsapp" type="tel" inputmode="numeric"></div>
-      <div class="field"><label for="obGender" data-i18n="gender">Gender</label>
-        <select id="obGender"><option value="">—</option><option value="male" data-i18n="genderMale">Male</option><option value="female" data-i18n="genderFemale">Female</option><option value="other" data-i18n="genderOther">Other</option></select>
+      <!-- stepper -->
+      <div class="stepper" id="obStepper">
+        <div class="step" data-s="1"><span class="sc">1</span><span class="sl" data-i18n="stepBasic">Basic</span></div>
+        <div class="step" data-s="2"><span class="sc">2</span><span class="sl" data-i18n="stepSkills">Skills</span></div>
+        <div class="step" data-s="3"><span class="sc">3</span><span class="sl" data-i18n="stepDocs">Documents</span></div>
+        <div class="step" data-s="4"><span class="sc">4</span><span class="sl" data-i18n="stepDone">Complete</span></div>
       </div>
-      <div class="field"><label for="obDob" data-i18n="dob">Date of birth</label><input id="obDob" type="date"></div>
 
-      <p class="section-label" data-i18n="obSectionWork">Work details</p>
-      <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity" list="gujCities" autocomplete="off" data-i18n-ph="cityPh" placeholder="Select or type your city"></div>
-      <datalist id="gujCities"></datalist>
-      <div class="field"><label for="obArea" data-i18n="serviceArea">Service area</label><input id="obArea" data-i18n-ph="serviceAreaPh" placeholder="e.g. Satellite, Bodakdev"></div>
-      <div class="field"><label for="obExp" data-i18n="experienceYrs">Experience (years)</label><input id="obExp" type="number" min="0" step="1" value="0"></div>
-      <div class="field"><label for="obPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="obPrice" type="number" min="0" step="10"></div>
-      <div class="field"><label for="obAbout" data-i18n="aboutYou">About</label><textarea id="obAbout"></textarea></div>
+      <!-- STEP 1: Basic -->
+      <div class="ob-step" data-step="1">
+        <p class="section-label" data-i18n="obSectionPersonal">Personal details</p>
+        <div class="field"><label for="obName" data-i18n="fullName">Full name</label><input id="obName"></div>
+        <div class="field"><label for="obPhone" data-i18n="mobileNumber">Mobile number</label><input id="obPhone" type="tel" inputmode="numeric" readonly></div>
+        <div class="field"><label for="obEmail" data-i18n="emailOptional">Email (optional)</label><input id="obEmail" type="email" inputmode="email"></div>
+        <div class="field"><label for="obWhatsapp" data-i18n="whatsappNumber">WhatsApp number (optional)</label><input id="obWhatsapp" type="tel" inputmode="numeric"></div>
+        <div class="field"><label for="obGender" data-i18n="gender">Gender</label>
+          <select id="obGender"><option value="">—</option><option value="male" data-i18n="genderMale">Male</option><option value="female" data-i18n="genderFemale">Female</option><option value="other" data-i18n="genderOther">Other</option></select>
+        </div>
+        <div class="field"><label for="obDob" data-i18n="dob">Date of birth</label><input id="obDob" type="date"></div>
+      </div>
 
-      <p class="section-label" data-i18n="obSectionKyc">Verification documents</p>
-      <div class="field"><label for="obAadhaarNo" data-i18n="aadhaarNo">Aadhaar number</label><input id="obAadhaarNo" inputmode="numeric" maxlength="12"></div>
-      <div class="field"><label for="obPanNo" data-i18n="panNo">PAN number</label><input id="obPanNo" maxlength="10" style="text-transform:uppercase"></div>
-      <div class="field"><label for="obSelfie" data-i18n="uploadSelfie">Selfie</label><input id="obSelfie" type="file" accept="image/*" capture="user"></div>
-      <div class="field"><label for="obAadhaar" data-i18n="uploadAadhaar">Aadhaar card photo</label><input id="obAadhaar" type="file" accept="image/*,application/pdf"></div>
-      <div class="field"><label for="obPan" data-i18n="uploadPan">PAN card photo</label><input id="obPan" type="file" accept="image/*,application/pdf"></div>
+      <!-- STEP 2: Service & Skills -->
+      <div class="ob-step" data-step="2" hidden>
+        <p class="section-label" data-i18n="obSectionSkills">Select your service &amp; skill</p>
+        <div class="skill-grid" id="obSkillGrid"></div>
+        <select id="obSkill" hidden></select>
+        <div class="field" id="obSkillOtherWrap" hidden><label for="obSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="obSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
+        <div class="field"><label for="obExp" data-i18n="experienceYrs">Experience (years)</label><input id="obExp" type="number" min="0" step="1" value="0"></div>
+        <div class="field"><label for="obPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="obPrice" type="number" min="0" step="10"></div>
+        <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity" list="gujCities" autocomplete="off" data-i18n-ph="cityPh" placeholder="Select or type your city"></div>
+        <datalist id="gujCities"></datalist>
+        <div class="field"><label for="obArea" data-i18n="serviceArea">Service area</label><input id="obArea" data-i18n-ph="serviceAreaPh" placeholder="e.g. Satellite, Bodakdev"></div>
+        <div class="field"><label for="obAbout" data-i18n="aboutYou">About</label><textarea id="obAbout"></textarea></div>
+      </div>
 
-      <button class="btn btn-primary btn-block" id="obSubmitBtn" data-i18n="obSubmit" onclick="submitOnboarding()">Submit for verification</button>
-      <button class="btn btn-block" style="margin-top:8px" data-i18n="logout" onclick="logout()">Log out</button>
+      <!-- STEP 3: Documents -->
+      <div class="ob-step" data-step="3" hidden>
+        <p class="section-label" data-i18n="obSectionKyc">Verification documents</p>
+        <div class="note" data-i18n="obKycNote">Upload your documents to get verified and start receiving leads.</div>
+        <div class="field"><label for="obAadhaarNo" data-i18n="aadhaarNo">Aadhaar number</label><input id="obAadhaarNo" inputmode="numeric" maxlength="12"></div>
+        <div class="field"><label for="obPanNo" data-i18n="panNo">PAN number</label><input id="obPanNo" maxlength="10" style="text-transform:uppercase"></div>
+        <div class="field"><label for="obSelfie" data-i18n="uploadSelfie">Selfie</label><input id="obSelfie" type="file" accept="image/*" capture="user"></div>
+        <div class="field"><label for="obAadhaar" data-i18n="uploadAadhaar">Aadhaar card photo</label><input id="obAadhaar" type="file" accept="image/*,application/pdf"></div>
+        <div class="field"><label for="obPan" data-i18n="uploadPan">PAN card photo</label><input id="obPan" type="file" accept="image/*,application/pdf"></div>
+      </div>
+
+      <!-- STEP 4: Complete -->
+      <div class="ob-step" data-step="4" hidden>
+        <p class="section-label" data-i18n="obSectionReview">Review &amp; submit</p>
+        <div id="obSummary"></div>
+        <button class="btn btn-primary btn-block" id="obSubmitBtn" style="margin-top:14px" data-i18n="obSubmit" onclick="submitOnboarding()">Submit for verification</button>
+      </div>
+
+      <!-- nav -->
+      <div class="ob-nav">
+        <button class="btn" id="obBackBtn" onclick="obPrev()" data-i18n="backStep">Back</button>
+        <button class="btn btn-primary" id="obNextBtn" onclick="obNext()" data-i18n="nextStep">Next</button>
+      </div>
+      <button class="btn-link" style="display:block;margin:14px auto 0" data-i18n="logout" onclick="logout()">Log out</button>
     </div>
 
     <!-- DASHBOARD -->

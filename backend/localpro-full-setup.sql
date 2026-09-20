@@ -682,6 +682,9 @@ drop trigger if exists trg_bookings_insert on public.bookings;
 create trigger trg_bookings_insert after insert on public.bookings
   for each row execute function public.bookings_after_insert();
 
+-- ============ 0009 PROVIDER EMAIL ============
+alter table public.providers add column if not exists email text;
+
 -- ============ SEED (9 categories + 12 demo providers) ============
 -- =====================================================================
 -- LocalPro — DEMO seed data (categories + 12 sample providers)
