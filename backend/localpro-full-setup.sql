@@ -708,6 +708,10 @@ do $$ begin alter publication supabase_realtime add table public.messages; excep
 do $$ begin alter publication supabase_realtime add table public.leads;    exception when others then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.bookings; exception when others then null; end $$;
 
+-- ============ 0011 BOOKING LOCATION ============
+alter table public.bookings add column if not exists customer_lat double precision;
+alter table public.bookings add column if not exists customer_lng double precision;
+
 -- ============ SEED (9 categories + 12 demo providers) ============
 -- =====================================================================
 -- LocalPro — DEMO seed data (categories + 12 sample providers)
