@@ -1,583 +1,385 @@
 // =====================================================================
-// LocalPro Customer — app logic (wired to Supabase via api.js)
-// UI markup/CSS live in index.html; translations in i18n.js.
+// HelpZo Customer — app logic (Capacitor + Vite, wired to Supabase)
+// UI markup/CSS in index.html. Data layer in api.js.
+// Design: 10-screen HelpZo Customer spec (blue/green, Inter).
 // =====================================================================
-import { LANGS, I18N } from './i18n.js';
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
 
-/* ==================== i18n ==================== */
-let lang = 'en';
-const t = (k) => (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.en[k] != null ? I18N.en[k] : k);
-const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k]);
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
+const initials = (name) => String(name || '?').trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join('').toUpperCase();
+const telHref = (p) => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
 
-/* ==================== state ==================== */
-let categories = [];           // [{id, key, translations}]
-let providers = [];            // current search results (DB rows)
-let activeCategory = 'all';    // 'all' | category uuid
-let selectedProvider = null;   // provider row
-let savedIds = new Set();
-let myLocation = null;         // {lat,lng}
-let pendingPhone = null;       // phone awaiting OTP
+/* ---------- state ---------- */
 let stack = ['splash'];
+let session = null;
+let myProfile = null;
+let selectedProvider = null;
+let selectedCat = null;
+let savedIds = new Set();
 let toastTimer = null;
-let searchTimer = null;
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const telHref = p => 'tel:' + String(p).replace(/[^\d+]/g, '');
-const currentScreen = () => stack[stack.length - 1];
-const NAV_SCREENS = ['home', 'saved', 'history', 'profile'];
+/* ---------- categories (icon + color) ---------- */
+const CATS = [
+  { key:'plumber', label:'Plumber', icon:'🚰', color:'#2680EB' },
+  { key:'electrician', label:'Electrician', icon:'⚡', color:'#F5A623' },
+  { key:'ac_repair', label:'AC Repair', icon:'❄️', color:'#4FC3F7' },
+  { key:'carpenter', label:'Carpenter', icon:'🔧', color:'#8B5E3C' },
+  { key:'painter', label:'Painter', icon:'🎨', color:'#C724B1' },
+  { key:'cleaning', label:'Cleaning', icon:'🧹', color:'#2E9E5B' },
+  { key:'home_repair', label:'Home Repair', icon:'🏠', color:'#F5821F' },
+  { key:'other', label:'More', icon:'⋯', color:'#B8C0CC' },
+];
 
-/* ---- category + price helpers ---- */
-const catNameById = (id) => {
-  const c = categories.find(x => x.id === id);
-  if (!c) return '';
-  return (c.translations && (c.translations[lang] || c.translations.en)) || c.key;
-};
-// Provider's trade label: DB category, else their custom "Other" text.
-const providerCatLabel = (p) => {
-  if (p?.category_id) return catNameById(p.category_id);
-  if (p?.custom_category) return p.custom_category;
-  return '';
-};
-const UNIT = {
-  onwards: () => ' ' + t('onwards'), plus: () => '+', sqft: () => t('perSqft'),
-  hr: () => t('perHr'), mo: () => t('perMo'), visit: () => t('perVisit'),
-  km: () => t('perKm'), event: () => t('perEvent'), fixed: () => '',
-};
-const priceNU = (n, u) => '₹' + Number(n || 0).toLocaleString('en-IN') + (UNIT[u] ? UNIT[u]() : '');
-const fmtDateISO = (iso) => {
-  const d = new Date(iso);
-  return `${d.getDate()} ${t('months')[d.getMonth()]} ${d.getFullYear()}`;
-};
+/* ---------- demo data (keeps screens populated) ---------- */
+const DEMO_PROVIDERS = [
+  { id:'d1', name:'Ramesh Singh', trade:'Plumber', rating:4.8, reviews:124, dist:2.1, price:200, exp:'5+ years exp' },
+  { id:'d2', name:'Jayesh Patel', trade:'Electrician', rating:4.6, reviews:98, dist:3.5, price:250, exp:'4 years exp' },
+  { id:'d3', name:'Imran Khan', trade:'AC Repair', rating:4.5, reviews:76, dist:4.8, price:220, exp:'6 years exp' },
+  { id:'d4', name:'Mukesh Yadav', trade:'Carpenter', rating:4.3, reviews:54, dist:5.2, price:180, exp:'3 years exp' },
+];
+const DEMO_BOOKINGS = [
+  { service:'AC Repair', provider:'Suresh Kumar', when:'12 Sep 2025 • 5:00 PM', addr:'Bopal, Ahmedabad', pill:'green', status:'Confirmed' },
+  { service:'Electrician', provider:'Ajay Sharma', when:'15 Sep 2025 • 4:00 PM', addr:'Satellite, Ahmedabad', pill:'orange', status:'Pending' },
+  { service:'Carpenter', provider:'Mahesh Patel', when:'18 Sep 2025 • 11:00 AM', addr:'Thaltej, Ahmedabad', pill:'green', status:'Confirmed' },
+];
+const DEMO_SAVED = [
+  { name:'Ramesh Singh', sub:'Plumber • 4.8', dist:2.1 },
+  { name:'Jayesh Patel', sub:'Electrician • 4.6', dist:3.5 },
+  { name:'Imran Khan', sub:'AC Repair • 4.5', dist:4.8 },
+];
+const DEMO_NOTIF = [
+  { color:'#22B24C', ic:'✓', title:'Service Request Accepted', body:'Ramesh Singh has accepted your AC repair request.', ago:'2m ago' },
+  { color:'#1667E8', ic:'📅', title:'Booking Confirmed', body:'Your booking for electrician service is confirmed for 15 Sep 2025.', ago:'1h ago' },
+  { color:'#F5A623', ic:'🏷️', title:'New Offer', body:'Get 15% OFF on your first AC service booking!', ago:'3h ago' },
+  { color:'#F5A623', ic:'🔔', title:'Reminder', body:'Your appointment is tomorrow at 5:00 PM.', ago:'1d ago' },
+  { color:'#F6B01E', ic:'★', title:'Review Request', body:'Please share your experience with Ramesh Singh.', ago:'1d ago' },
+];
 
-/* ==================== LANGUAGE SWITCHER ==================== */
-function renderLangPop() {
-  $('langPop').innerHTML =
-    `<div class="head">${esc(t('languageRow'))}</div>` +
-    LANGS.map(l => `<button class="langopt ${l.code === lang ? 'active' : ''}" role="menuitem"
-      onclick="event.stopPropagation(); setLang('${l.code}')">
-      <span class="native">${esc(l.native)}</span><span class="en">${esc(l.en)}</span></button>`).join('');
-}
-function toggleLangPop() {
-  const pop = $('langPop');
-  if (pop.hidden) { renderLangPop(); pop.hidden = false; $('langFab').setAttribute('aria-expanded', 'true'); }
-  else closeLangPop();
-}
-function closeLangPop() {
-  $('langPop').hidden = true;
-  $('langFab').setAttribute('aria-expanded', 'false');
-}
-function setLang(code) {
-  if (!I18N[code]) return;
-  lang = code;
-  applyLang();
-  closeLangPop();
-  toast(fill(t('langSet'), { lang: LANGS.find(l => l.code === code).native }));
-}
-
-function applyLang() {
-  document.documentElement.lang = lang;
-  document.title = 'Helpzo — ' + t('splashTitle');
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
-  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
-  $('langCode').textContent = lang.toUpperCase();
-  $('langRowValue').textContent = LANGS.find(l => l.code === lang).native;
-  const sub = $('otpSub'); if (sub) sub.textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
-  renderResults();
-  renderSaved();
-  renderBookings();
-  if (selectedProvider) fillDetail(selectedProvider);
-  if (!$('langPop').hidden) renderLangPop();
-}
-
-document.addEventListener('click', closeLangPop);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLangPop(); });
-$('langPop').addEventListener('click', e => e.stopPropagation());
-
-/* ==================== NAVIGATION ==================== */
-function showScreen(key) {
-  const target = $('screen-' + key);
-  if (!target) { console.warn('Screen missing:', key); return false; }
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  target.classList.add('active');
-  target.scrollTop = 0;
-  closeLangPop();
-  const hasNav = NAV_SCREENS.includes(key);
-  $('bottomNav').classList.toggle('hidden', !hasNav);
-  $('toastEl').classList.toggle('low', !hasNav);
-  $('langFab').classList.toggle('low', !hasNav);
-  $('langPop').classList.toggle('low', !hasNav);
-  document.querySelectorAll('.navitem[data-nav]').forEach(b =>
-    b.classList.toggle('active', b.dataset.nav === key));
-  if (key === 'home') renderResults();
-  if (key === 'saved') renderSaved();
-  if (key === 'history') renderBookings();
-  if (key === 'profile') loadProfile();
-  if (key === 'otp') $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
-  return true;
-}
-function goTo(key) {
-  if (!showScreen(key)) return;
-  if (NAV_SCREENS.includes(key)) stack = [key];
-  else if (currentScreen() !== key) stack.push(key);
-}
-function goBack() {
-  if (stack.length > 1) { stack.pop(); showScreen(currentScreen()); }
-  else { stack = ['home']; showScreen('home'); }
-}
-async function openNotifications() {
-  $('notifDot').classList.add('hidden');
-  goTo('notifications');
-  try {
-    const list = await api.getNotifications();
-    const box = $('screen-notifications');
-    const holder = box.querySelector('.notif-holder') || (() => {
-      const d = document.createElement('div'); d.className = 'notif-holder'; box.appendChild(d); return d;
-    })();
-    // hide the prototype's static demo rows once we have real data
-    box.querySelectorAll('.notif-row').forEach(r => { if (!r.closest('.notif-holder')) r.style.display = 'none'; });
-    holder.innerHTML = list.length === 0
-      ? `<div class="empty">${esc(t('noHistory') || 'Nothing here yet.')}</div>`
-      : list.map(n => `<div class="notif-row"><div class="notif-ic">&#128276;</div>
-          <div><p class="notif-title">${esc(n.title)}</p><p class="notif-body">${esc(n.body || '')}</p>
-          <span class="notif-time">${esc(fmtDateISO(n.created_at))}</span></div></div>`).join('');
-  } catch (e) { /* keep static demo rows if not signed in */ }
-}
-async function logout() {
-  try { if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; } } catch (e) {}
-  try { await api.signOut(); } catch (e) {}
-  savedIds = new Set(); providers = []; selectedProvider = null;
-  stack = ['splash']; activeCategory = 'all';
-  const si = $('searchInput'); if (si) si.value = '';
-  const otpSec = $('otpSection'); if (otpSec) otpSec.hidden = true;
-  const lp = $('loginPhone'); if (lp) lp.value = '';
-  showScreen('splash');
-}
-
-/* ==================== AUTH ==================== */
-function phoneDigits() { return $('loginPhone').value.replace(/\D/g, ''); }
-function validatePhone() {
-  const digits = phoneDigits();
-  const ok = digits.length === 10;
-  $('loginPhoneErr').classList.toggle('show', !ok && digits.length > 0);
-  $('sendOtpBtn').disabled = !ok;
-  return ok;
-}
-async function sendOtp() {
-  if (!validatePhone()) { $('loginPhoneErr').classList.add('show'); return; }
-  if (!hasSupabase) { toast('Setup: add Supabase keys in .env to send real OTP'); return; }
-  const btn = $('sendOtpBtn'); btn.disabled = true;
-  try {
-    pendingPhone = await api.sendOtp(phoneDigits());
-    // reveal the OTP boxes on the SAME page (no screen change)
-    $('otpSection').hidden = false;
-    $('otpSub').textContent = fill(t('otpSub'), { phone: (pendingPhone || '').replace('+91', '') });
-    const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
-    boxes.forEach(b => b.value = ''); boxes[0].focus();
-    toast(t('otpSentToast') || 'OTP sent');
-  } catch (e) {
-    toast(e.message || 'Could not send OTP');
-  } finally { btn.disabled = false; }
-}
-async function verifyOtp() {
-  const boxes = [...$('otpRow').querySelectorAll('.otp-box')];
-  const code = boxes.map(b => b.value.trim()).join('');
-  if (boxes.some(b => !b.value.trim())) { toast(t('otpIncomplete')); return; }
-  try {
-    await api.verifyOtp(pendingPhone, code);
-    await afterLogin();
-  } catch (e) {
-    toast(e.message || 'Wrong code, try again');
-  }
-}
-
-$('otpRow').addEventListener('input', e => {
-  const el = e.target;
-  el.value = el.value.replace(/\D/g, '').slice(0, 1);
-  if (el.value && el.nextElementSibling) el.nextElementSibling.focus();
-});
-$('otpRow').addEventListener('keydown', e => {
-  if (e.key === 'Backspace' && !e.target.value && e.target.previousElementSibling) {
-    e.target.previousElementSibling.focus();
-  }
-});
-
-async function afterLogin() {
-  try { savedIds = await api.getSavedIds(); } catch (e) {}
-  try { myLocation = await api.getCurrentLocation(); } catch (e) {}
-  goTo('home');
-}
-
-/* ==================== SEARCH + LISTS ==================== */
-function clearSearch() { $('searchInput').value = ''; renderResults(); $('searchInput').focus(); }
-
-const CAT_ICON = { plumber:'🔧', electrician:'⚡', carpenter:'🪚', ac_repair:'❄️', painter:'🎨', tailor:'✂️', driver:'🚗', cook:'🍳', gardener:'🌿' };
-let activeSort = 'all';
-function renderServiceGrid() {
-  const grid = $('svcGrid'); if (!grid) return;
-  const tiles = [{ id:'all', label:t('cAll'), icon:'🧰' }]
-    .concat(categories.map(c => ({ id:c.id, label:catNameById(c.id), icon:CAT_ICON[c.key] || '🛠️' })));
-  grid.innerHTML = tiles.map(c =>
-    `<button class="svc-tile ${c.id===activeCategory?'active':''}" onclick="setCategory('${c.id}')"><span class="svc-ic">${c.icon}</span><span class="svc-lbl">${esc(c.label)}</span></button>`).join('');
-}
-function renderSortRow() {
-  const row = $('sortRow'); if (!row) return;
-  const tabs = [['all', t('sortAll') || 'All'], ['rating', t('sortTop') || 'Top Rated'], ['near', t('sortNear') || 'Nearest'], ['price', t('sortPrice') || 'Price Low']];
-  row.innerHTML = tabs.map(([k, l]) => `<button class="sort-tab ${k===activeSort?'active':''}" onclick="setSort('${k}')">${esc(l)}</button>`).join('');
-}
-function setSort(k) { activeSort = k; renderResults(); }
-function sortProviders(list) {
-  const a = [...list];
-  if (activeSort === 'rating') a.sort((x, y) => (y.rating_avg || 0) - (x.rating_avg || 0));
-  else if (activeSort === 'near') a.sort((x, y) => (x.distance_km ?? 1e9) - (y.distance_km ?? 1e9));
-  else if (activeSort === 'price') a.sort((x, y) => (x.starting_price ?? 1e9) - (y.starting_price ?? 1e9));
-  return a;
-}
-function setCategory(id) { activeCategory = id; renderResults(); }
-
-function providerCardHtml(p) {
-  const saved = savedIds.has(p.id);
-  const dist = (p.distance_km != null) ? `<span class="dist-badge">${esc(p.distance_km + ' ' + t('km'))}</span>` : '';
-  return `
-    <div class="pcard" tabindex="0" role="button" onclick="openDetail('${p.id}')" onkeydown="if(event.key==='Enter'){event.preventDefault();openDetail('${p.id}');}">
-      <div class="pcard-top">
-        <div>
-          <p class="pcard-name">${esc(p.name)}</p>
-          <p class="pcard-cat">${esc(providerCatLabel(p))} · ${esc(priceNU(p.starting_price, p.price_unit))}</p>
-        </div>
-        <div class="pcard-right">
-          ${dist}
-          <button class="heart ${saved ? 'on' : ''}" aria-label="${esc(saved ? t('unsaveAria') : t('saveAria'))}"
-            onclick="event.stopPropagation(); toggleSaveById('${p.id}')">${saved ? '&#9829;' : '&#9825;'}</button>
-        </div>
-      </div>
-      <div class="pcard-meta"><span class="star">&#9733;</span> ${p.rating_avg} (${p.rating_count} ${esc(t('reviews'))})</div>
-      <div class="pcard-phone"><span>&#128222;</span> ${esc(p.phone)}</div>
-      <div class="pcard-actions">
-        <button class="btn" onclick="event.stopPropagation(); openDetail('${p.id}')">${esc(t('viewProfile'))}</button>
-        <a class="btn btn-primary" style="text-decoration:none"
-           href="${telHref(p.phone)}" onclick="event.stopPropagation(); logBookingFor('${p.id}')">${esc(t('call'))}</a>
-      </div>
-    </div>`;
-}
-
-async function renderResults() {
-  renderServiceGrid();
-  renderSortRow();
-  const q = ($('searchInput').value || '').trim();
-  $('searchClear').classList.toggle('show', q.length > 0);
-  $('resultCount').textContent = '…';
-  try {
-    providers = await api.searchProviders({
-      lat: myLocation?.lat, lng: myLocation?.lng,
-      categoryId: activeCategory === 'all' ? null : activeCategory,
-      query: q,
-    });
-  } catch (e) {
-    providers = [];
-    $('resultsList').innerHTML = `<div class="empty">${esc(e.message || 'Could not load providers')}</div>`;
-    $('resultCount').textContent = '';
-    return;
-  }
-  $('resultCount').textContent = providers.length === 1
-    ? t('resultOne') : fill(t('resultMany'), { n: providers.length });
-  $('resultsList').innerHTML = providers.length === 0
-    ? `<div class="empty">${t('noResults')}</div>`
-    : sortProviders(providers).map(providerCardHtml).join('');
-}
-
-async function renderSaved() {
-  const box = $('savedList'); if (!box) return;
-  let saved = [];
-  try {
-    const ids = await api.getSavedIds(); savedIds = ids;
-    // reuse whatever we have loaded; for any missing, fetch
-    const known = new Map(providers.map(p => [p.id, p]));
-    saved = await Promise.all([...ids].map(async id =>
-      known.get(id) || adaptFull(await api.getProvider(id))));
-  } catch (e) { saved = []; }
-  $('savedCount').textContent = saved.length === 1
-    ? t('savedOne') : fill(t('savedMany'), { n: saved.length });
-  box.innerHTML = saved.length === 0
-    ? `<div class="empty">${t('noSaved')}</div>`
-    : saved.map(providerCardHtml).join('');
-}
-
-// providers table row -> card shape (adds fields the card reads)
-function adaptFull(row) {
-  return { ...row, distance_km: null };
-}
-
-async function renderHistory() {
-  const box = $('historyList'); if (!box) return;
-  let rows = [];
-  try { rows = await api.getMyBookings(); } catch (e) { rows = []; }
-  const badge = { completed: 'done', cancelled: 'cancel', new: 'pending', contacted: 'pending' };
-  const label = { completed: 'stDone', cancelled: 'stCancel', new: 'stPending', contacted: 'stPending' };
-  box.innerHTML = rows.length === 0
-    ? `<div class="empty">${t('noHistory')}</div>`
-    : rows.map(b => `
-      <div class="book-card">
-        <div class="book-top">
-          <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.provider?.name || '')}</p>
-          <p style="font-size:11.5px;color:var(--muted);margin:2px 0 0">${esc(providerCatLabel(b.provider))} · ${esc(fmtDateISO(b.created_at))}</p></div>
-          <span class="badge ${badge[b.status] || 'pending'}">${esc(t(label[b.status] || 'stPending'))}</span>
-        </div>
-      </div>`).join('');
-}
-
-/* ==================== BOOKING ==================== */
-let bkDate = null, bkTime = null, bookingTab = 'upcoming';
-const TIME_SLOTS = ['9:00 AM', '11:00 AM', '2:00 PM', '5:00 PM', '7:00 PM', '8:00 PM'];
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-function bookingDates() {
-  const out = [], now = new Date();
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now); d.setDate(now.getDate() + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const label = i === 0 ? (t('today') || 'Today') : i === 1 ? (t('tomorrow') || 'Tomorrow') : DOW[d.getDay()];
-    out.push({ iso, label, dom: d.getDate() });
-  }
-  return out;
-}
-function renderBookingSlots() {
-  bkDate = bkDate || bookingDates()[0].iso;
-  bkTime = bkTime || TIME_SLOTS[0];
-  $('dateRow').innerHTML = bookingDates().map(d =>
-    `<button class="slot ${d.iso === bkDate ? 'active' : ''}" onclick="pickDate('${d.iso}')"><span class="d1">${esc(d.label)}</span><span class="d2">${d.dom}</span></button>`).join('');
-  $('timeRow').innerHTML = TIME_SLOTS.map(tt =>
-    `<button class="slot ${tt === bkTime ? 'active' : ''}" onclick="pickTime('${tt}')">${esc(tt)}</button>`).join('');
-}
-function pickDate(iso) { bkDate = iso; renderBookingSlots(); }
-function pickTime(tt) { bkTime = tt; renderBookingSlots(); }
-async function openBooking() {
-  if (!selectedProvider) return;
-  const p = selectedProvider;
-  $('bookProvider').innerHTML =
-    `<div class="bp-av">${esc((p.name || '?')[0])}</div>
-     <div><div class="bp-name">${esc(p.name)}</div><div class="bp-sub">${esc(providerCatLabel(p))} · ${esc(priceNU(p.starting_price, p.price_unit))}</div></div>`;
-  bkDate = null; bkTime = null;
-  renderBookingSlots();
-  try { const me = await api.getMyProfile(); $('bkAddress').value = me?.home_area || ''; } catch (e) {}
-  $('bkNote').value = '';
-  goTo('booking');
-}
-async function confirmBooking() {
-  if (!selectedProvider) return;
-  if (!bkDate || !bkTime) { toast(t('pickSlot') || 'Pick a date and time'); return; }
-  const btn = $('confirmBookingBtn'); btn.disabled = true;
-  try {
-    await api.createBooking(selectedProvider.id, {
-      service: providerCatLabel(selectedProvider),
-      date: bkDate, time: bkTime,
-      address: $('bkAddress').value.trim(),
-      note: $('bkNote').value.trim(),
-    });
-    toast(t('bookingConfirmed') || 'Booking requested!');
-    bookingTab = 'upcoming';
-    goTo('history');
-    renderBookings();
-  } catch (e) { toast(e.message || 'Could not book'); }
-  finally { btn.disabled = false; }
-}
-function setBookingTab(k) { bookingTab = k; renderBookings(); }
-async function renderBookings() {
-  const tabs = [['upcoming', t('tabUpcoming') || 'Upcoming'], ['completed', t('tabCompleted') || 'Completed'], ['cancelled', t('tabCancelled') || 'Cancelled']];
-  const tr = $('bookingTabs'); if (tr) tr.innerHTML = tabs.map(([k, l]) => `<button class="sort-tab ${k === bookingTab ? 'active' : ''}" onclick="setBookingTab('${k}')">${esc(l)}</button>`).join('');
-  const box = $('bookingsList'); if (!box) return;
-  let rows = [];
-  try { rows = await api.getMyBookingList(); } catch (e) { rows = []; }
-  const inTab = (s) => bookingTab === 'upcoming' ? (s === 'pending' || s === 'confirmed') : bookingTab === 'completed' ? s === 'completed' : s === 'cancelled';
-  const list = rows.filter(b => inTab(b.status));
-  const badge = { pending: 'pending', confirmed: 'done', completed: 'done', cancelled: 'cancel' };
-  const stLabel = { pending: t('stPendingB') || 'Pending', confirmed: t('stConfirmed') || 'Confirmed', completed: t('stDone') || 'Completed', cancelled: t('stCancel') || 'Cancelled' };
-  box.innerHTML = list.length === 0
-    ? `<div class="empty">${t('noBookings') || 'No bookings here yet.'}</div>`
-    : list.map(b => `
-      <div class="bk-card">
-        <div class="bk-top">
-          <div><p style="font-weight:600;font-size:13.5px;margin:0">${esc(b.provider?.name || '')}</p>
-            <p class="bk-meta">${esc(providerCatLabel(b.provider))}${b.service ? '' : ''}</p></div>
-          <span class="badge ${badge[b.status] || 'pending'}">${esc(stLabel[b.status] || b.status)}</span>
-        </div>
-        <p class="bk-meta">&#128197; <b>${esc(b.scheduled_date || '')}</b> ${esc(b.scheduled_time || '')}</p>
-        ${b.address ? `<p class="bk-meta">&#128205; ${esc(b.address)}</p>` : ''}
-        ${b.status === 'pending' ? `<div class="bk-actions"><button class="btn btn-outline-danger" style="padding:9px" onclick="cancelMyBooking('${b.id}')">${esc(t('cancelBtn') || 'Cancel')}</button></div>` : ''}
-      </div>`).join('');
-}
-async function cancelMyBooking(id) {
-  try { await api.cancelBooking(id); renderBookings(); toast(t('bookingCancelled') || 'Booking cancelled'); }
-  catch (e) { toast(e.message || 'Could not cancel'); }
-}
-
-/* ==================== CHAT ==================== */
-let chatProviderId = null, chatChannel = null;
-function fmtTime(iso) { try { return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
-async function openChatCustomer() {
-  if (!selectedProvider) return;
-  chatProviderId = selectedProvider.id;
-  $('chatTitle').textContent = selectedProvider.name || t('chat') || 'Chat';
-  goTo('chat'); await loadChat(); subscribeChat();
-}
-function chatBubble(m) { return `<div class="msg ${m.sender_role === 'customer' ? 'me' : 'them'}">${esc(m.body)}<span class="mt">${esc(fmtTime(m.created_at))}</span></div>`; }
-async function loadChat() { let msgs = []; try { msgs = await api.getMessages(chatProviderId); } catch (e) {} renderChat(msgs); }
-function renderChat(msgs) { const box = $('chatBody'); if (!box) return; box.innerHTML = msgs.length === 0 ? `<div class="empty">${t('noMessages') || 'Say hello 👋'}</div>` : msgs.map(chatBubble).join(''); scrollChat(); }
-function appendMsg(m) { const box = $('chatBody'); const e = box.querySelector('.empty'); if (e) box.innerHTML = ''; box.insertAdjacentHTML('beforeend', chatBubble(m)); scrollChat(); }
-function scrollChat() { const s = $('screen-chat'); if (s) setTimeout(() => { s.scrollTop = s.scrollHeight; }, 30); }
-async function sendChat() {
-  const inp = $('chatInput'); const body = (inp.value || '').trim();
-  if (!body || !chatProviderId) return;
-  inp.value = '';
-  try { const m = await api.sendMessage(chatProviderId, body); appendMsg(m); } catch (e) { toast(e.message || 'Could not send'); }
-}
-async function subscribeChat() {
-  try {
-    if (chatChannel) { chatChannel.unsubscribe(); chatChannel = null; }
-    chatChannel = await api.subscribeMessages(chatProviderId, (m) => { if (m.sender_role !== 'customer') appendMsg(m); });
-  } catch (e) {}
-}
-
-/* ==================== DETAIL ==================== */
-async function fillDetail(p) {
-  $('detailAvatar').textContent = (p.name || '?')[0];
-  $('detailName').textContent = p.name;
-  $('detailVerified').classList.toggle('hidden', !p.verified);
-  $('detailCat').textContent = providerCatLabel(p) + ' · ' + priceNU(p.starting_price, p.price_unit);
-  $('detailPhone').textContent = p.phone;
-  $('detailPhoneLink').href = telHref(p.phone);
-  $('detailCallBtn').href = telHref(p.phone);
-  $('detailCallBtn').textContent = t('call') + ' ' + p.phone;
-  $('detailRating').textContent = p.rating_avg;
-  $('detailReviews').textContent = p.rating_count;
-  $('detailDist').textContent = (p.distance_km != null ? p.distance_km : '—') + ' ' + t('km');
-  $('detailExp').textContent = (p.experience_yrs ?? 0) + ' ' + t('yrs');
-  syncSaveBtn();
-  // work photos (async)
-  try {
-    const photos = await api.getProviderPhotos(p.id);
-    const pb = $('detailPhotos'), lbl = $('detailPhotosLabel');
-    if (photos.length) {
-      pb.innerHTML = `<div class="photo-strip">${photos.map(u => `<img src="${esc(u)}" alt="">`).join('')}</div>`;
-      pb.style.display = ''; if (lbl) lbl.style.display = '';
-    } else { pb.innerHTML = ''; pb.style.display = 'none'; if (lbl) lbl.style.display = 'none'; }
-  } catch (e) { const pb = $('detailPhotos'); if (pb) pb.style.display = 'none'; const lbl = $('detailPhotosLabel'); if (lbl) lbl.style.display = 'none'; }
-  // services + reviews (async)
-  try {
-    const services = await api.getProviderServices(p.id);
-    $('detailServices').innerHTML = services.map(s =>
-      `<div class="service-row"><span>${esc(s.name)}</span><span>${esc(priceNU(s.price, s.unit))}</span></div>`).join('')
-      || `<div class="service-row"><span>—</span></div>`;
-  } catch (e) { $('detailServices').innerHTML = ''; }
-  try {
-    const reviews = await api.getProviderReviews(p.id);
-    $('detailReviewsList').innerHTML = reviews.map(r =>
-      `<div class="review"><div class="review-top"><span class="review-name">${esc(r.reviewer_name || 'Customer')}</span>
-       <span class="star">&#9733; ${r.rating}</span></div><div class="review-body">${esc(r.body || '')}</div>
-       ${r.provider_reply ? `<div class="detail-reply"><b>${esc(t('providerReplied') || 'Provider replied')}:</b> ${esc(r.provider_reply)}</div>` : ''}</div>`).join('')
-      || `<div class="empty" style="padding:16px">${esc(t('recentReviews'))} —</div>`;
-  } catch (e) { $('detailReviewsList').innerHTML = ''; }
-}
-async function openDetail(id) {
-  let p = providers.find(x => x.id === id);
-  try { if (!p) p = adaptFull(await api.getProvider(id)); } catch (e) { toast('Could not open'); return; }
-  selectedProvider = p;
-  goTo('detail');
-  fillDetail(p);
-}
-function syncSaveBtn() {
-  if (!selectedProvider) return;
-  const on = savedIds.has(selectedProvider.id);
-  $('saveBtn').innerHTML = on ? '&#9829;' : '&#9825;';
-  $('saveBtn').style.color = on ? 'var(--danger)' : 'var(--ink)';
-  $('saveBtn').setAttribute('aria-label', on ? t('unsaveAria') : t('saveAria'));
-}
-async function toggleSaveById(id) {
-  try {
-    if (savedIds.has(id)) { savedIds.delete(id); await api.unsaveProvider(id); toast(t('unsavedToast')); }
-    else { savedIds.add(id); await api.saveProvider(id); toast(t('savedToast')); }
-  } catch (e) { toast(e.message || 'Sign in to save'); }
-  if (selectedProvider && selectedProvider.id === id) syncSaveBtn();
-  const cur = currentScreen();
-  if (cur === 'home') renderResults();
-  if (cur === 'saved') renderSaved();
-}
-function toggleSave() { if (selectedProvider) toggleSaveById(selectedProvider.id); }
-
-/* ==================== MISC ==================== */
-async function logBookingFor(id) {
-  try { await api.createLead(id); toast(t('callLogged')); } catch (e) { /* still allow the call */ }
-}
-function logBooking() { if (selectedProvider) logBookingFor(selectedProvider.id); }
-
-async function loadProfile() {
-  try {
-    const p = await api.getMyProfile();
-    if (p) {
-      $('profileName').textContent = p.full_name || 'You';
-      $('profilePhone').textContent = p.phone || '';
-      const epN = $('epName'); if (epN) epN.value = p.full_name || '';
-      const epP = $('epPhone'); if (epP) epP.value = p.phone || '';
-      const epA = $('epArea'); if (epA) epA.value = p.home_area || '';
-    }
-  } catch (e) {}
-}
-async function saveProfile() {
-  try {
-    await api.updateMyProfile({
-      full_name: $('epName').value.trim(),
-      home_area: $('epArea').value.trim(),
-    });
-    $('profileName').textContent = $('epName').value.trim() || 'You';
-    toast(t('profileUpdated'));
-  } catch (e) { toast(e.message || 'Could not save'); }
-  goBack();
-}
-function toggleSwitch(el) {
-  const on = el.classList.toggle('on');
-  el.setAttribute('aria-checked', String(on));
-}
+/* ---------- toast ---------- */
 function toast(msg) {
-  const el = $('toastEl');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  const el = $('toast'); if (!el) return;
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// debounced search input
-const searchInput = $('searchInput');
-if (searchInput) {
-  searchInput.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(renderResults, 300);
+/* ---------- navigation ---------- */
+const TAB_SCREENS = ['home', 'bookings', 'saved', 'account'];
+function show(id, push = true) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('on'));
+  const el = $('s-' + id); if (!el) return;
+  el.classList.add('on');
+  const sc = el.querySelector('.scroll'); if (sc) sc.scrollTop = 0;
+  if (push && stack[stack.length - 1] !== id) stack.push(id);
+  onEnter(id);
+}
+function back() { if (stack.length > 1) { stack.pop(); show(stack[stack.length - 1], false); } else show('home', false); }
+window.show = show;
+
+/* ---------- tab bar ---------- */
+const TABS = [
+  { id:'home', ic:'🏠', lb:'Home' },
+  { id:'bookings', ic:'📋', lb:'Bookings' },
+  { id:'saved', ic:'❤️', lb:'Saved' },
+  { id:'account', ic:'👤', lb:'Profile' },
+];
+function buildTabBars() {
+  document.querySelectorAll('[data-tabbar]').forEach((bar) => {
+    const cur = bar.closest('.screen').id.replace('s-', '');
+    const active = cur === 'notifications' ? 'account' : cur;
+    bar.innerHTML = TABS.map((tb) => `<div class="tab${tb.id === active ? ' on' : ''}" data-tab="${tb.id}"><span class="ti">${tb.ic}</span>${tb.lb}</div>`).join('');
   });
 }
 
-/* ==================== expose handlers to inline onclick ==================== */
-Object.assign(window, {
-  goTo, goBack, openNotifications, logout,
-  sendOtp, verifyOtp, validatePhone,
-  clearSearch, setCategory, setSort, openDetail, toggleSave, toggleSaveById,
-  logBooking, logBookingFor, saveProfile, toggleSwitch,
-  toggleLangPop, setLang, renderResults,
-  openBooking, confirmBooking, pickDate, pickTime, setBookingTab, cancelMyBooking,
-  openChatCustomer, sendChat,
+/* ---------- enter hooks ---------- */
+function onEnter(id) {
+  if (id === 'home') renderHome();
+  if (id === 'list') renderList();
+  if (id === 'profile') renderProfile();
+  if (id === 'book') renderBook();
+  if (id === 'bookings') renderBookings();
+  if (id === 'saved') renderSaved();
+  if (id === 'notifications') renderNotif();
+  if (id === 'account') renderAccount();
+}
+
+/* ---------- renderers ---------- */
+function catCell(c) {
+  return `<div class="scell" data-cat="${c.key}" data-label="${esc(c.label)}"><div class="scirc" style="background:${c.color}">${c.icon}</div><span class="lb">${esc(c.label)}</span></div>`;
+}
+function renderHome() {
+  const grid = $('catGrid'); if (grid) grid.innerHTML = CATS.map(catCell).join('');
+  const top = $('homeTop'); if (!top) return;
+  const p = DEMO_PROVIDERS[0];
+  top.innerHTML = `<div class="card">
+    <div style="display:flex;gap:12px">
+      <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
+      <div style="flex:1">
+        <div><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span></div>
+        <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+        <div class="meta">📍 ${p.dist} km away</div>
+        <div class="sec" style="margin-top:2px">${esc(p.trade)} • ${esc(p.exp)}</div>
+      </div>
+    </div>
+    <button class="btn btn-green pill" style="margin-top:12px" data-open="${p.id}">View Profile</button>
+  </div>`;
+}
+function providerCard(p) {
+  const saved = savedIds.has(p.id);
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:12px">
+      <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span><div class="spacer"></div><span style="color:${saved ? 'var(--danger)' : 'var(--tTertiary)'};font-size:20px" data-save="${p.id}">${saved ? '❤' : '♡'}</span></div>
+        <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+        <div class="meta">📍 ${p.dist} km away</div>
+        <div class="price" style="margin-top:2px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary)">onwards</span></div>
+      </div>
+    </div>
+    <button class="btn btn-green pill" style="margin-top:12px" data-open="${p.id}">Book Now</button>
+  </div>`;
+}
+async function renderList() {
+  if ($('listTitle')) $('listTitle').textContent = selectedCat ? (CATS.find((c) => c.key === selectedCat)?.label || 'Providers') : 'Providers';
+  const el = $('listCards'); if (!el) return;
+  let rows = DEMO_PROVIDERS;
+  if (hasSupabase) {
+    try {
+      const loc = await api.getCurrentLocation();
+      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng });
+      if (live && live.length) rows = live.map((p) => ({ id:p.id, name:p.name, trade:p.category_label || p.custom_category || 'Service Pro', rating:Number(p.rating || 4.5), reviews:p.review_count || 0, dist:p.distance_km ? Number(p.distance_km).toFixed(1) : '—', price:p.starting_price || 200, exp:'' }));
+    } catch (e) {}
+  }
+  el.innerHTML = rows.map(providerCard).join('');
+}
+function renderProfile() {
+  const p = selectedProvider || DEMO_PROVIDERS[0];
+  const el = $('profileBody'); if (!el) return;
+  if ($('saveHeart')) $('saveHeart').textContent = savedIds.has(p.id) ? '❤' : '♡';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="h2">${esc(p.name)}</span><span class="verif">✔</span>
+      <div class="spacer"></div><span class="pill green">✓ Verified</span>
+    </div>
+    <div class="rating" style="margin-top:6px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+    <div class="sec" style="margin-top:4px">${esc(p.trade)} • ${esc(p.exp || 'Experienced')} • Ahmedabad</div>
+    <div class="price" style="font-size:18px;margin-top:8px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary);font-size:14px">onwards</span></div>
+    <p class="sec" style="line-height:1.55;margin:12px 0">Experienced ${esc(p.trade.toLowerCase())} with great reviews for home and commercial services. Quick &amp; reliable service guaranteed.</p>
+    <div class="feat">
+      <div class="f"><div class="fi">🕐</div>On Time<br>Service</div>
+      <div class="f"><div class="fi">🛡️</div>Verified<br>Provider</div>
+      <div class="f"><div class="fi">🎧</div>Customer<br>Satisfaction</div>
+    </div>
+    <div class="sectitle" style="margin:8px 0 10px"><span class="h2">Reviews &amp; Ratings</span><span class="link">See All</span></div>
+    <div style="display:flex;gap:10px">
+      <div class="avatar" style="width:40px;height:40px">NP</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center"><b style="font-size:14px">Neha Patel</b><div class="spacer"></div><span class="ter">12 Sep 2025</span></div>
+        <div class="rating" style="font-size:13px"><span class="st">★★★★★</span> <b>5.0</b></div>
+        <p class="sec" style="margin:4px 0 0">Very professional and quick service. Highly recommended!</p>
+      </div>
+    </div>`;
+}
+function renderBook() {
+  const p = selectedProvider || DEMO_PROVIDERS[0];
+  const el = $('bookProvider'); if (el) el.innerHTML = `
+    <div class="avatar" style="width:48px;height:48px">${initials(p.name)}</div>
+    <div><div><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span></div>
+    <div class="rating" style="font-size:12.5px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+    <div class="sec" style="font-size:12.5px">${esc(p.trade)} • ${inr(p.price)} onwards</div></div>`;
+  const dr = $('dateRow');
+  if (dr) {
+    const days = [];
+    for (let i = 0; i < 3; i++) { const d = new Date(); d.setDate(d.getDate() + i); days.push(d); }
+    const labels = ['Today', 'Tomorrow', days[2].toLocaleDateString('en-IN', { weekday: 'short' })];
+    dr.innerHTML = days.map((d, i) => `<div class="datecard${i === 0 ? ' on' : ''}" data-date><div class="d1">${labels[i]}</div><div class="d2">${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}</div></div>`).join('');
+  }
+}
+function renderBookings() {
+  const el = $('bookRows'); if (!el) return;
+  let rows = DEMO_BOOKINGS;
+  const html = rows.map((b, i) => `
+    <div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+      <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
+      <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
+        <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div></div>
+      <span class="pill ${b.pill}">${esc(b.status)}</span>
+    </div>`).join('');
+  el.innerHTML = html;
+  if (hasSupabase && session) {
+    api.getMyBookingList().then((live) => {
+      if (live && live.length) {
+        el.innerHTML = live.map((b, i) => {
+          const pv = b.provider || {};
+          const st = (b.status || 'pending');
+          const pill = st === 'confirmed' ? 'green' : st === 'cancelled' ? 'grey' : 'orange';
+          return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+            <div class="avatar" style="width:52px;height:52px">${initials(pv.name || 'P')}</div>
+            <div class="mid"><div class="h3">${esc(b.service || 'Service')}</div><div class="sec">${esc(pv.name || 'Provider')}</div>
+              <div class="meta">📅 ${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</div><div class="meta">📍 ${esc(b.address || '')}</div></div>
+            <span class="pill ${pill}">${st[0].toUpperCase() + st.slice(1)}</span>
+          </div>`;
+        }).join('');
+      }
+    }).catch(() => {});
+  }
+}
+function renderSaved() {
+  const el = $('savedRows'); if (!el) return;
+  el.innerHTML = DEMO_SAVED.map((s, i) => `
+    <div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+      <div class="avatar" style="width:52px;height:52px">${initials(s.name)}</div>
+      <div class="mid"><div class="h3">${esc(s.name)}</div><div class="sec">${esc(s.sub)}</div><div class="meta">📍 ${s.dist} km away</div></div>
+      <span style="color:var(--danger);font-size:22px">❤</span>
+    </div>`).join('');
+}
+function renderNotif() {
+  const el = $('notifRows'); if (!el) return;
+  el.innerHTML = DEMO_NOTIF.map((n, i) => `
+    <div class="row" style="align-items:flex-start;${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+      <div class="avatar" style="width:44px;height:44px;background:${n.color};color:#fff">${n.ic}</div>
+      <div class="mid"><div style="display:flex"><div class="h3" style="flex:1">${esc(n.title)}</div><span class="ter">${esc(n.ago)}</span></div>
+        <div class="sec" style="margin-top:2px">${esc(n.body)}</div></div>
+    </div>`).join('');
+}
+function renderAccount() {
+  if (myProfile) {
+    if ($('accName')) $('accName').textContent = myProfile.full_name || 'HelpZo User';
+    if ($('accPhone')) $('accPhone').textContent = myProfile.phone || (session?.user?.phone ? '+' + session.user.phone : '');
+    if ($('accAvatar')) $('accAvatar').textContent = initials(myProfile.full_name || 'U');
+  } else if (session?.user?.phone) {
+    if ($('accPhone')) $('accPhone').textContent = '+' + session.user.phone;
+  }
+}
+
+/* ---------- auth ---------- */
+async function doGetOtp() {
+  const raw = ($('phone').value || '').replace(/\D/g, '');
+  if (raw.length !== 10) { toast('Enter a valid 10-digit number'); return; }
+  const btn = $('getOtpBtn'); btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    if (hasSupabase) { window._pendingPhone = await api.sendOtp(raw); }
+    else { window._pendingPhone = '+91' + raw; }
+    $('otpPhoneLabel').textContent = window._pendingPhone;
+    $('loginPhoneStep').hidden = true; $('loginOtpStep').hidden = false;
+    document.querySelectorAll('[data-otp]')[0]?.focus();
+  } catch (e) { toast(e.message || 'Could not send OTP'); }
+  finally { btn.disabled = false; btn.textContent = 'Get OTP'; }
+}
+async function doVerify() {
+  const code = Array.from(document.querySelectorAll('[data-otp]')).map((i) => i.value).join('');
+  if (code.length !== 6) { toast('Enter the 6-digit code'); return; }
+  const btn = $('verifyOtpBtn'); btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    if (hasSupabase) {
+      await api.verifyOtp(window._pendingPhone, code);
+      session = await api.getSession();
+      myProfile = await api.getMyProfile().catch(() => null);
+      savedIds = await api.getSavedIds().catch(() => new Set());
+    }
+    stack = ['splash']; show('home');
+  } catch (e) { toast(e.message || 'Invalid code'); }
+  finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
+}
+
+/* ---------- booking ---------- */
+async function confirmBooking() {
+  const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
+  try {
+    const p = selectedProvider || DEMO_PROVIDERS[0];
+    const date = document.querySelector('#dateRow .datecard.on .d2')?.textContent || '';
+    const time = document.querySelector('#slotRow .slot.on')?.textContent || '';
+    if (hasSupabase && session && p.id && !String(p.id).startsWith('d')) {
+      await api.createBooking(p.id, { service: p.trade, date, time, address: $('bookAddr').value, note: $('bookNote').value });
+    }
+    toast('Booking confirmed!');
+    setTimeout(() => show('bookings'), 500);
+  } catch (e) { toast(e.message || 'Could not book'); }
+  finally { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
+}
+
+/* ---------- save/unsave ---------- */
+async function toggleSave(id) {
+  const on = !savedIds.has(id);
+  if (on) savedIds.add(id); else savedIds.delete(id);
+  if (hasSupabase && session && !String(id).startsWith('d')) {
+    try { on ? await api.saveProvider(id) : await api.unsaveProvider(id); } catch (e) {}
+  }
+  toast(on ? 'Added to saved' : 'Removed from saved');
+  const cur = stack[stack.length - 1];
+  if (cur === 'list') renderList(); else if (cur === 'profile') renderProfile();
+}
+
+/* ---------- open a provider ---------- */
+async function openProvider(id) {
+  let p = DEMO_PROVIDERS.find((x) => x.id === id);
+  if (!p && hasSupabase) {
+    try { const row = await api.getProvider(id); if (row) p = { id: row.id, name: row.name, trade: row.custom_category || 'Service Pro', rating: Number(row.rating || 4.5), reviews: row.review_count || 0, dist: '—', price: row.starting_price || 200, exp: (row.experience_years ? row.experience_years + ' years exp' : '') }; } catch (e) {}
+  }
+  selectedProvider = p || DEMO_PROVIDERS[0];
+  show('profile');
+}
+
+/* ---------- click delegation ---------- */
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]'); if (go) { show(go.getAttribute('data-go')); return; }
+  const tab = e.target.closest('[data-tab]'); if (tab) { stack = [tab.getAttribute('data-tab')]; show(tab.getAttribute('data-tab'), false); return; }
+  const cat = e.target.closest('[data-cat]'); if (cat) { selectedCat = cat.getAttribute('data-cat'); show('list'); return; }
+  const open = e.target.closest('[data-open]'); if (open) { openProvider(open.getAttribute('data-open')); return; }
+  const sv = e.target.closest('[data-save]'); if (sv) { e.stopPropagation(); toggleSave(sv.getAttribute('data-save')); return; }
+  const dc = e.target.closest('[data-date]'); if (dc) { document.querySelectorAll('#dateRow .datecard').forEach((x) => x.classList.remove('on')); dc.classList.add('on'); return; }
+  const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
+  if (e.target.closest('#saveHeart')) { toggleSave((selectedProvider || DEMO_PROVIDERS[0]).id); return; }
+  if (e.target.closest('#callBtn')) { const p = selectedProvider || DEMO_PROVIDERS[0]; if (hasSupabase && session && !String(p.id).startsWith('d')) { api.createLead(p.id).catch(() => {}); } toast('Calling ' + p.name + '…'); return; }
 });
 
-/* ==================== BOOT ==================== */
-async function boot() {
-  try { categories = await api.getCategories(); } catch (e) { categories = []; }
-  applyLang();
-  $('langFab').classList.add('low');
-  $('langPop').classList.add('low');
-  validatePhone();
-  // already signed in? skip straight to home
-  try {
-    const session = await api.getSession();
-    if (session) { await afterLogin(); }
-  } catch (e) {}
+/* ---------- OTP input UX ---------- */
+function wireOtpInputs() {
+  const inputs = Array.from(document.querySelectorAll('[data-otp]'));
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 1); if (inp.value && i < inputs.length - 1) inputs[i + 1].focus(); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus(); });
+  });
 }
-boot();
+
+/* ---------- logout ---------- */
+async function logout() {
+  try { if (hasSupabase) await api.signOut(); } catch (e) {}
+  session = null; myProfile = null; savedIds = new Set();
+  $('loginOtpStep').hidden = true; $('loginPhoneStep').hidden = false;
+  document.querySelectorAll('[data-otp]').forEach((i) => (i.value = ''));
+  if ($('phone')) $('phone').value = '';
+  stack = ['splash']; show('login');
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  buildTabBars();
+  wireOtpInputs();
+  $('getOtpBtn')?.addEventListener('click', doGetOtp);
+  $('verifyOtpBtn')?.addEventListener('click', doVerify);
+  $('resendBtn')?.addEventListener('click', doGetOtp);
+  $('changeNumBtn')?.addEventListener('click', () => { $('loginOtpStep').hidden = true; $('loginPhoneStep').hidden = false; });
+  $('phone')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doGetOtp(); });
+  $('confirmBookBtn')?.addEventListener('click', confirmBooking);
+  $('logoutBtn')?.addEventListener('click', logout);
+  $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { selectedCat = null; show('list'); } });
+
+  if (hasSupabase) {
+    (async () => {
+      try { session = await api.getSession(); } catch (e) {}
+      if (session) {
+        myProfile = await api.getMyProfile().catch(() => null);
+        savedIds = await api.getSavedIds().catch(() => new Set());
+      }
+    })();
+  }
+
+  setTimeout(() => { stack = ['splash']; show(session ? 'home' : 'login'); }, 1600);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();

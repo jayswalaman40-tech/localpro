@@ -2,478 +2,294 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helpzo — find nearby help</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>HelpZo — find trusted local services</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#0B2450; --ink-soft:#3B4A6B; --muted:#8A93A8;
-    --bg:#F2F6FD; --card:#FFFFFF;
-    --amber:#F0A93B; --amber-ink:#5A3A0B;
-    --teal:#16A34A; --teal-bg:#E7F6EC;
-    --blue:#1267FF; --blue-bg:#E8F0FF;
-    --line:#DFE3EC; --danger:#C1462E; --danger-bg:#FBEAE7;
-    --radius:16px;
-    --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
+    --primary:#1667E8; --primaryDark:#0B3E9E; --primaryDeep:#062B7A;
+    --success:#22B24C; --successDark:#1B9E3E; --danger:#E53935; --warning:#F5A623;
+    --bg:#FFFFFF; --bgMuted:#F5F7FA; --card:#FFFFFF; --cardBorder:#EDEFF3;
+    --tPrimary:#0F2547; --tSecondary:#6B7280; --tTertiary:#9AA3B2;
+    --star:#F6B01E; --whatsapp:#25D366; --verified:#1D9BF0;
   }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; font-family:'Inter',system-ui,sans-serif;
-    background:var(--bg); color:var(--ink);
-    min-height:100dvh; display:flex; justify-content:center;
-  }
-  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
-  .stage{width:100%;max-width:520px;}
-  .stage-header{display:none;}
-  .brand{display:flex;align-items:center;gap:10px;}
-  .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
-  .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
-  .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
-
-  .phone{position:relative;width:100%;height:100dvh;background:var(--card);overflow:hidden;box-shadow:var(--shadow);}
-  .notch{display:none;}
-
-  .screen{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 92px;scrollbar-width:none;}
-  .screen::-webkit-scrollbar{display:none;}
-  .screen.active{display:block;}
-  .screen.nonav{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));}
-
-  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .topbar .title{font-size:14.5px;font-weight:600;}
-  .topbar .spacer{flex:1;}
-  .iconbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;position:relative;padding:0;color:var(--ink);font-family:inherit;}
-  .iconbtn:focus-visible,.btn:focus-visible,.navitem:focus-visible,.chip:focus-visible,.toggle:focus-visible,.list-row:focus-visible,.pcard:focus-visible,.heart:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
-  .dot{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--card);}
-  .dot.hidden{display:none;}
-
-  .location-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:14px;}
-  .location-row b{color:var(--ink);font-weight:600;}
-
-  .searchbar{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card);margin-bottom:14px;}
-  .searchbar input{border:none;outline:none;font-size:13.5px;flex:1;min-width:0;font-family:inherit;background:transparent;color:var(--ink);}
-  .searchbar input::placeholder{color:var(--muted);}
-  .searchbar .clear{border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;display:none;}
-  .searchbar .clear.show{display:block;}
-
-  .chips{display:flex;gap:7px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px;scrollbar-width:none;}
-  .chips::-webkit-scrollbar{display:none;}
-  .chip{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
-  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  .grid-label{font-size:12.5px;font-weight:700;color:var(--ink);margin:2px 0 10px;}
-  .svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
-  .svc-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 4px;cursor:pointer;font-family:inherit;color:var(--ink);}
-  .svc-tile.active{border-color:var(--blue);background:var(--blue-bg);}
-  .svc-ic{font-size:22px;line-height:1;} .svc-lbl{font-size:10px;text-align:center;line-height:1.1;color:var(--ink-soft);}
-  .sort-row{display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;} .sort-row::-webkit-scrollbar{display:none;}
-  .sort-tab{flex-shrink:0;font-size:12px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);color:var(--ink-soft);cursor:pointer;background:var(--card);white-space:nowrap;font-family:inherit;}
-  .sort-tab.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .slot-row{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;} .slot-row::-webkit-scrollbar{display:none;}
-  .slot{flex-shrink:0;min-width:64px;text-align:center;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--card);cursor:pointer;font-family:inherit;color:var(--ink);}
-  .slot.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .slot .d1{font-size:11px;color:var(--muted);display:block;} .slot.active .d1{color:#dbe8ff;} .slot .d2{font-size:14px;font-weight:700;}
-  .slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
-  .slot-grid .slot{min-width:0;font-size:13px;font-weight:600;padding:10px;}
-  .book-provider{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:16px;}
-  .book-provider .bp-av{width:44px;height:44px;border-radius:12px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
-  .book-provider .bp-name{font-weight:600;font-size:14px;} .book-provider .bp-sub{font-size:12px;color:var(--muted);}
-  .bk-card{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card);}
-  .bk-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
-  .bk-meta{font-size:12px;color:var(--ink-soft);margin:4px 0;} .bk-meta b{color:var(--ink);}
-  .photo-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;} .photo-strip::-webkit-scrollbar{display:none;}
-  .photo-strip img{width:112px;height:112px;object-fit:cover;border-radius:12px;flex-shrink:0;border:1px solid var(--line);}
-  .detail-reply{margin-top:6px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);} .detail-reply b{color:var(--blue);}
-  .chat-body{padding-bottom:72px;}
-  .msg{max-width:78%;padding:8px 12px;border-radius:14px;font-size:13px;margin-bottom:8px;line-height:1.4;word-wrap:break-word;}
-  .msg.me{background:var(--blue);color:#fff;margin-left:auto;border-bottom-right-radius:4px;}
-  .msg.them{background:var(--bg);color:var(--ink);margin-right:auto;border-bottom-left-radius:4px;}
-  .msg .mt{display:block;font-size:9.5px;opacity:.7;margin-top:3px;}
-  .chat-input{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);}
-  .chat-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:20px;padding:10px 14px;font-family:inherit;font-size:13px;outline:none;color:var(--ink);background:var(--card);}
-  .chat-input .btn{padding:10px 16px;flex-shrink:0;}
-
-  .result-count{font-size:11.5px;color:var(--muted);margin-bottom:10px;}
-
-  .pcard{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px;cursor:pointer;background:var(--card);}
-  .pcard:hover{border-color:var(--ink-soft);}
-  .pcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-  .pcard-name{font-size:14px;font-weight:600;margin:0;}
-  .pcard-cat{font-size:11px;color:var(--muted);margin:2px 0 0;}
-  .pcard-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
-  .dist-badge{font-size:10.5px;color:var(--teal);background:var(--teal-bg);padding:3px 8px;border-radius:10px;flex-shrink:0;font-weight:600;}
-  .heart{border:none;background:none;cursor:pointer;font-size:15px;line-height:1;padding:2px;color:var(--muted);}
-  .heart.on{color:var(--danger);}
-  .pcard-meta{display:flex;align-items:center;gap:5px;margin:8px 0 6px;font-size:12px;color:var(--ink-soft);}
-  .pcard-phone{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:10px;letter-spacing:.2px;}
-  .star{color:var(--amber);}
-  .pcard-actions{display:flex;gap:8px;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-family:inherit;font-size:13px;font-weight:600;line-height:1;padding:11px 14px;cursor:pointer;color:var(--ink);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .06s ease;-webkit-tap-highlight-color:transparent;}
-  .btn:hover{border-color:var(--ink);}
-  .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 2px 10px rgba(31,138,112,.28);}
-  .btn-primary:hover{background:#1A7761;border-color:#1A7761;}
-  .btn-block{width:100%;padding:13px;font-size:14px;}
-  .btn-outline-danger{width:100%;padding:12px;font-size:13px;border-color:var(--danger);color:var(--danger);background:var(--card);}
-  .btn-outline-danger:hover{background:var(--danger-bg);border-color:var(--danger);}
-  .btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
-  .btn-link{border:none;background:none;padding:0;font-size:11.5px;color:var(--ink);font-weight:600;cursor:pointer;font-family:inherit;}
-  /* row containers split their buttons evenly */
-  .sticky-cta .btn,.pcard-actions .btn{flex:1;min-width:0;}
-  .empty{text-align:center;padding:40px 10px;color:var(--muted);font-size:13px;line-height:1.6;}
-  .field-error{font-size:11px;color:var(--danger);margin:-8px 0 12px;display:none;}
-  .field-error.show{display:block;}
-
-  .detail-hero{border-radius:14px;background:linear-gradient(135deg, var(--ink) 0%, #2E3A66 100%);height:110px;margin-bottom:-30px;}
-  .detail-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;}
-  .detail-avatar{width:58px;height:58px;border-radius:14px;background:var(--amber);color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;border:4px solid var(--card);margin-top:-42px;margin-bottom:8px;}
-  .verified{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--teal);background:var(--teal-bg);padding:3px 8px;border-radius:10px;font-weight:600;margin-left:6px;}
-  .verified.hidden{display:none;}
-  .phone-pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:6px 12px;border-radius:20px;margin-top:8px;text-decoration:none;}
-  .detail-stats{display:flex;gap:18px;margin:14px 0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
-  .stat b{display:block;font-size:15px;}
-  .stat span{font-size:10.5px;color:var(--muted);}
-  .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:16px 0 8px;}
-  .service-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line);}
-  .service-row span:last-child{color:var(--muted);white-space:nowrap;}
-  .review{border-bottom:1px solid var(--line);padding:10px 0;font-size:12.5px;}
-  .review:last-child{border-bottom:none;}
-  .review-top{display:flex;justify-content:space-between;margin-bottom:3px;}
-  .review-name{font-weight:600;}
-  .review-body{color:var(--ink-soft);}
-  .sticky-cta{position:sticky;bottom:0;display:flex;gap:8px;background:linear-gradient(to top, var(--card) 70%, transparent);padding:14px 0 4px;margin-top:12px;}
-
-  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px calc(14px + env(safe-area-inset-bottom,0px));z-index:10;}
-  .bottomnav.hidden{display:none;}
-  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
-  .navitem.active{color:var(--ink);}
-  .navitem .ic{font-size:17px;}
-
-  .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
-  .toast.low{bottom:24px;}
-  .toast.show{opacity:1;transform:translateY(0);}
-  footer{display:none;}
-
-  /* onboarding / auth */
-  .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
-  .logo-big{width:64px;height:64px;border-radius:18px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;margin-bottom:18px;}
-  .h-title{font-size:19px;font-weight:600;margin:0 0 6px;font-family:'Space Grotesk',sans-serif;}
-  .h-sub{font-size:12.5px;color:var(--muted);margin:0 0 26px;max-width:260px;line-height:1.5;}
-  .form-col{width:100%;text-align:left;}
-  .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:22px;}
-  .otp-box{width:44px;height:52px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:18px;font-family:'Space Grotesk',sans-serif;outline:none;color:var(--ink);background:var(--card);}
-  .otp-box:focus{border-color:var(--ink);}
-
-  /* Helpzo splash + logo */
-  .splash-hz{gap:0;}
-  .hz-stage{position:relative;width:260px;height:300px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
-  .hz-logo{width:230px;max-width:72vw;border-radius:26px;box-shadow:0 18px 44px rgba(11,37,107,.28);opacity:0;transform:scale(.6);animation:hzLogoIn .7s .9s ease-out forwards;}
-  @keyframes hzLogoIn{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
-  .hz-ic{position:absolute;left:50%;top:50%;font-size:36px;--x:0;--y:0;animation:hzFly 1.5s ease-in-out forwards;}
-  @keyframes hzFly{0%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(.5)}25%{opacity:1}70%{opacity:1;transform:translate(-50%,-50%) scale(.4)}85%{opacity:0;transform:translate(-50%,-50%) scale(.15)}100%{opacity:0}}
-  .hz-loader{width:130px;height:4px;border-radius:8px;background:rgba(27,36,64,.12);overflow:hidden;margin:16px 0 2px;opacity:0;animation:hzUp .5s 1.7s forwards;}
-  .hz-loader span{display:block;height:100%;width:40%;border-radius:8px;background:#1267FF;animation:hzLoad 1.4s 1.7s infinite;}
-  @keyframes hzLoad{from{transform:translateX(-120%)}to{transform:translateX(360%)}}
-  @keyframes hzUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .hz-login-logo{width:92px;border-radius:20px;box-shadow:0 10px 24px rgba(11,37,107,.22);margin-bottom:16px;}
-
-  .field{margin-bottom:14px;}
-  .field label{display:block;font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
-  .field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;}
-  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--ink);}
-
-  /* profile */
-  .profile-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
-  .avatar-lg{width:56px;height:56px;border-radius:16px;background:var(--teal-bg);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
-  .list-row{display:flex;align-items:center;gap:12px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);cursor:pointer;background:none;text-align:left;font-family:inherit;color:var(--ink);}
-  .list-row.static{cursor:default;}
-  .list-row .ic{width:32px;height:32px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-  .list-row .lbl{font-size:13px;font-weight:500;flex:1;}
-  .list-row .chev{color:var(--muted);font-size:13px;}
-  .toggle{width:36px;height:20px;border-radius:12px;background:var(--line);position:relative;cursor:pointer;flex-shrink:0;border:none;padding:0;}
-  .toggle.on{background:var(--teal);}
-  .toggle .knob{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .15s;}
-  .toggle.on .knob{transform:translateX(16px);}
-
-  /* history / bookings */
-  .book-card{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card);}
-  .book-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-  .badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:9px;white-space:nowrap;}
-  .badge.done{background:var(--teal-bg);color:var(--teal);}
-  .badge.cancel{background:var(--danger-bg);color:var(--danger);}
-  .badge.pending{background:#FBEFDD;color:var(--amber-ink);}
-
-  /* notifications */
-  .notif-row{display:flex;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);}
-  .notif-ic{width:32px;height:32px;border-radius:50%;background:var(--teal-bg);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
-  .notif-title{font-size:12.5px;font-weight:600;margin:0;}
-  .notif-body{font-size:12px;color:var(--muted);margin:2px 0 0;}
-  .notif-time{font-size:10.5px;color:var(--muted);}
-
-  /* language switcher */
-  .langfab{position:absolute;right:14px;bottom:78px;z-index:30;display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.4px;padding:7px 11px;border-radius:22px;cursor:pointer;box-shadow:0 4px 14px rgba(27,36,64,.16);transition:border-color .15s ease,transform .06s ease;}
-  .langfab:hover{border-color:var(--ink);}
-  .langfab:active{transform:translateY(1px);}
-  .langfab .globe{font-size:14px;line-height:1;}
-  .langfab.low{bottom:22px;}
-  .langfab:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
-  .langpop{position:absolute;right:14px;bottom:122px;z-index:31;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;width:186px;}
-  .langpop.low{bottom:66px;}
-  .langpop[hidden]{display:none;}
-  .langpop .head{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;padding:6px 8px 5px;}
-  .langopt{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:none;background:none;font-family:inherit;text-align:left;padding:9px 8px;border-radius:9px;cursor:pointer;color:var(--ink);}
-  .langopt:hover{background:var(--bg);}
-  .langopt:focus-visible{outline:2px solid var(--ink);outline-offset:-1px;}
-  .langopt .native{font-weight:600;font-size:13px;}
-  .langopt .en{font-size:10.5px;color:var(--muted);}
-  .langopt.active{background:var(--teal-bg);}
-  .langopt.active .native{color:var(--teal);}
-  .langopt.active .en{color:var(--teal);}
-
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tPrimary);}
+  #app{min-height:100dvh;position:relative;overflow:hidden;max-width:520px;margin:0 auto;background:var(--bg);}
+  .screen{display:none;min-height:100dvh;flex-direction:column;}
+  .screen.on{display:flex;}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px;}
+  .pad{padding:16px;}
+  .safe-top{height:env(safe-area-inset-top,0);}
+  .h1{font-size:22px;font-weight:700;margin:0;} .h2{font-size:19px;font-weight:700;margin:0;} .h3{font-size:16px;font-weight:700;margin:0;}
+  .sec{color:var(--tSecondary);font-size:14px;} .ter{color:var(--tTertiary);font-size:12px;}
+  .price{font-weight:700;color:var(--tPrimary);}
+  .link{color:var(--primary);font-weight:600;font-size:14px;cursor:pointer;}
+  .hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top,0));}
+  .ic-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--cardBorder);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tPrimary);flex-shrink:0;font-size:18px;position:relative;}
+  .spacer{flex:1;}
+  .dot{position:absolute;top:9px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid #fff;}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;height:52px;font-weight:700;font-size:16px;border:none;cursor:pointer;width:100%;font-family:inherit;}
+  .btn:disabled{opacity:.55;}
+  .btn-blue{background:var(--primary);color:#fff;} .btn-green{background:var(--success);color:#fff;}
+  .btn-out{background:#fff;border:1.5px solid var(--primary);color:var(--primary);}
+  .btn-out-green{background:#fff;border:1.5px solid var(--success);color:var(--success);}
+  .btn-out-danger{background:#fff;border:1.5px solid var(--danger);color:var(--danger);}
+  .btn.pill{border-radius:22px;height:46px;font-size:15px;} .btn.sm{height:44px;font-size:14px;border-radius:12px;}
+  .card{background:var(--card);border:1px solid var(--cardBorder);border-radius:16px;padding:16px;box-shadow:0 4px 12px rgba(15,37,71,.05);}
+  .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0;} .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;height:40px;padding:0 18px;border-radius:20px;border:1px solid var(--cardBorder);background:#fff;color:var(--tSecondary);font-weight:600;font-size:14px;display:flex;align-items:center;cursor:pointer;}
+  .chip.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+  .pill.green{background:#D9F5E1;color:#1B9E3E;} .pill.orange{background:#FFEBCC;color:#E08A1E;} .pill.blue{background:#DCE8FF;color:#1667E8;} .pill.grey{background:#EDEFF3;color:#6B7280;}
+  .verif{color:var(--verified);}
+  .avatar{border-radius:50%;background:#DCE8FF;color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;background-size:cover;}
+  .rating .st{color:var(--star);}
+  .tabs{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--cardBorder);display:flex;padding:8px 4px calc(10px + env(safe-area-inset-bottom,0px));z-index:20;}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--tSecondary);cursor:pointer;font-weight:600;}
+  .tab .ti{font-size:20px;} .tab.on{color:var(--primary);}
+  .divide{height:1px;background:var(--cardBorder);}
+  .hero{margin:0 16px;border-radius:20px;background:linear-gradient(135deg,var(--primaryDark),var(--primary));color:#fff;padding:18px;position:relative;overflow:hidden;}
+  .hero h3{margin:0;font-size:22px;font-weight:700;} .hero p{margin:2px 0 0;font-size:14px;opacity:.92;}
+  .hero .worker{position:absolute;right:10px;top:8px;font-size:52px;opacity:.9;}
+  .searchbar{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:6px 6px 6px 14px;margin-top:16px;box-shadow:0 6px 16px rgba(0,0,0,.15);}
+  .searchbar input{border:none;outline:none;flex:1;font-family:inherit;font-size:13.5px;color:var(--tPrimary);background:transparent;}
+  .searchbar .go{width:40px;height:40px;border-radius:12px;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;}
+  .scell{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;}
+  .scirc{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;}
+  .scell .lb{font-size:12px;color:var(--tPrimary);font-weight:500;text-align:center;}
+  .sectitle{display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px;}
+  .row{display:flex;gap:12px;align-items:center;padding:14px 0;}
+  .row .mid{flex:1;min-width:0;}
+  .meta{display:flex;align-items:center;gap:5px;color:var(--tSecondary);font-size:12.5px;margin-top:2px;}
+  .splash{background:linear-gradient(180deg,var(--primaryDeep),var(--primary));color:#fff;align-items:center;justify-content:center;text-align:center;padding:30px;position:relative;}
+  .house-wm{position:absolute;top:12%;font-size:220px;opacity:.06;}
+  .loader{width:150px;height:5px;border-radius:6px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:26px;}
+  .loader span{display:block;height:100%;width:45%;background:var(--success);border-radius:6px;animation:ld 1.6s infinite;}
+  @keyframes ld{from{transform:translateX(-130%)}to{transform:translateX(360%)}}
+  .tchip{font-size:12px;opacity:.95;} .tchip b{color:#7CF0A0;}
+  .waves{position:absolute;bottom:0;left:0;right:0;height:180px;background:
+     radial-gradient(120% 80% at 20% 120%, rgba(34,178,76,.18), transparent 60%),
+     radial-gradient(120% 80% at 90% 120%, rgba(22,103,232,.18), transparent 60%);pointer-events:none;}
+  .field{display:flex;align-items:center;gap:10px;border:1px solid var(--cardBorder);border-radius:16px;height:56px;padding:0 14px;background:#fff;}
+  .field .flag{font-size:18px;} .field .cc{font-weight:600;color:var(--tPrimary);} .field .div{width:1px;height:22px;background:var(--cardBorder);}
+  .field input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;background:transparent;color:var(--tPrimary);}
+  textarea.ta{width:100%;border:1px solid var(--cardBorder);border-radius:16px;padding:12px;font-family:inherit;font-size:14px;min-height:70px;resize:none;color:var(--tPrimary);outline:none;}
+  .cover{height:300px;background:linear-gradient(160deg,#1b3f7a,#1667E8);position:relative;display:flex;align-items:center;justify-content:center;color:#fff;}
+  .cover .big{font-size:110px;opacity:.9;}
+  .cover .cbtn{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .sheet{margin-top:-26px;background:#fff;border-radius:24px 24px 0 0;position:relative;z-index:2;}
+  .feat{display:flex;gap:8px;background:var(--bgMuted);border-radius:16px;padding:14px;margin:14px 0;}
+  .feat .f{flex:1;text-align:center;font-size:11px;color:var(--tSecondary);} .feat .fi{font-size:20px;color:var(--primary);}
+  .sticky{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--cardBorder);z-index:15;}
+  .datecard{flex:1;border:1px solid var(--cardBorder);border-radius:14px;padding:10px;text-align:center;cursor:pointer;}
+  .datecard.on{border-color:var(--primary);background:#EAF1FE;}
+  .datecard .d1{font-size:12px;color:var(--tSecondary);} .datecard.on .d1{color:var(--primary);} .datecard .d2{font-size:15px;font-weight:700;margin-top:2px;}
+  .slots{display:flex;flex-wrap:wrap;gap:10px;}
+  .slot{border:1px solid var(--cardBorder);border-radius:22px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;background:#fff;color:var(--tPrimary);}
+  .slot.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .prog{height:8px;border-radius:6px;background:var(--bgMuted);overflow:hidden;margin-top:8px;}
+  .prog span{display:block;height:100%;background:var(--success);border-radius:6px;}
+  .mrow{display:flex;align-items:center;gap:12px;padding:15px 4px;cursor:pointer;}
+  .mrow .mi{width:26px;text-align:center;color:var(--tPrimary);font-size:18px;} .mrow .ml{flex:1;font-weight:600;color:var(--tPrimary);font-size:14.5px;} .mrow .mc{color:var(--tTertiary);}
+  .wm{display:inline-flex;align-items:center;gap:2px;font-weight:800;font-size:24px;}
+  .wm .h{color:var(--primary);} .wm .z{color:var(--success);}
+  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#0F2547;color:#fff;padding:12px 18px;border-radius:14px;font-size:13.5px;font-weight:600;z-index:100;max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+  .toast.show{opacity:1;bottom:114px;}
+  .otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0;}
+  .otp-row input{width:46px;height:54px;border:1px solid var(--cardBorder);border-radius:14px;text-align:center;font-size:22px;font-weight:700;color:var(--tPrimary);outline:none;font-family:inherit;}
+  .otp-row input:focus{border-color:var(--primary);}
+  .empty{text-align:center;color:var(--tSecondary);font-size:14px;padding:40px 20px;}
 </style>
 </head>
 <body>
-<div class="stage">
-  <div class="stage-header">
-    <div class="brand">
-      <div class="brand-mark">L</div>
-      <div class="brand-name">LocalPro — Customer</div>
+<div id="app">
+  <svg style="display:none"><defs>
+    <g id="mark">
+      <path d="M8 15 L24 4 L40 15" fill="none" stroke="#1667E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11 15 V40 H37 V15" fill="none" stroke="#1667E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="20" cy="26" r="6.2" fill="none" stroke="#22B24C" stroke-width="3.2"/>
+      <path d="M24 30 L33 39" stroke="#22B24C" stroke-width="3.6" stroke-linecap="round"/>
+    </g>
+  </defs></svg>
+
+  <!-- 01 SPLASH -->
+  <div class="screen on splash" id="s-splash">
+    <div class="house-wm">&#127968;</div>
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;">
+      <svg viewBox="0 0 48 48" width="64" height="64"><use href="#mark"/></svg>
+      <div class="wm" style="font-size:36px;margin-top:8px"><span class="h" style="color:#fff">Help</span><span class="z">Zo</span></div>
+      <div style="font-size:13px;letter-spacing:1px;margin-top:6px;opacity:.9">Your Problem &nbsp;·&nbsp; Our Priority</div>
+      <div style="font-size:96px;margin:26px 0 10px">&#128105;&#8205;&#127981;</div>
+      <div style="font-size:20px;font-weight:700">Find Trusted Local</div>
+      <div style="font-size:20px;font-weight:700;color:#5FE08A">Service Providers</div>
+      <div style="display:flex;gap:14px;margin-top:14px" class="tchip">
+        <span><b>&#10003;</b> Fast</span><span><b>&#10003;</b> Safe</span><span><b>&#10003;</b> Reliable</span>
+      </div>
+      <div class="loader"><span></span></div>
     </div>
-    <div class="tag">Live app · Supabase backend</div>
   </div>
 
-  <div class="phone">
-    <div class="notch"></div>
-
-    <!-- SPLASH -->
-    <div class="screen active nonav" id="screen-splash">
-      <div class="center-col splash-hz">
-        <div class="hz-stage">
-          <span class="hz-ic" style="--x:-96px;--y:-104px">&#128295;</span>
-          <span class="hz-ic" style="--x:98px;--y:-92px;animation-delay:.08s">&#128268;</span>
-          <span class="hz-ic" style="--x:-108px;--y:44px;animation-delay:.04s">&#127912;</span>
-          <span class="hz-ic" style="--x:104px;--y:52px;animation-delay:.14s">&#129529;</span>
-          <span class="hz-ic" style="--x:-42px;--y:120px;animation-delay:.2s">&#9986;&#65039;</span>
-          <span class="hz-ic" style="--x:46px;--y:126px;animation-delay:.26s">&#127859;</span>
-          <img class="hz-logo" src="/helpzo-logo.jpg" alt="Helpzo — Your Help, Our Priority">
+  <!-- 02 LOGIN / OTP -->
+  <div class="screen" id="s-login">
+    <div class="scroll" style="padding-bottom:0;position:relative">
+      <div class="waves"></div>
+      <div class="pad">
+        <div style="text-align:center;margin-top:40px">
+          <svg viewBox="0 0 48 48" width="56" height="56"><use href="#mark"/></svg>
+          <div class="wm" style="font-size:32px;justify-content:center;margin-top:4px"><span class="h">Help</span><span class="z">Zo</span></div>
         </div>
-        <div class="hz-loader"><span></span></div>
-        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')" style="margin-top:18px">Get started</button>
-      </div>
-    </div>
-
-    <!-- LOGIN + OTP (same page) -->
-    <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:44px;">
-        <img class="hz-login-logo" src="/helpzo-logo.jpg" alt="Helpzo">
-        <p class="h-title" data-i18n="loginTitle">Enter your number</p>
-        <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
-        <div class="form-col">
+        <div id="loginPhoneStep">
+          <p class="h2" style="text-align:center;margin:28px 0 20px">Login to Continue</p>
           <div class="field">
-            <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+            <span class="flag">&#127470;&#127475;</span><span class="cc">+91</span><span class="div"></span>
+            <input id="phone" placeholder="Enter Mobile Number" inputmode="numeric" maxlength="10">
           </div>
-          <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
-          <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
-
-          <!-- OTP appears here on the same page after Send OTP -->
-          <div id="otpSection" hidden style="margin-top:24px">
-            <p class="h-sub" id="otpSub" style="max-width:none;margin:0 0 12px;text-align:center">Enter the 4-digit code sent to +91</p>
-            <div class="otp-row" id="otpRow">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
-            </div>
-            <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
-            <p style="font-size:11.5px;color:var(--muted);margin-top:14px;text-align:center"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="sendOtp()">Resend</button></p>
+          <button class="btn btn-blue" id="getOtpBtn" style="margin-top:16px">Get OTP</button>
+          <p class="sec" style="text-align:center;margin-top:22px">By continuing, you agree to our<br><span class="link">Terms &amp; Conditions</span> &nbsp;•&nbsp; <span class="link">Privacy Policy</span></p>
+        </div>
+        <div id="loginOtpStep" hidden>
+          <p class="h2" style="text-align:center;margin:28px 0 8px">Verify OTP</p>
+          <p class="sec" style="text-align:center;margin-bottom:14px">Code sent to <b id="otpPhoneLabel"></b> · <span class="link" id="changeNumBtn">Change</span></p>
+          <div class="otp-row">
+            <input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp>
+            <input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp>
           </div>
+          <button class="btn btn-blue" id="verifyOtpBtn" style="margin-top:16px">Verify &amp; Continue</button>
+          <p style="text-align:center;margin-top:16px" class="sec">Didn't get it? <span class="link" id="resendBtn">Resend OTP</span></p>
         </div>
       </div>
     </div>
-
-    <!-- HOME -->
-    <div class="screen" id="screen-home">
-      <div class="topbar">
-        <div class="location-row" style="margin:0"><span>&#128205;</span> <b>Ahmedabad, Satellite</b></div>
-        <div class="spacer"></div>
-        <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
-      </div>
-      <div class="searchbar">
-        <span>&#128269;</span>
-        <input id="searchInput" type="search" data-i18n-ph="searchPlaceholder" placeholder="Search plumber, electrician..." oninput="renderResults()">
-        <button class="clear" id="searchClear" data-i18n-aria="searchClear" aria-label="Clear search" onclick="clearSearch()">&#10005;</button>
-      </div>
-      <p class="grid-label" data-i18n="popularServices">Popular services</p>
-      <div class="svc-grid" id="svcGrid"></div>
-      <div class="sort-row" id="sortRow"></div>
-      <p class="result-count" id="resultCount"></p>
-      <div id="resultsList"></div>
-    </div>
-
-    <!-- DETAIL -->
-    <div class="screen nonav" id="screen-detail">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <div class="spacer"></div>
-        <button class="iconbtn" data-i18n-aria="chat" aria-label="Chat" onclick="openChatCustomer()">&#128172;</button>
-        <button class="iconbtn" id="saveBtn" data-i18n-aria="saveAria" aria-label="Save" onclick="toggleSave()">&#9825;</button>
-      </div>
-      <div class="detail-hero"></div>
-      <div class="detail-card">
-        <div class="detail-avatar" id="detailAvatar">R</div>
-        <div>
-          <span style="font-size:16px;font-weight:600" id="detailName"></span>
-          <span class="verified" id="detailVerified">&#10003; <span data-i18n="verified">Verified</span></span>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin:3px 0 0" id="detailCat"></p>
-        <a class="phone-pill" id="detailPhoneLink" href="#"><span>&#128222;</span> <span id="detailPhone"></span></a>
-
-        <div class="detail-stats">
-          <div class="stat"><b id="detailRating"></b><span data-i18n="rating">Rating</span></div>
-          <div class="stat"><b id="detailReviews"></b><span data-i18n="reviews">Reviews</span></div>
-          <div class="stat"><b id="detailDist"></b><span data-i18n="distance">Distance</span></div>
-          <div class="stat"><b id="detailExp"></b><span data-i18n="experience">Experience</span></div>
-        </div>
-
-        <p class="section-label" data-i18n="workPhotos" id="detailPhotosLabel">Work photos</p>
-        <div id="detailPhotos"></div>
-
-        <p class="section-label" data-i18n="servicesOffered">Services offered</p>
-        <div id="detailServices"></div>
-
-        <p class="section-label" data-i18n="recentReviews">Recent reviews</p>
-        <div id="detailReviewsList"></div>
-
-        <div class="sticky-cta">
-          <button class="btn btn-primary" onclick="openBooking()" data-i18n="bookNow">Book Now</button>
-          <a class="btn" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()">Call</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- BOOKING DETAILS -->
-    <div class="screen nonav" id="screen-booking">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="bookService">Book Service</span>
-      </div>
-      <div class="book-provider" id="bookProvider"></div>
-      <p class="section-label" data-i18n="selectDate">Select date &amp; time</p>
-      <div class="slot-row" id="dateRow"></div>
-      <div class="slot-grid" id="timeRow"></div>
-      <div class="field"><label for="bkAddress" data-i18n="serviceAddress">Service address</label><input id="bkAddress" data-i18n-ph="addressPh" placeholder="Your address"></div>
-      <div class="field"><label for="bkNote" data-i18n="additionalNote">Additional note (optional)</label><textarea id="bkNote" rows="2" data-i18n-ph="notePh" placeholder="Any specific requirement?"></textarea></div>
-      <button class="btn btn-primary btn-block" id="confirmBookingBtn" onclick="confirmBooking()" data-i18n="confirmBooking">Confirm Booking</button>
-    </div>
-
-    <!-- CHAT -->
-    <div class="screen nonav" id="screen-chat">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" id="chatTitle">Chat</span>
-      </div>
-      <div id="chatBody" class="chat-body"></div>
-      <div class="chat-input">
-        <input id="chatInput" data-i18n-ph="typeMsg" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="btn btn-primary" onclick="sendChat()" data-i18n="sendMsg">Send</button>
-      </div>
-    </div>
-
-    <!-- SAVED -->
-    <div class="screen" id="screen-saved">
-      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="savedTitle">Saved</span></div>
-      <p class="result-count" id="savedCount"></p>
-      <div id="savedList"></div>
-    </div>
-
-    <!-- MY BOOKINGS -->
-    <div class="screen" id="screen-history">
-      <div class="topbar"><span class="title" data-i18n="myBookingsTitle">My Bookings</span></div>
-      <div class="sort-row" id="bookingTabs"></div>
-      <div id="bookingsList"></div>
-    </div>
-
-    <!-- PROFILE -->
-    <div class="screen" id="screen-profile">
-      <div class="topbar"><span class="title" data-i18n="profileTitle">Profile</span></div>
-      <div class="profile-head">
-        <div class="avatar-lg">S</div>
-        <div>
-          <p style="font-weight:600;font-size:14.5px;margin:0" id="profileName">Sanjay Mehta</p>
-          <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="profilePhone">+91 98765 43210</p>
-        </div>
-      </div>
-      <button class="list-row" onclick="goTo('editprofile')"><span class="ic">&#9998;</span><span class="lbl" data-i18n="editProfile">Edit profile</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('saved')"><span class="ic">&#9825;</span><span class="lbl" data-i18n="savedProviders">Saved providers</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('history')"><span class="ic">&#128337;</span><span class="lbl" data-i18n="bookingHistory">Booking history</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="openNotifications()"><span class="ic">&#128276;</span><span class="lbl" data-i18n="notifications">Notifications</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('settings')"><span class="ic">&#9881;</span><span class="lbl" data-i18n="settings">Settings</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="toast(t('supportToast'))"><span class="ic">&#128172;</span><span class="lbl" data-i18n="helpSupport">Help and support</span><span class="chev">&#8250;</span></button>
-      <button class="btn btn-outline-danger" style="margin-top:16px" data-i18n="logout" onclick="logout()">Log out</button>
-    </div>
-
-    <!-- EDIT PROFILE -->
-    <div class="screen nonav" id="screen-editprofile">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="editProfile">Edit profile</span>
-      </div>
-      <div class="field"><label for="epName" data-i18n="fullName">Full name</label><input id="epName" value="Sanjay Mehta"></div>
-      <div class="field"><label for="epPhone" data-i18n="mobileNumber">Mobile number</label><input id="epPhone" type="tel" inputmode="numeric" value="+91 98765 43210"></div>
-      <div class="field"><label for="epArea" data-i18n="homeArea">Home area</label><input id="epArea" value="Satellite, Ahmedabad"></div>
-      <button class="btn btn-primary btn-block" data-i18n="saveChanges" onclick="saveProfile()">Save changes</button>
-    </div>
-
-    <!-- NOTIFICATIONS -->
-    <div class="screen nonav" id="screen-notifications">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="notifications">Notifications</span>
-      </div>
-      <div class="notif-row"><div class="notif-ic">&#9989;</div><div><p class="notif-title" data-i18n="notif1Title">Rajesh Kumar answered your call</p><p class="notif-body" data-i18n="notif1Body">Your call was answered</p><span class="notif-time" data-i18n="notif1Time">10 min ago</span></div></div>
-      <div class="notif-row"><div class="notif-ic">&#11088;</div><div><p class="notif-title" data-i18n="notif2Title">Don't forget to rate</p><p class="notif-body" data-i18n="notif2Body">Rate Manoj Solanki's work</p><span class="notif-time" data-i18n="notif2Time">1 day ago</span></div></div>
-      <div class="notif-row"><div class="notif-ic">&#127881;</div><div><p class="notif-title" data-i18n="notif3Title">New provider joined</p><p class="notif-body" data-i18n="notif3Body">A new tailor is available in your area</p><span class="notif-time" data-i18n="notif3Time">3 days ago</span></div></div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div class="screen nonav" id="screen-settings">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="settings">Settings</span>
-      </div>
-      <button class="list-row" onclick="toggleLangPop()"><span class="ic">&#127760;</span><span class="lbl" data-i18n="languageRow">Language</span><span class="chev" id="langRowValue">English</span></button>
-      <div class="list-row static">
-        <span class="ic">&#128276;</span><span class="lbl" data-i18n="pushNotifications">Push notifications</span>
-        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="pushNotifications" aria-label="Push notifications" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-      </div>
-      <div class="list-row static">
-        <span class="ic">&#128205;</span><span class="lbl" data-i18n="locationAccess">Location access</span>
-        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="locationAccess" aria-label="Location access" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-      </div>
-      <button class="list-row" onclick="toast(t('privacyToast'))"><span class="ic">&#128274;</span><span class="lbl" data-i18n="privacyPolicy">Privacy policy</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="toast(t('aboutToast'))"><span class="ic">&#8505;</span><span class="lbl" data-i18n="about">About</span><span class="chev">&#8250;</span></button>
-    </div>
-
-    <!-- SHARED BOTTOM NAV — one copy, all screens -->
-    <nav class="bottomnav hidden" id="bottomNav">
-      <button class="navitem" data-nav="home" onclick="goTo('home')"><span class="ic">&#127968;</span><span data-i18n="navHome">Home</span></button>
-      <button class="navitem" data-nav="saved" onclick="goTo('saved')"><span class="ic">&#9825;</span><span data-i18n="navSaved">Saved</span></button>
-      <button class="navitem" data-nav="history" onclick="goTo('history')"><span class="ic">&#128337;</span><span data-i18n="navHistory">History</span></button>
-      <button class="navitem" data-nav="profile" onclick="goTo('profile')"><span class="ic">&#128100;</span><span data-i18n="navProfile">Profile</span></button>
-    </nav>
-
-    <!-- LANGUAGE SWITCHER -->
-    <div class="langpop" id="langPop" role="menu" hidden></div>
-    <button class="langfab" id="langFab" aria-haspopup="true" aria-expanded="false" data-i18n-aria="langSelect" aria-label="Select language" onclick="event.stopPropagation(); toggleLangPop()"><span class="globe">&#127760;</span><span id="langCode">EN</span></button>
-
-    <!-- SHARED TOAST -->
-    <div class="toast" id="toastEl" role="status" aria-live="polite"></div>
   </div>
-  <footer data-i18n="footer">The full customer app is clickable — onboarding, login/OTP, search, saved, history, profile, notifications and settings all work. No real signup or payment.</footer>
-</div>
 
+  <!-- 03 HOME -->
+  <div class="screen" id="s-home">
+    <div class="hdr">
+      <div>
+        <div class="wm" style="font-size:22px"><span class="h">Help</span><span class="z">Zo</span></div>
+        <div class="meta" style="margin-top:1px"><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)">Ahmedabad</b> &#9662;</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="ic-btn" data-go="notifications"><span class="dot"></span>&#128276;</div>
+    </div>
+    <div class="scroll">
+      <div class="hero">
+        <span class="worker">&#128104;&#8205;&#128295;</span>
+        <h3>Need a Service?</h3><p>We're here to help!</p>
+        <div class="searchbar"><span>&#128269;</span><input id="homeSearch" placeholder="Search for service (e.g. Plumber)"><div class="go">&#128269;</div></div>
+      </div>
+      <div class="pad">
+        <div class="sectitle"><span class="h2">Popular Services</span><span class="link">See All</span></div>
+        <div class="sgrid" id="catGrid"></div>
+        <div class="sectitle"><span class="h2">Top Providers Near You</span><span class="link" data-go="list">See All</span></div>
+        <div id="homeTop"></div>
+      </div>
+    </div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 04 PROVIDER LIST -->
+  <div class="screen" id="s-list">
+    <div class="hdr">
+      <div class="ic-btn" data-go="home">&#8249;</div>
+      <div><p class="h1" id="listTitle">Providers</p><div class="meta">&#128205; Ahmedabad &#9662;</div></div>
+    </div>
+    <div class="pad" style="padding-bottom:8px"><div class="chips">
+      <div class="chip on">All</div><div class="chip">Top Rated</div><div class="chip">Nearest</div><div class="chip">Price Low</div>
+    </div></div>
+    <div class="scroll" style="padding-top:0"><div class="pad" id="listCards"></div></div>
+  </div>
+
+  <!-- 05 PROVIDER PROFILE -->
+  <div class="screen" id="s-profile">
+    <div class="scroll" style="padding-bottom:96px">
+      <div class="cover">
+        <div class="cbtn" style="left:14px" data-go="list">&#8249;</div>
+        <div class="cbtn" style="right:14px;color:var(--danger)" id="saveHeart">&#9825;</div>
+        <div class="big">&#128104;&#8205;&#128295;</div>
+      </div>
+      <div class="sheet pad" id="profileBody"></div>
+    </div>
+    <div class="sticky">
+      <button class="btn btn-green" style="flex:2" data-go="book">Book Now</button>
+      <button class="btn btn-out-green" style="flex:1" id="callBtn">&#128222; Call</button>
+    </div>
+  </div>
+
+  <!-- 06 BOOK SERVICE -->
+  <div class="screen" id="s-book">
+    <div class="hdr"><div class="ic-btn" data-go="profile">&#8249;</div><p class="h1">Book Service</p></div>
+    <div class="scroll" style="padding-bottom:96px"><div class="pad">
+      <div class="card" id="bookProvider" style="display:flex;gap:12px;align-items:center"></div>
+      <p class="h2" style="margin:20px 0 12px">Select Date &amp; Time</p>
+      <div style="display:flex;gap:10px" id="dateRow"></div>
+      <div class="slots" style="margin-top:14px" id="slotRow">
+        <div class="slot">9:00 AM</div><div class="slot">11:00 AM</div><div class="slot on">2:00 PM</div>
+        <div class="slot">5:00 PM</div><div class="slot">7:00 PM</div>
+      </div>
+      <p class="h2" style="margin:22px 0 10px">Service Address</p>
+      <div class="field"><span>&#128205;</span><input id="bookAddr" placeholder="Enter your address" value="Bopal, Ahmedabad"></div>
+      <p class="h2" style="margin:22px 0 10px">Additional Note (Optional)</p>
+      <textarea class="ta" id="bookNote" placeholder="Any specific requirement?"></textarea>
+    </div></div>
+    <div class="sticky"><button class="btn btn-green" id="confirmBookBtn">Confirm Booking</button></div>
+  </div>
+
+  <!-- 07 MY BOOKINGS -->
+  <div class="screen" id="s-bookings">
+    <div class="hdr"><div class="ic-btn" data-go="home">&#8249;</div><p class="h1">My Bookings</p></div>
+    <div class="pad" style="padding-bottom:6px"><div class="chips">
+      <div class="chip on">Upcoming</div><div class="chip">Completed</div><div class="chip">Cancelled</div>
+    </div></div>
+    <div class="scroll" style="padding-top:0"><div class="pad" id="bookRows"></div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 08 SAVED -->
+  <div class="screen" id="s-saved">
+    <div class="hdr"><div class="ic-btn" data-go="home">&#8249;</div><p class="h1">Saved Providers</p></div>
+    <div class="scroll"><div class="pad" id="savedRows"></div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 09 NOTIFICATIONS -->
+  <div class="screen" id="s-notifications">
+    <div class="hdr"><div class="ic-btn" data-go="home">&#8249;</div><p class="h1">Notifications</p></div>
+    <div class="scroll"><div class="pad" id="notifRows"></div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 10 PROFILE -->
+  <div class="screen" id="s-account">
+    <div class="scroll"><div class="pad">
+      <div style="display:flex;align-items:center;gap:12px;margin-top:calc(6px + env(safe-area-inset-top,0))">
+        <div class="avatar" id="accAvatar" style="width:64px;height:64px">PP</div>
+        <div style="flex:1"><div class="h2" id="accName">Guest User</div><div class="sec" id="accPhone">+91 -----</div></div>
+        <div class="ic-btn">&#9998;</div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div style="display:flex;align-items:center"><span style="color:var(--success)">&#9673;</span>&nbsp;<b style="color:var(--tPrimary)">Complete Profile</b><div class="spacer"></div><b>80%</b></div>
+        <div class="prog"><span style="width:80%"></span></div>
+      </div>
+      <div class="card" style="margin-top:16px;padding:4px 16px">
+        <div class="mrow" data-go="bookings"><span class="mi">&#128197;</span><span class="ml">My Bookings</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-go="saved"><span class="mi">&#10084;</span><span class="ml">Saved Providers</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><span class="mi">&#128196;</span><span class="ml">Terms &amp; Conditions</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><span class="mi">&#128274;</span><span class="ml">Privacy Policy</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><span class="mi">&#8505;</span><span class="ml">About HelpZo</span><span class="mc">&#8250;</span></div>
+      </div>
+      <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
