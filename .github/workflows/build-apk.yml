@@ -22,9 +22,9 @@ jobs:
       matrix:
         include:
           - app: customer-app
-            artifact: LocalPro-Customer
+            artifact: HelpZo-Customer
           - app: provider-app
-            artifact: LocalPro-Provider
+            artifact: HelpZo-Provider
 
     steps:
       - name: Checkout
@@ -118,10 +118,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-latest
-          name: LocalPro APKs (latest build)
+          name: HelpZo APKs (latest build)
           body: |
             Latest debug APKs built from the feature branch.
-            - LocalPro-Customer-debug.apk
-            - LocalPro-Provider-debug.apk
+            - HelpZo-Customer-debug.apk
+            - HelpZo-Provider-debug.apk
           prerelease: true
           files: apks/*.apk
