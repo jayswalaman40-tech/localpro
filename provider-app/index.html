@@ -2,550 +2,631 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helpzo Partner — manage your leads</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>HelpZo Partner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#0B2450; --ink-soft:#3B4A6B; --muted:#8A93A8;
-    --bg:#F2F6FD; --card:#FFFFFF;
-    --amber:#F0A93B; --amber-ink:#5A3A0B;
-    --teal:#16A34A; --teal-bg:#E7F6EC;
-    --blue:#1267FF; --blue-bg:#E8F0FF;
-    --line:#DFE3EC; --danger:#C1462E; --danger-bg:#FBEAE7;
-    --radius:16px;
-    --shadow:0 1px 2px rgba(27,36,64,.06), 0 8px 24px rgba(27,36,64,.06);
+    --primary:#1667E8; --primaryDark:#0B3E9E; --primaryDeep:#062B7A;
+    --success:#22B24C; --successDark:#1B9E3E; --danger:#E53935; --warning:#F5A623;
+    --bg:#FFFFFF; --bgMuted:#F5F7FA; --card:#FFFFFF; --cardBorder:#EDEFF3;
+    --tPrimary:#0F2547; --tSecondary:#6B7280; --tTertiary:#9AA3B2;
+    --star:#F6B01E; --whatsapp:#25D366; --verified:#1D9BF0;
   }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; font-family:'Inter',system-ui,sans-serif;
-    background:var(--bg); color:var(--ink);
-    min-height:100dvh; display:flex; justify-content:center;
-  }
-  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
-  .stage{width:100%;max-width:520px;}
-  .stage-header{display:none;}
-  .brand{display:flex;align-items:center;gap:10px;}
-  .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--amber);display:flex;align-items:center;justify-content:center;color:var(--amber-ink);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
-  .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;letter-spacing:.2px;}
-  .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:20px;background:var(--card);}
-
-  .phone{position:relative;width:100%;height:100dvh;background:var(--card);overflow:hidden;box-shadow:var(--shadow);}
-  .notch{display:none;}
-
-  .screen{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 92px;scrollbar-width:none;}
-  .screen::-webkit-scrollbar{display:none;}
-  .screen.active{display:block;}
-  .screen.nonav{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));}
-
-  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .topbar .title{font-size:14.5px;font-weight:600;}
-  .topbar .spacer{flex:1;}
-  .iconbtn{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;position:relative;padding:0;color:var(--ink);font-family:inherit;}
-  .iconbtn:focus-visible,.btn:focus-visible,.navitem:focus-visible,.toggle:focus-visible,.list-row:focus-visible,.lead-card:focus-visible,.stat-card:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
-  .dot{position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--card);}
-  .dot.hidden{display:none;}
-
-  .greeting{font-size:17px;font-weight:600;margin:0 0 3px;font-family:'Space Grotesk',sans-serif;}
-  .greeting-sub{font-size:12px;color:var(--muted);margin:0 0 18px;}
-  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
-  .online-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;}
-  .online-card .oc-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;}
-  .online-card.on .oc-dot{background:var(--teal);box-shadow:0 0 0 4px var(--teal-bg);}
-  .online-card .oc-txt{flex:1;} .online-card .oc-txt b{font-size:13.5px;} .online-card .oc-txt span{display:block;font-size:11px;color:var(--muted);}
-  .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 20px;}
-  .qa{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;font-family:inherit;color:var(--ink);text-align:left;}
-  .qa:hover{border-color:var(--blue);} .qa .qic{width:34px;height:34px;border-radius:10px;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-  .qa .qlbl{font-size:12.5px;font-weight:600;}
-  .photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
-  .photo-cell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--bg);border:1px solid var(--line);}
-  .photo-cell img{width:100%;height:100%;object-fit:cover;display:block;}
-  .photo-cell .rm{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(11,36,80,.72);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0;}
-  .review-reply{margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:10px;font-size:12px;color:var(--ink-soft);}
-  .review-reply b{color:var(--blue);}
-  .badge.completed{background:var(--teal-bg);color:var(--teal);}
-  .badge.cancel{background:var(--danger-bg);color:var(--danger);}
-  .badge.confirmed{background:var(--blue-bg);color:var(--blue);}
-  .stepper{display:flex;gap:4px;margin:2px 0 18px;}
-  .stepper .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;}
-  .stepper .step::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--line);z-index:0;}
-  .stepper .step:first-child::before{display:none;}
-  .stepper .step.done::before,.stepper .step.active::before{background:var(--blue);}
-  .stepper .sc{width:28px;height:28px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);z-index:1;}
-  .stepper .step.active .sc{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .stepper .step.done .sc{background:var(--teal);color:#fff;border-color:var(--teal);}
-  .stepper .sl{font-size:9.5px;color:var(--muted);} .stepper .step.active .sl{color:var(--ink);font-weight:600;}
-  .skill-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
-  .skill-tile{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 4px;cursor:pointer;font-family:inherit;color:var(--ink);}
-  .skill-tile.active{border-color:var(--blue);background:var(--blue-bg);}
-  .skill-tile .sic{font-size:22px;} .skill-tile .slb{font-size:10px;text-align:center;line-height:1.1;color:var(--ink-soft);}
-  .ob-nav{display:flex;gap:10px;margin-top:18px;} .ob-nav .btn{flex:1;}
-  .ob-sum-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
-  .ob-sum-row span:first-child{color:var(--muted);} .ob-sum-row span:last-child{font-weight:600;text-align:right;}
-  .chat-body{padding-bottom:72px;}
-  .msg{max-width:78%;padding:8px 12px;border-radius:14px;font-size:13px;margin-bottom:8px;line-height:1.4;word-wrap:break-word;}
-  .msg.me{background:var(--blue);color:#fff;margin-left:auto;border-bottom-right-radius:4px;}
-  .msg.them{background:var(--bg);color:var(--ink);margin-right:auto;border-bottom-left-radius:4px;}
-  .msg .mt{display:block;font-size:9.5px;opacity:.7;margin-top:3px;}
-  .chat-input{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);}
-  .chat-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:20px;padding:10px 14px;font-family:inherit;font-size:13px;outline:none;color:var(--ink);background:var(--card);}
-  .chat-input .btn{padding:10px 16px;flex-shrink:0;}
-  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);width:100%;}
-  .stat-card.static{cursor:default;}
-  .stat-card .num{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
-  .stat-card .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
-  .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center;}
-  .section-label .link{color:var(--ink);cursor:pointer;text-transform:none;font-weight:600;font-size:11.5px;border:none;background:none;font-family:inherit;padding:0;}
-  .lead-card{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:9px;background:var(--card);cursor:pointer;}
-  .lead-card:hover{border-color:var(--ink-soft);}
-  .lead-top{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;}
-  .lead-time{font-size:10.5px;color:var(--muted);font-weight:400;white-space:nowrap;}
-  .lead-note{font-size:12px;color:var(--ink-soft);margin:4px 0 8px;}
-  .lead-actions{display:flex;gap:6px;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-family:inherit;font-size:13px;font-weight:600;line-height:1;padding:11px 14px;cursor:pointer;color:var(--ink);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .06s ease;-webkit-tap-highlight-color:transparent;}
-  .btn:hover{border-color:var(--ink);}
-  .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 2px 10px rgba(31,138,112,.28);}
-  .btn-primary:hover{background:#1A7761;border-color:#1A7761;}
-  .btn-block{width:100%;padding:13px;font-size:14px;}
-  .btn-outline-danger{width:100%;padding:12px;font-size:13px;border-color:var(--danger);color:var(--danger);background:var(--card);}
-  .btn-outline-danger:hover{background:var(--danger-bg);border-color:var(--danger);}
-  .btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
-  .btn-link{border:none;background:none;padding:0;font-size:11.5px;color:var(--ink);font-weight:600;cursor:pointer;font-family:inherit;}
-  .lead-actions .btn{flex:1;min-width:0;padding:9px;font-size:12px;}
-  .badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:9px;}
-  .badge.new{background:#FBEFDD;color:var(--amber-ink);}
-  .badge.contacted{background:var(--teal-bg);color:var(--teal);}
-  .empty{text-align:center;padding:40px 10px;color:var(--muted);font-size:13px;line-height:1.6;}
-  .field-error{font-size:11px;color:var(--danger);margin:-8px 0 12px;display:none;}
-  .field-error.show{display:block;}
-
-  .field{margin-bottom:14px;}
-  .field label{display:block;font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
-  .field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;}
-  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--ink);}
-  .field textarea{resize:vertical;min-height:64px;}
-  .field input[readonly]{background:var(--bg);color:var(--ink-soft);}
-  .note{background:#FBEFDD;border:1px solid #F0D9A8;color:#5A3A0B;font-size:11px;padding:9px 11px;border-radius:10px;margin:0 0 14px;line-height:1.5;}
-
-  .bottomnav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding:10px 6px calc(14px + env(safe-area-inset-bottom,0px));z-index:10;}
-  .bottomnav.hidden{display:none;}
-  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:10px;background:none;border:none;font-family:inherit;padding:2px 0;}
-  .navitem.active{color:var(--ink);}
-  .navitem .ic{font-size:17px;}
-
-  .toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ink);color:#fff;font-size:12.5px;padding:11px 14px;border-radius:10px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .25s, transform .25s;pointer-events:none;z-index:20;}
-  .toast.low{bottom:24px;}
-  .toast.show{opacity:1;transform:translateY(0);}
-  footer{display:none;}
-
-  .center-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;text-align:center;padding:20px 4px;}
-  .logo-big{width:64px;height:64px;border-radius:18px;background:var(--amber);color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;margin-bottom:18px;}
-  .h-title{font-size:19px;font-weight:600;margin:0 0 6px;font-family:'Space Grotesk',sans-serif;}
-  .h-sub{font-size:12.5px;color:var(--muted);margin:0 0 26px;max-width:260px;line-height:1.5;}
-  .form-col{width:100%;text-align:left;}
-  .otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:22px;}
-  .otp-box{width:44px;height:52px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:18px;font-family:'Space Grotesk',sans-serif;outline:none;color:var(--ink);background:var(--card);}
-  .otp-box:focus{border-color:var(--ink);}
-
-  /* Helpzo splash + logo */
-  .splash-hz{gap:0;}
-  .hz-stage{position:relative;width:260px;height:300px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
-  .hz-logo{width:230px;max-width:72vw;border-radius:26px;box-shadow:0 18px 44px rgba(11,37,107,.28);opacity:0;transform:scale(.6);animation:hzLogoIn .7s .9s ease-out forwards;}
-  @keyframes hzLogoIn{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
-  .hz-ic{position:absolute;left:50%;top:50%;font-size:36px;--x:0;--y:0;animation:hzFly 1.5s ease-in-out forwards;}
-  @keyframes hzFly{0%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(.5)}25%{opacity:1}70%{opacity:1;transform:translate(-50%,-50%) scale(.4)}85%{opacity:0;transform:translate(-50%,-50%) scale(.15)}100%{opacity:0}}
-  .hz-loader{width:130px;height:4px;border-radius:8px;background:rgba(27,36,64,.12);overflow:hidden;margin:16px 0 2px;opacity:0;animation:hzUp .5s 1.7s forwards;}
-  .hz-loader span{display:block;height:100%;width:40%;border-radius:8px;background:#1267FF;animation:hzLoad 1.4s 1.7s infinite;}
-  @keyframes hzLoad{from{transform:translateX(-120%)}to{transform:translateX(360%)}}
-  @keyframes hzUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .hz-login-logo{width:92px;border-radius:20px;box-shadow:0 10px 24px rgba(11,37,107,.22);margin-bottom:16px;}
-
-  .profile-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
-  .avatar-lg{width:56px;height:56px;border-radius:16px;background:#FBEFDD;color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
-  .list-row{display:flex;align-items:center;gap:12px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);cursor:pointer;background:none;text-align:left;font-family:inherit;color:var(--ink);}
-  .list-row.static{cursor:default;}
-  .list-row .ic{width:32px;height:32px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-  .list-row .lbl{font-size:13px;font-weight:500;flex:1;}
-  .list-row .chev{color:var(--muted);font-size:13px;}
-  .toggle{width:36px;height:20px;border-radius:12px;background:var(--line);position:relative;cursor:pointer;flex-shrink:0;border:none;padding:0;}
-  .toggle.on{background:var(--teal);}
-  .toggle .knob{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .15s;}
-  .toggle.on .knob{transform:translateX(16px);}
-
-  .review{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:9px;background:var(--card);}
-  .review-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:13px;font-weight:600;}
-  .review-body{font-size:12px;color:var(--ink-soft);}
-  .star{color:var(--amber);white-space:nowrap;}
-
-  .earn-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
-  .earn-row span:last-child{font-weight:600;white-space:nowrap;}
-  .earn-total{display:flex;justify-content:space-between;gap:10px;padding:12px 0 0;font-size:12.5px;font-weight:600;}
-
-  /* language switcher */
-  .langfab{position:absolute;right:14px;bottom:78px;z-index:30;display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.4px;padding:7px 11px;border-radius:22px;cursor:pointer;box-shadow:0 4px 14px rgba(27,36,64,.16);transition:border-color .15s ease,transform .06s ease;}
-  .langfab:hover{border-color:var(--ink);}
-  .langfab:active{transform:translateY(1px);}
-  .langfab .globe{font-size:14px;line-height:1;}
-  .langfab.low{bottom:22px;}
-  .langfab:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
-  .langpop{position:absolute;right:14px;bottom:122px;z-index:31;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;width:186px;}
-  .langpop.low{bottom:66px;}
-  .langpop[hidden]{display:none;}
-  .langpop .head{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;padding:6px 8px 5px;}
-  .langopt{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:none;background:none;font-family:inherit;text-align:left;padding:9px 8px;border-radius:9px;cursor:pointer;color:var(--ink);}
-  .langopt:hover{background:var(--bg);}
-  .langopt:focus-visible{outline:2px solid var(--ink);outline-offset:-1px;}
-  .langopt .native{font-weight:600;font-size:13px;}
-  .langopt .en{font-size:10.5px;color:var(--muted);}
-  .langopt.active{background:var(--teal-bg);}
-  .langopt.active .native{color:var(--teal);}
-  .langopt.active .en{color:var(--teal);}
-
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tPrimary);}
+  #app{min-height:100dvh;position:relative;overflow:hidden;max-width:520px;margin:0 auto;background:var(--bg);}
+  .screen{display:none;min-height:100dvh;flex-direction:column;}
+  .screen.on{display:flex;}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px;}
+  .scroll.sticky-pad{padding-bottom:96px;}
+  .pad{padding:16px;}
+  .safe-top{height:env(safe-area-inset-top,0);}
+  .h1{font-size:22px;font-weight:700;color:var(--tPrimary);margin:0;}
+  .h2{font-size:19px;font-weight:700;color:var(--tPrimary);margin:0;}
+  .h3{font-size:16px;font-weight:700;color:var(--tPrimary);margin:0;}
+  .sec{color:var(--tSecondary);font-size:14px;} .ter{color:var(--tTertiary);font-size:12px;}
+  .green-t{color:var(--successDark);font-weight:700;}
+  .link{color:var(--primary);font-weight:600;font-size:14px;cursor:pointer;}
+  .hdr{display:flex;align-items:center;gap:10px;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0));}
+  .hdr.blue{background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;}
+  .hdr.blue .h1{color:#fff;} .hdr.blue .sub{color:rgba(255,255,255,.82);font-size:13px;margin-top:2px;}
+  .htxt{flex:1;min-width:0;}
+  .ic-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--cardBorder);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tPrimary);flex-shrink:0;font-size:18px;}
+  .hdr.blue .ic-btn{background:rgba(255,255,255,.16);border-color:transparent;color:#fff;}
+  .hpill{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:20px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;flex-shrink:0;}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:16px;height:52px;font-weight:700;font-size:16px;border:none;cursor:pointer;width:100%;font-family:inherit;}
+  .btn:disabled{opacity:.55;}
+  .btn-blue{background:var(--primary);color:#fff;} .btn-green{background:var(--success);color:#fff;}
+  .btn-out{background:#fff;border:1.5px solid var(--primary);color:var(--primary);}
+  .btn-out-green{background:#fff;border:1.5px solid var(--success);color:var(--success);}
+  .btn-out-danger{background:#fff;border:1.5px solid var(--danger);color:var(--danger);}
+  .btn.sm{height:42px;font-size:13px;border-radius:12px;padding:0 12px;}
+  .card{background:var(--card);border:1px solid var(--cardBorder);border-radius:16px;padding:16px;box-shadow:0 4px 12px rgba(15,37,71,.05);}
+  .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0;} .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;height:38px;padding:0 16px;border-radius:20px;border:1px solid var(--cardBorder);background:#fff;color:var(--tSecondary);font-weight:600;font-size:13px;display:flex;align-items:center;cursor:pointer;}
+  .chip.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .pill.green{background:#D9F5E1;color:#1B9E3E;} .pill.orange{background:#FFEBCC;color:#E08A1E;}
+  .pill.blue{background:#DCE8FF;color:#1667E8;} .pill.purple{background:#ECDDFB;color:#8B44D6;}
+  .pill.grey{background:#EDEFF3;color:#6B7280;}
+  .verif{color:var(--verified);font-weight:600;}
+  .avatar{border-radius:50%;background:#DCE8FF;color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;background-size:cover;}
+  .rating .st{color:var(--star);}
+  .scirc{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;flex-shrink:0;}
+  .c-plumb{background:#2680EB;} .c-elec{background:#F5A623;} .c-ac{background:#4FC3F7;}
+  .c-carp{background:#8B5E3C;} .c-paint{background:#C724B1;} .c-clean{background:#2E9E5B;}
+  .c-home{background:#F5821F;} .c-more{background:#B8C0CC;}
+  .tabs{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:#fff;border-top:1px solid var(--cardBorder);display:flex;padding:8px 4px calc(10px + env(safe-area-inset-bottom,0px));z-index:20;}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--tSecondary);cursor:pointer;font-weight:600;position:relative;}
+  .tab .ti{font-size:20px;} .tab.on{color:var(--primary);}
+  .tbadge{position:absolute;top:-4px;right:22%;background:var(--danger);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+  .divide{height:1px;background:var(--cardBorder);margin:0;}
+  .field{display:flex;align-items:center;gap:12px;border:1px solid var(--cardBorder);border-radius:16px;min-height:60px;padding:10px 14px;background:#fff;}
+  .field .ftile{width:38px;height:38px;border-radius:11px;background:#EAF1FE;color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+  .field .fmid{flex:1;min-width:0;} .field .fl{font-weight:700;font-size:14px;color:var(--tPrimary);}
+  .field .fp{font-size:13px;color:var(--tSecondary);margin-top:2px;}
+  .field input,.field select{border:none;outline:none;width:100%;font-family:inherit;font-size:14px;background:transparent;color:var(--tPrimary);margin-top:2px;}
+  .field .flag{font-size:18px;} .field .cc{font-weight:600;color:var(--tPrimary);} .field .divl{width:1px;height:24px;background:var(--cardBorder);}
+  textarea.ta{width:100%;border:1px solid var(--cardBorder);border-radius:16px;padding:12px;font-family:inherit;font-size:13.5px;min-height:80px;resize:none;color:var(--tPrimary);outline:none;}
+  .searchbar{display:flex;align-items:center;gap:8px;background:var(--bgMuted);border-radius:16px;padding:12px 14px;}
+  .searchbar input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;color:var(--tPrimary);background:transparent;}
+  .meta{display:flex;align-items:center;gap:6px;color:var(--tSecondary);font-size:13px;margin-top:4px;}
+  .meta .mi{width:15px;text-align:center;opacity:.8;}
+  .sticky{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--cardBorder);z-index:15;}
+  .sheet{margin-top:-22px;background:#fff;border-radius:24px 24px 0 0;position:relative;z-index:2;flex:1;}
+  .splash{background:linear-gradient(180deg,var(--primaryDeep),var(--primary));color:#fff;align-items:center;justify-content:center;text-align:center;padding:30px;position:relative;}
+  .waveb{position:absolute;bottom:0;left:0;right:0;height:200px;background:
+     radial-gradient(120% 90% at 15% 130%, rgba(34,178,76,.35), transparent 55%),
+     radial-gradient(120% 90% at 95% 130%, rgba(22,103,232,.4), transparent 55%);pointer-events:none;}
+  .waves-lite{position:absolute;bottom:0;left:0;right:0;height:150px;background:
+     radial-gradient(120% 80% at 15% 130%, rgba(34,178,76,.16), transparent 55%),
+     radial-gradient(120% 80% at 95% 130%, rgba(22,103,232,.18), transparent 55%);pointer-events:none;}
+  .wm{display:inline-flex;align-items:center;gap:2px;font-weight:800;font-size:26px;}
+  .wm .h{color:var(--primary);} .wm .z{color:var(--success);}
+  .loader{width:150px;height:5px;border-radius:6px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:26px;}
+  .loader span{display:block;height:100%;width:45%;background:var(--success);border-radius:6px;animation:ld 1.6s infinite;}
+  @keyframes ld{from{transform:translateX(-130%)}to{transform:translateX(360%)}}
+  .steps{display:flex;align-items:center;margin:4px 0 18px;}
+  .step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 auto;}
+  .step .sc{width:32px;height:32px;border-radius:50%;background:#E7EAF0;color:var(--tSecondary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+  .step.on .sc{background:var(--primary);color:#fff;} .step.done .sc{background:var(--success);color:#fff;}
+  .step .sl{font-size:11px;color:var(--tSecondary);} .step.on .sl{color:var(--primary);font-weight:700;}
+  .stepline{flex:1;height:2px;background:#E7EAF0;margin:0 4px 18px;}
+  .stepline.done{background:var(--success);}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .stat{background:var(--bgMuted);border-radius:14px;padding:12px 6px;text-align:center;}
+  .stat .sv{font-weight:800;font-size:16px;color:var(--tPrimary);} .stat .sn{font-size:10.5px;color:var(--tSecondary);margin-top:3px;line-height:1.2;}
+  .stat .si{font-size:16px;margin-bottom:2px;}
+  .jp{display:flex;align-items:flex-start;margin-top:12px;}
+  .jpn{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;}
+  .jpc{width:28px;height:28px;border-radius:50%;background:#E7EAF0;color:var(--tSecondary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:2;}
+  .jpn.done .jpc{background:var(--success);color:#fff;} .jpn.act .jpc{background:var(--primary);color:#fff;}
+  .jpl{font-size:10.5px;color:var(--tSecondary);text-align:center;} .jpn.done .jpl,.jpn.act .jpl{color:var(--tPrimary);font-weight:600;}
+  .jpt{font-size:9.5px;color:var(--tTertiary);}
+  .jpbar{position:absolute;top:14px;left:50%;width:100%;height:2px;background:#E7EAF0;z-index:1;}
+  .jpn.done .jpbar{background:var(--success);}
+  .mapbox{height:150px;border-radius:14px;background:linear-gradient(135deg,#e8f0fb,#dde8f6);position:relative;overflow:hidden;border:1px solid var(--cardBorder);display:flex;align-items:center;justify-content:center;}
+  .mapbox .pin{font-size:32px;} .mapbox .road{position:absolute;height:3px;background:#1667E8;opacity:.5;}
+  .maplg{height:210px;}
+  .bubl{max-width:78%;padding:10px 13px;border-radius:16px;font-size:13.5px;line-height:1.35;margin-bottom:2px;word-wrap:break-word;}
+  .bin{background:var(--bgMuted);color:var(--tPrimary);border-bottom-left-radius:5px;}
+  .bout{background:var(--primary);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
+  .brow{display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;}
+  .brow.out{justify-content:flex-end;} .btime{font-size:10px;color:var(--tTertiary);margin-top:3px;}
+  .datechip{align-self:center;background:var(--bgMuted);color:var(--tSecondary);font-size:11.5px;padding:5px 12px;border-radius:20px;margin:6px auto 14px;display:table;}
+  .inputbar{display:flex;align-items:center;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--cardBorder);background:#fff;}
+  .inputbar input{flex:1;background:var(--bgMuted);border:none;outline:none;border-radius:22px;padding:11px 14px;font-size:13.5px;color:var(--tPrimary);font-family:inherit;}
+  .send{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;border:none;cursor:pointer;}
+  .mrow{display:flex;align-items:center;gap:14px;padding:14px 4px;cursor:pointer;}
+  .mrow .mi{width:40px;height:40px;border-radius:11px;background:#EAF1FE;color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+  .mrow .mt{flex:1;min-width:0;} .mrow .mt .a{font-weight:600;font-size:14.5px;color:var(--tPrimary);}
+  .mrow .mt .b{font-size:12.5px;color:var(--tSecondary);margin-top:2px;}
+  .mc{color:var(--tTertiary);font-size:18px;}
+  .bars{display:flex;align-items:flex-end;gap:12px;height:150px;padding:10px 4px 0;}
+  .barcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;}
+  .bar{width:70%;background:var(--primary);border-radius:8px 8px 0 0;}
+  .barcol .bl{font-size:10px;color:var(--tSecondary);} .barcol .bv{font-size:10px;font-weight:700;color:var(--tPrimary);}
+  .rbar{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px;color:var(--tSecondary);}
+  .rtrack{flex:1;height:7px;border-radius:5px;background:var(--bgMuted);overflow:hidden;} .rfill{height:100%;background:var(--primary);border-radius:5px;}
+  .panel{background:#EAF6ED;border-radius:16px;padding:16px;}
+  .panel.blue{background:#EAF1FE;} .panel.grey{background:var(--bgMuted);}
+  .toggle{width:44px;height:26px;border-radius:16px;background:#D5DAE3;position:relative;flex-shrink:0;cursor:pointer;}
+  .toggle.on{background:var(--success);} .toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;} .toggle.on::after{left:21px;}
+  .tag{display:inline-block;background:var(--bgMuted);color:var(--tSecondary);font-size:11px;padding:4px 10px;border-radius:12px;margin:4px 4px 0 0;}
+  .segpill{display:inline-flex;background:var(--bgMuted);border-radius:12px;padding:3px;}
+  .segpill span{padding:6px 14px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--tSecondary);cursor:pointer;}
+  .segpill span.on{background:#fff;color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px;}
+  .infotile{background:var(--bgMuted);border-radius:14px;padding:12px;}
+  .infotile .it1{font-size:11px;color:var(--tSecondary);} .infotile .it2{font-weight:700;font-size:13.5px;margin-top:3px;}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tPrimary);padding:5px 0;cursor:pointer;}
+  .cbox{width:20px;height:20px;border-radius:6px;border:1.6px solid var(--cardBorder);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;flex-shrink:0;}
+  .cbox.on{background:var(--primary);border-color:var(--primary);}
+  .thumb{height:70px;border-radius:12px;background:linear-gradient(135deg,#cfe0f5,#e6eefa);display:flex;align-items:center;justify-content:center;font-size:24px;color:#7d98c0;flex-direction:column;}
+  .stile{text-align:center;cursor:pointer;}
+  .stile .lb{font-size:12px;margin-top:6px;font-weight:600;color:var(--tPrimary);}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0F2547;color:#fff;padding:12px 18px;border-radius:14px;font-size:13.5px;font-weight:600;z-index:100;max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+  .toast.show{opacity:1;bottom:104px;}
+  .otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0;}
+  .otp-row input{width:46px;height:54px;border:1px solid var(--cardBorder);border-radius:14px;text-align:center;font-size:22px;font-weight:700;color:var(--tPrimary);outline:none;font-family:inherit;}
+  .otp-row input:focus{border-color:var(--primary);}
+  .empty{text-align:center;color:var(--tSecondary);font-size:14px;padding:40px 20px;}
 </style>
 </head>
 <body>
-<div class="stage">
-  <div class="stage-header">
-    <div class="brand">
-      <div class="brand-mark">L</div>
-      <div class="brand-name">LocalPro — Provider</div>
+<div id="app">
+  <svg style="display:none"><defs>
+    <g id="mark">
+      <path d="M8 15 L24 4 L40 15" fill="none" stroke="#1667E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11 15 V40 H37 V15" fill="none" stroke="#1667E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="20" cy="26" r="6.2" fill="none" stroke="#22B24C" stroke-width="3.2"/>
+      <path d="M24 30 L33 39" stroke="#22B24C" stroke-width="3.6" stroke-linecap="round"/>
+    </g>
+  </defs></svg>
+
+  <!-- 01 SPLASH -->
+  <div class="screen on splash" id="s-splash">
+    <div class="waveb"></div>
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;">
+      <svg viewBox="0 0 48 48" width="64" height="64"><use href="#mark"/></svg>
+      <div class="wm" style="font-size:38px;margin-top:8px"><span class="h" style="color:#fff">Help</span><span class="z">Zo</span></div>
+      <div style="font-size:14px;letter-spacing:.5px;margin-top:8px;opacity:.92;font-weight:600">Work Smart &nbsp;•&nbsp; Earn More</div>
+      <div style="font-size:96px;margin:30px 0 14px">&#128104;&#8205;&#128295;</div>
+      <div style="font-size:22px;font-weight:700">Provider App</div>
+      <div style="font-size:14px;opacity:.9;margin-top:4px">Grow Your Business</div>
+      <div class="loader"><span></span></div>
     </div>
-    <div class="tag">Live app · Supabase backend</div>
   </div>
 
-  <div class="phone">
-    <div class="notch"></div>
-
-    <!-- SPLASH -->
-    <div class="screen active nonav" id="screen-splash">
-      <div class="center-col splash-hz">
-        <div class="hz-stage">
-          <span class="hz-ic" style="--x:-96px;--y:-104px">&#128295;</span>
-          <span class="hz-ic" style="--x:98px;--y:-92px;animation-delay:.08s">&#128268;</span>
-          <span class="hz-ic" style="--x:-108px;--y:44px;animation-delay:.04s">&#127912;</span>
-          <span class="hz-ic" style="--x:104px;--y:52px;animation-delay:.14s">&#129529;</span>
-          <span class="hz-ic" style="--x:-42px;--y:120px;animation-delay:.2s">&#9986;&#65039;</span>
-          <span class="hz-ic" style="--x:46px;--y:126px;animation-delay:.26s">&#127859;</span>
-          <img class="hz-logo" src="/helpzo-logo.jpg" alt="Helpzo Partner — Your Help, Our Priority">
+  <!-- 02 LOGIN / OTP -->
+  <div class="screen" id="s-login">
+    <div class="waves-lite"></div>
+    <div class="scroll" style="position:relative;z-index:2;padding-bottom:20px">
+      <div class="pad">
+        <div style="text-align:center;margin-top:30px">
+          <svg viewBox="0 0 48 48" width="56" height="56"><use href="#mark"/></svg>
+          <div class="wm" style="font-size:28px;margin-top:4px"><span class="h">Help</span><span class="z">Zo</span></div>
+          <div style="font-weight:700;color:var(--tPrimary);margin-top:2px">Provider App</div>
         </div>
-        <div class="hz-loader"><span></span></div>
-        <button class="btn btn-primary btn-block" data-i18n="start" onclick="goTo('login')" style="margin-top:18px">Get started</button>
-      </div>
-    </div>
 
-    <!-- LOGIN + OTP (same page) -->
-    <div class="screen nonav" id="screen-login">
-      <div class="center-col" style="justify-content:flex-start;padding-top:44px;">
-        <img class="hz-login-logo" src="/helpzo-logo.jpg" alt="Helpzo Partner">
-        <p class="h-title" data-i18n="loginTitle">Enter your number</p>
-        <p class="h-sub" data-i18n="loginSub">We'll send an OTP to verify.</p>
-        <div class="form-col">
-          <div class="field">
-            <label for="loginPhone" data-i18n="mobileNumber">Mobile number</label>
-            <input id="loginPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" data-i18n-ph="phonePlaceholder" placeholder="10-digit number" oninput="validatePhone()">
+        <!-- phone step -->
+        <div id="loginPhoneStep">
+          <div class="h2" style="margin:28px 0 14px">Login to Your Account</div>
+          <div class="field" style="min-height:56px">
+            <span class="flag">&#127470;&#127475;</span><span class="cc">+91</span><span style="color:var(--tSecondary)">&#9662;</span>
+            <span class="divl"></span>
+            <input id="phone" placeholder="Enter Mobile Number" inputmode="numeric" maxlength="10" style="margin-top:0">
           </div>
-          <p class="field-error" id="loginPhoneErr" data-i18n="phoneError">Enter a valid 10-digit number.</p>
-          <button class="btn btn-primary btn-block" id="sendOtpBtn" data-i18n="sendOtp" onclick="sendOtp()">Send OTP</button>
+          <button class="btn btn-blue" id="getOtpBtn" style="margin-top:16px">Get OTP</button>
+          <div class="sec" style="text-align:center;margin-top:16px">By continuing, you agree to our<br><span class="link">Terms &amp; Conditions</span> and <span class="link">Privacy Policy</span></div>
+          <div style="text-align:center;margin-top:36px;font-size:14px;color:var(--tSecondary)">New to HelpZo? <span class="link" data-go="reg1">Register as Provider</span></div>
+        </div>
 
-          <!-- OTP appears here on the same page after Send OTP -->
-          <div id="otpSection" hidden style="margin-top:24px">
-            <p class="h-sub" id="otpSub" style="max-width:none;margin:0 0 12px;text-align:center">Enter the 4-digit code sent to +91</p>
-            <div class="otp-row" id="otpRow">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 1">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 2">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 3">
-              <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" aria-label="OTP digit 4">
-            </div>
-            <button class="btn btn-primary btn-block" data-i18n="verifyNext" onclick="verifyOtp()">Verify &amp; continue</button>
-            <p style="font-size:11.5px;color:var(--muted);margin-top:14px;text-align:center"><span data-i18n="noCode">Didn't get the code?</span> <button class="btn-link" data-i18n="resend" onclick="sendOtp()">Resend</button></p>
+        <!-- otp step -->
+        <div id="loginOtpStep" hidden>
+          <div class="h2" style="margin:28px 0 6px">Verify OTP</div>
+          <div class="sec" style="margin-bottom:14px">Enter the 6-digit code sent to <b id="otpPhoneLabel"></b> <span class="link" id="changeNumBtn">Change</span></div>
+          <div class="otp-row">
+            <input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp>
+            <input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp><input inputmode="numeric" maxlength="1" data-otp>
           </div>
+          <button class="btn btn-blue" id="verifyOtpBtn" style="margin-top:16px">Verify &amp; Continue</button>
+          <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--tSecondary)">Didn't get it? <span class="link" id="resendBtn">Resend OTP</span></div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- ONBOARDING — multi-step registration wizard -->
-    <div class="screen nonav" id="screen-onboarding">
-      <div class="topbar"><span class="title" id="obStepTitle" data-i18n="obTitle">Create your profile</span></div>
-
-      <!-- stepper -->
-      <div class="stepper" id="obStepper">
-        <div class="step" data-s="1"><span class="sc">1</span><span class="sl" data-i18n="stepBasic">Basic</span></div>
-        <div class="step" data-s="2"><span class="sc">2</span><span class="sl" data-i18n="stepSkills">Skills</span></div>
-        <div class="step" data-s="3"><span class="sc">3</span><span class="sl" data-i18n="stepDocs">Documents</span></div>
-        <div class="step" data-s="4"><span class="sc">4</span><span class="sl" data-i18n="stepDone">Complete</span></div>
+  <!-- 03 REGISTER BASIC -->
+  <div class="screen" id="s-reg1">
+    <div class="hdr blue"><div class="ic-btn" data-go="login">&#8249;</div>
+      <div class="htxt"><div class="h1">Register as Provider</div><div class="sub">Join HelpZo and get more work</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="steps">
+        <div class="step on"><div class="sc">1</div><div class="sl">Basic</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">2</div><div class="sl">Details</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">3</div><div class="sl">Docs</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">4</div><div class="sl">Done</div></div>
       </div>
+      <div class="h2" style="margin-bottom:14px">Personal Details</div>
+      <div class="field"><div class="ftile">&#128100;</div><div class="fmid"><div class="fl">Full Name</div><input id="regName" placeholder="Enter your full name"></div></div>
+      <div class="field" style="margin-top:12px"><div class="ftile">&#128241;</div><div class="fmid"><div class="fl">Mobile Number</div><input id="regPhone" placeholder="+91 -----" readonly></div></div>
+      <div class="field" style="margin-top:12px"><div class="ftile">&#9993;</div><div class="fmid"><div class="fl">Email Address</div><input id="regEmail" placeholder="Enter your email (optional)" inputmode="email"></div></div>
+      <button class="btn btn-blue" style="margin-top:20px" data-go="reg2">Next</button>
+      <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--tSecondary)">Already have an account? <span class="link" data-go="login">Login</span></div>
+    </div></div>
+  </div>
 
-      <!-- STEP 1: Basic -->
-      <div class="ob-step" data-step="1">
-        <p class="section-label" data-i18n="obSectionPersonal">Personal details</p>
-        <div class="field"><label for="obName" data-i18n="fullName">Full name</label><input id="obName"></div>
-        <div class="field"><label for="obPhone" data-i18n="mobileNumber">Mobile number</label><input id="obPhone" type="tel" inputmode="numeric" readonly></div>
-        <div class="field"><label for="obEmail" data-i18n="emailOptional">Email (optional)</label><input id="obEmail" type="email" inputmode="email"></div>
-        <div class="field"><label for="obWhatsapp" data-i18n="whatsappNumber">WhatsApp number (optional)</label><input id="obWhatsapp" type="tel" inputmode="numeric"></div>
-        <div class="field"><label for="obGender" data-i18n="gender">Gender</label>
-          <select id="obGender"><option value="">—</option><option value="male" data-i18n="genderMale">Male</option><option value="female" data-i18n="genderFemale">Female</option><option value="other" data-i18n="genderOther">Other</option></select>
+  <!-- 19 REGISTER DETAILS -->
+  <div class="screen" id="s-reg2">
+    <div class="hdr blue"><div class="ic-btn" data-go="reg1">&#8249;</div>
+      <div class="htxt"><div class="h1">Register as Provider</div><div class="sub">Join HelpZo and get more work</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="steps">
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Basic</div></div><div class="stepline done"></div>
+        <div class="step on"><div class="sc">2</div><div class="sl">Details</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">3</div><div class="sl">Docs</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">4</div><div class="sl">Done</div></div>
+      </div>
+      <div class="h2" style="margin-bottom:12px">Service Details</div>
+      <div class="field" data-go="skills" style="cursor:pointer"><div class="ftile">&#9638;</div><div class="fmid"><div class="fl">Select Service Category</div><div class="fp" id="regCatLabel">Choose your primary service</div></div><span class="mc">&#8250;</span></div>
+      <div class="field" style="margin-top:12px"><div class="ftile">&#128205;</div><div class="fmid"><div class="fl">Service Area</div><input id="regArea" placeholder="e.g. Bodakdev, Ahmedabad" list="gujCities"></div></div>
+      <div class="h2" style="margin:18px 0 12px">Experience</div>
+      <div class="field"><div class="ftile">&#128188;</div><div class="fmid"><div class="fl">Experience (Years)</div><input id="regExp" placeholder="e.g. 3" inputmode="numeric"></div></div>
+      <div class="h2" style="margin:18px 0 12px">About You</div>
+      <textarea class="ta" id="regBio" maxlength="300" placeholder="Enter your short bio..."></textarea>
+      <div class="ter" style="text-align:right;margin-top:4px"><span id="bioCount">0</span>/300</div>
+      <button class="btn btn-blue" style="margin-top:16px" data-go="reg3">Next</button>
+    </div></div>
+    <datalist id="gujCities"></datalist>
+  </div>
+
+  <!-- 04 SERVICE & SKILLS -->
+  <div class="screen" id="s-skills">
+    <div class="hdr blue"><div class="ic-btn" data-go="reg2">&#8249;</div>
+      <div class="htxt"><div class="h1">Select Service &amp; Skills</div><div class="sub">Choose the services you provide</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="searchbar" style="margin-bottom:16px">&#128269;<input id="skillSearch" placeholder="Search service..."></div>
+      <div class="grid3" id="skillGrid"></div>
+      <div class="h2" style="margin:22px 0 12px">Experience (Years)</div>
+      <div style="display:flex;gap:10px" id="expPills">
+        <div class="chip" style="flex:1;justify-content:center" data-exp="0">&lt; 1</div>
+        <div class="chip on" style="flex:1;justify-content:center" data-exp="2">1 - 3</div>
+        <div class="chip" style="flex:1;justify-content:center" data-exp="4">3 - 5</div>
+        <div class="chip" style="flex:1;justify-content:center" data-exp="6">5+</div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:22px" id="skillsDoneBtn">Save &amp; Continue</button>
+    </div></div>
+  </div>
+
+  <!-- 20 REGISTER DOCUMENTS -->
+  <div class="screen" id="s-reg3">
+    <div class="hdr blue"><div class="ic-btn" data-go="reg2">&#8249;</div>
+      <div class="htxt"><div class="h1">Register as Provider</div><div class="sub">Join HelpZo and get more work</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="steps">
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Basic</div></div><div class="stepline done"></div>
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Details</div></div><div class="stepline done"></div>
+        <div class="step on"><div class="sc">3</div><div class="sl">Docs</div></div><div class="stepline"></div>
+        <div class="step"><div class="sc">4</div><div class="sl">Done</div></div>
+      </div>
+      <div class="h2">Upload Documents</div>
+      <div class="sec" style="margin:4px 0 14px">Upload your KYC documents to get verified</div>
+      <div id="docList"></div>
+      <div class="panel" style="display:flex;gap:10px;align-items:center;margin-top:6px"><span style="font-size:22px">&#128737;</span><div><div style="font-weight:700;font-size:14px">Your Documents are Safe</div><div class="sec" style="font-size:13px">We keep your documents secure and private.</div></div></div>
+      <button class="btn btn-blue" style="margin-top:16px" id="submitRegBtn">Submit for Verification</button>
+    </div></div>
+  </div>
+
+  <!-- 21 REGISTER SUBMITTED -->
+  <div class="screen" id="s-reg4">
+    <div class="hdr blue"><div class="htxt"><div class="h1">Register as Provider</div><div class="sub">Join HelpZo and get more work</div></div></div>
+    <div class="scroll sheet"><div class="pad" style="text-align:center">
+      <div class="steps">
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Basic</div></div><div class="stepline done"></div>
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Details</div></div><div class="stepline done"></div>
+        <div class="step done"><div class="sc">&#10003;</div><div class="sl">Docs</div></div><div class="stepline done"></div>
+        <div class="step on"><div class="sc">4</div><div class="sl">Done</div></div>
+      </div>
+      <div style="width:96px;height:96px;border-radius:50%;background:#E4F7EA;display:flex;align-items:center;justify-content:center;margin:18px auto;font-size:46px">&#9989;</div>
+      <div class="h1">Registration Submitted!</div>
+      <div class="sec" style="margin-top:8px">Your documents are under verification.</div>
+      <div class="panel" style="text-align:left;margin-top:22px">
+        <div style="display:flex;gap:12px;margin-bottom:14px"><span style="font-size:20px">&#128336;</span><div><div style="font-weight:700;font-size:14px">We'll review your documents</div><div class="sec" style="font-size:13px">This usually takes 24–48 hours</div></div></div>
+        <div style="display:flex;gap:12px;margin-bottom:14px"><span style="font-size:20px">&#9993;</span><div><div style="font-weight:700;font-size:14px">You'll get a notification</div><div class="sec" style="font-size:13px">We'll notify you once verified</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font-size:20px">&#128100;</span><div><div style="font-weight:700;font-size:14px">Start getting work</div><div class="sec" style="font-size:13px">After verification, you can start receiving service requests</div></div></div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:22px" data-go="jobs">Go to Dashboard</button>
+    </div></div>
+  </div>
+
+  <!-- 05 DOCUMENT VERIFICATION -->
+  <div class="screen" id="s-verify">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div>
+      <div class="htxt"><div class="h1">Document Verification</div><div class="sub">Your KYC documents</div></div></div>
+    <div class="scroll sheet"><div class="pad" id="verifyList"></div></div>
+  </div>
+
+  <!-- 06 ACTIVE JOBS (Jobs tab) -->
+  <div class="screen" id="s-jobs">
+    <div class="hdr blue"><div class="htxt"><div class="h1">Active Jobs</div><div class="sub">Manage your ongoing jobs</div></div>
+      <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on">Active (5)</div><div class="chip">Completed (18)</div><div class="chip">Cancelled (3)</div></div>
+      <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px">&#9776; Filter</button></div>
+      <div id="jobsList"></div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 07 LEADS -->
+  <div class="screen" id="s-leads">
+    <div class="hdr blue"><div class="htxt"><div class="h1">New Service Requests</div><div class="sub">Incoming leads for you</div></div><div class="ic-btn">&#9776;</div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="chips" style="margin-bottom:14px"><div class="chip on">All (12)</div><div class="chip">Pending (8)</div><div class="chip">Accepted (3)</div></div>
+      <div id="leadsList"></div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 08 JOB DETAILS -->
+  <div class="screen" id="s-jobdetail">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div>
+      <div class="htxt"><div class="h1">Job Details</div><div class="sub">View job details and accept</div></div><div class="ic-btn">&#8943;</div></div>
+    <div class="scroll sticky-pad sheet"><div class="pad" id="jobDetailBody"></div></div>
+    <div class="sticky"><button class="btn btn-out-danger">Reject</button><button class="btn btn-green" data-go="enroute">&#10003; Accept Job</button></div>
+  </div>
+
+  <!-- 09 EN ROUTE -->
+  <div class="screen" id="s-enroute">
+    <div class="hdr blue"><div class="ic-btn" data-go="jobs">&#8249;</div>
+      <div class="htxt"><div class="h1">En Route to Job</div><div class="sub">AC Repair • #SRV1234</div></div><button class="hpill">&#128222; Call</button></div>
+    <div class="scroll sticky-pad sheet"><div class="pad">
+      <div class="card" style="display:flex;gap:12px;align-items:center">
+        <div class="avatar" style="width:46px;height:46px">R</div>
+        <div style="flex:1"><div class="h3">Rahul Sharma</div>
+          <div class="meta"><span class="mi">&#128222;</span>+91 98765 43210 <span style="color:var(--whatsapp)">&#128172;</span></div>
+          <div class="sec" style="font-size:12.5px;margin-top:2px">A-702, Shaligram Residency, Bodakdev, Ahmedabad - 380054</div></div>
+      </div>
+      <div class="mapbox maplg" style="margin-top:14px">
+        <div class="road" style="width:60%;top:50%;left:20%;transform:rotate(-18deg)"></div>
+        <div style="position:absolute;top:28%;left:24%;font-size:20px">&#128663;</div>
+        <div style="position:absolute;bottom:24%;right:24%;font-size:26px">&#128205;</div>
+        <div style="position:absolute;top:44%;left:40%;background:#fff;padding:5px 9px;border-radius:9px;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.15)">12 min • 3.4 km</div>
+      </div>
+      <div class="panel blue" style="display:flex;margin-top:14px;text-align:center">
+        <div style="flex:1"><div style="font-weight:800">&#128663; 12 min</div><div class="sec" style="font-size:11px">ETA</div></div>
+        <div style="flex:1"><div style="font-weight:800">3.4 km</div><div class="sec" style="font-size:11px">Distance</div></div>
+        <div style="flex:1"><div style="font-weight:800">5:00 PM</div><div class="sec" style="font-size:11px">Arrival</div></div>
+      </div>
+      <div class="card" style="display:flex;gap:12px;align-items:center;margin-top:14px"><div class="scirc c-ac">&#10052;</div><div style="flex:1"><div class="h3">AC Repair</div><div class="sec" style="font-size:13px">Split AC not cooling properly</div></div><span class="pill green">On the way</span></div>
+      <div style="display:flex;justify-content:space-between;margin:18px 0 4px"><div class="h3">Job Progress</div><span class="sec">1 of 4</span></div>
+      <div class="jp">
+        <div class="jpn done"><div class="jpbar"></div><div class="jpc">&#10003;</div><div class="jpl">En Route</div><div class="jpt">4:48 PM</div></div>
+        <div class="jpn"><div class="jpbar"></div><div class="jpc">2</div><div class="jpl">Arrive</div><div class="jpt">--:--</div></div>
+        <div class="jpn"><div class="jpbar"></div><div class="jpc">3</div><div class="jpl">Progress</div><div class="jpt">--:--</div></div>
+        <div class="jpn"><div class="jpc">4</div><div class="jpl">Complete</div><div class="jpt">--:--</div></div>
+      </div>
+    </div></div>
+    <div class="sticky"><button class="btn btn-out-danger">&#9888; Report</button><button class="btn btn-blue" data-go="progress">&#10003; Arrived</button></div>
+  </div>
+
+  <!-- 10 JOB IN PROGRESS -->
+  <div class="screen" id="s-progress">
+    <div class="hdr blue"><div class="ic-btn" data-go="jobs">&#8249;</div>
+      <div class="htxt"><div class="h1">Job In Progress</div><div class="sub">AC Repair • #SRV1234</div></div><div class="ic-btn" data-go="chat">&#128172;</div></div>
+    <div class="scroll sticky-pad sheet"><div class="pad">
+      <div class="card" style="display:flex;gap:12px;align-items:center">
+        <div class="avatar" style="width:44px;height:44px">R</div>
+        <div style="flex:1"><div class="h3">Rahul Sharma</div><div class="meta"><span class="mi">&#128222;</span>+91 98765 43210 <span style="color:var(--whatsapp)">&#128172;</span></div></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;gap:12px;align-items:center"><div class="scirc c-ac">&#10052;</div><div style="flex:1"><div class="h3">AC Repair</div><div class="sec" style="font-size:12.5px">Split AC not cooling properly</div></div><div style="text-align:right"><span class="pill blue">In Progress</span><div class="ter" style="margin-top:3px">Started 5:12 PM</div></div></div>
+        <div class="jp" style="margin-top:14px">
+          <div class="jpn done"><div class="jpbar"></div><div class="jpc">&#10003;</div><div class="jpl">En Route</div><div class="jpt">4:48</div></div>
+          <div class="jpn done"><div class="jpbar"></div><div class="jpc">&#10003;</div><div class="jpl">Arrived</div><div class="jpt">5:12</div></div>
+          <div class="jpn act"><div class="jpbar"></div><div class="jpc">3</div><div class="jpl">Progress</div><div class="jpt">--</div></div>
+          <div class="jpn"><div class="jpc">4</div><div class="jpl">Complete</div><div class="jpt">--</div></div>
         </div>
-        <div class="field"><label for="obDob" data-i18n="dob">Date of birth</label><input id="obDob" type="date"></div>
       </div>
+      <div class="panel" style="display:flex;align-items:center;margin-top:14px"><span style="font-size:22px">&#128337;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13px">Job Timer</div><div class="sec" style="font-size:12px">Actual time on site</div></div><div class="green-t" id="jobTimer" style="font-size:22px">00:00:00</div></div>
+      <div class="h3" style="margin:18px 0 8px">Work Update</div>
+      <textarea class="ta" placeholder="Add work notes...">Checked gas pressure. Found low cooling due to gas leakage. Need to refill gas and replace service valve.</textarea>
+      <div style="display:flex;gap:10px;margin-top:12px"><button class="btn btn-out sm">&#128247; Add Photos</button><button class="btn btn-out sm">&#128206; Add Notes</button></div>
+      <div class="h3" style="margin:18px 0 8px">Service Items</div>
+      <div class="grid2">
+        <div class="check" data-check><div class="cbox on">&#10003;</div>Diagnosis</div>
+        <div class="check" data-check><div class="cbox"></div>Valve Replace</div>
+        <div class="check" data-check><div class="cbox on">&#10003;</div>Gas Refill</div>
+        <div class="check" data-check><div class="cbox"></div>Cleaning</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div><span class="link">Clear</span></div>
+      <div class="panel grey" style="height:90px;display:flex;align-items:center;justify-content:center;font-family:cursive;font-size:26px;color:#33415c">Rahul Sharma</div>
+    </div></div>
+    <div class="sticky"><button class="btn btn-out-danger">&#9888; Issue</button><button class="btn btn-green" data-go="completed">&#10003; Complete Job</button></div>
+  </div>
 
-      <!-- STEP 2: Service & Skills -->
-      <div class="ob-step" data-step="2" hidden>
-        <p class="section-label" data-i18n="obSectionSkills">Select your service &amp; skill</p>
-        <div class="skill-grid" id="obSkillGrid"></div>
-        <select id="obSkill" hidden></select>
-        <div class="field" id="obSkillOtherWrap" hidden><label for="obSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="obSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
-        <div class="field"><label for="obExp" data-i18n="experienceYrs">Experience (years)</label><input id="obExp" type="number" min="0" step="1" value="0"></div>
-        <div class="field"><label for="obPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="obPrice" type="number" min="0" step="10"></div>
-        <div class="field"><label for="obCity" data-i18n="city">City</label><input id="obCity" list="gujCities" autocomplete="off" data-i18n-ph="cityPh" placeholder="Select or type your city"></div>
-        <datalist id="gujCities"></datalist>
-        <div class="field"><label for="obArea" data-i18n="serviceArea">Service area</label><input id="obArea" data-i18n-ph="serviceAreaPh" placeholder="e.g. Satellite, Bodakdev"></div>
-        <div class="field"><label for="obAbout" data-i18n="aboutYou">About</label><textarea id="obAbout"></textarea></div>
+  <!-- 11 JOB COMPLETED -->
+  <div class="screen" id="s-completed">
+    <div class="hdr blue"><div class="ic-btn" data-go="jobs">&#8249;</div>
+      <div class="htxt"><div class="h1">Job Completed</div><div class="sub">AC Repair • #SRV1234</div></div></div>
+    <div class="scroll sticky-pad sheet"><div class="pad">
+      <div style="text-align:center;padding:10px 0 4px">
+        <div style="width:88px;height:88px;border-radius:50%;background:#E4F7EA;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:42px">&#9989;</div>
+        <div class="h1" style="margin-top:14px">Job Completed!</div>
+        <div class="sec" style="margin-top:6px">Service has been successfully completed.</div>
       </div>
+      <div class="card" style="display:flex;gap:12px;align-items:center;margin-top:14px"><div class="avatar" style="width:44px;height:44px">R</div><div style="flex:1"><div class="h3">Rahul Sharma</div><div class="meta"><span class="mi">&#128222;</span>+91 98765 43210</div></div><span class="pill green">&#10003; Completed</span></div>
+      <div class="h3" style="margin:18px 0 10px">Service Details</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Diagnosis / Inspection</span><span>₹0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Gas Refill (R32)</span><span>₹850</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Service Valve Replacement</span><span>₹350</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; General Cleaning</span><span>₹200</span></div>
+        <div class="divide" style="margin:10px 0"></div>
+        <div style="display:flex;justify-content:space-between"><b>Total Amount</b><b>₹1,400</b></div>
+      </div>
+      <div class="panel" style="display:flex;align-items:center;margin-top:14px"><span style="font-size:22px">&#128176;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Payment Status</div><div class="sec" style="font-size:12px">Paid via UPI • May 20, 5:55 PM</div></div><span class="pill green">&#10003; Paid</span></div>
+      <div class="panel blue" style="display:flex;align-items:center;margin-top:12px"><span style="font-size:22px;color:var(--star)">&#9733;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Customer Rating <span style="color:var(--star)">&#9733;&#9733;&#9733;&#9733;&#9733; 5.0</span></div><div class="sec" style="font-size:12px">"Great service! Very professional and on time."</div></div></div>
+    </div></div>
+    <div class="sticky"><button class="btn btn-out" data-go="jobs">&#127968; Home</button><button class="btn btn-blue" data-go="leads">Next Job &#8250;</button></div>
+  </div>
 
-      <!-- STEP 3: Documents -->
-      <div class="ob-step" data-step="3" hidden>
-        <p class="section-label" data-i18n="obSectionKyc">Verification documents</p>
-        <div class="note" data-i18n="obKycNote">Upload your documents to get verified and start receiving leads.</div>
-        <div class="field"><label for="obAadhaarNo" data-i18n="aadhaarNo">Aadhaar number</label><input id="obAadhaarNo" inputmode="numeric" maxlength="12"></div>
-        <div class="field"><label for="obPanNo" data-i18n="panNo">PAN number</label><input id="obPanNo" maxlength="10" style="text-transform:uppercase"></div>
-        <div class="field"><label for="obSelfie" data-i18n="uploadSelfie">Selfie</label><input id="obSelfie" type="file" accept="image/*" capture="user"></div>
-        <div class="field"><label for="obAadhaar" data-i18n="uploadAadhaar">Aadhaar card photo</label><input id="obAadhaar" type="file" accept="image/*,application/pdf"></div>
-        <div class="field"><label for="obPan" data-i18n="uploadPan">PAN card photo</label><input id="obPan" type="file" accept="image/*,application/pdf"></div>
+  <!-- 12 EARNINGS -->
+  <div class="screen" id="s-earnings">
+    <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill">This Month &#9662;</button></div>
+    <div class="scroll sheet"><div class="pad">
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><div class="sec" style="font-size:13px">Total Earnings</div><div style="font-size:28px;font-weight:800" id="earnTotal">₹12,480</div><div class="green-t" style="font-size:12px">&#8599; +18% from last month</div></div>
+        <div class="panel" style="width:150px"><span style="font-size:20px">&#128176;</span><div class="sec" style="font-size:12px;margin-top:4px">Available Balance</div><div style="font-weight:800;font-size:18px">₹8,320</div><button class="btn btn-green sm" style="margin-top:8px">Withdraw</button></div>
       </div>
-
-      <!-- STEP 4: Complete -->
-      <div class="ob-step" data-step="4" hidden>
-        <p class="section-label" data-i18n="obSectionReview">Review &amp; submit</p>
-        <div id="obSummary"></div>
-        <button class="btn btn-primary btn-block" id="obSubmitBtn" style="margin-top:14px" data-i18n="obSubmit" onclick="submitOnboarding()">Submit for verification</button>
+      <div class="stats" style="margin-top:16px">
+        <div class="stat"><div class="si">&#128188;</div><div class="sv" id="earnJobs">24</div><div class="sn">Jobs Done</div></div>
+        <div class="stat"><div class="si">&#8377;</div><div class="sv">520</div><div class="sn">Avg / Job</div></div>
+        <div class="stat"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
+        <div class="stat"><div class="si">&#128101;</div><div class="sv">18</div><div class="sn">Repeat</div></div>
       </div>
-
-      <!-- nav -->
-      <div class="ob-nav">
-        <button class="btn" id="obBackBtn" onclick="obPrev()" data-i18n="backStep">Back</button>
-        <button class="btn btn-primary" id="obNextBtn" onclick="obNext()" data-i18n="nextStep">Next</button>
-      </div>
-      <button class="btn-link" style="display:block;margin:14px auto 0" data-i18n="logout" onclick="logout()">Log out</button>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div class="screen" id="screen-dashboard">
-      <div class="topbar">
-        <div>
-          <p class="greeting" id="greeting">Hello, Rajesh Kumar &#128075;</p>
-          <p class="greeting-sub" id="greetingSub" style="margin:0">Plumber · Satellite, Ahmedabad</p>
-        </div>
-        <div class="spacer"></div>
-        <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
-      </div>
-      <div class="online-card" id="onlineCard">
-        <span class="oc-dot"></span>
-        <div class="oc-txt"><b data-i18n="youreOnline">You are Online</b><span data-i18n="onlineHint">Receiving new leads</span></div>
-        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="availableForWork" aria-label="Available for work" id="onlineToggle"><span class="knob"></span></button>
-      </div>
-      <div class="qa-grid">
-        <button class="qa" onclick="goTo('requests')"><span class="qic">&#128197;</span><span class="qlbl" data-i18n="qaRequests">Requests</span></button>
-        <button class="qa" onclick="goTo('leads')"><span class="qic">&#128203;</span><span class="qlbl" data-i18n="qaLeads">View Leads</span></button>
-        <button class="qa" onclick="goTo('earnings')"><span class="qic">&#8377;</span><span class="qlbl" data-i18n="qaEarnings">Earnings</span></button>
-        <button class="qa" onclick="goTo('reviews')"><span class="qic">&#11088;</span><span class="qlbl" data-i18n="qaReviews">Reviews</span></button>
-      </div>
-      <div class="stat-grid">
-        <button class="stat-card" onclick="goTo('leads')"><div class="num" id="statLeads">18</div><div class="lbl" data-i18n="leadsThisWeek">Leads this week</div></button>
-        <button class="stat-card" onclick="goTo('reviews')"><div class="num">4.8</div><div class="lbl" id="ratingLbl">Rating (120 reviews)</div></button>
-        <button class="stat-card" onclick="goTo('leads')"><div class="num" id="statResponse">92%</div><div class="lbl" data-i18n="responseRate">Response rate</div></button>
-        <button class="stat-card" onclick="goTo('earnings')"><div class="num" id="statEarned">&#8377;18,400</div><div class="lbl" data-i18n="earnedThisMonth">Earned this month</div></button>
-      </div>
-      <p class="section-label"><span data-i18n="recentLeads">Recent leads</span> <button class="link" data-i18n="viewAll" onclick="goTo('history')">View all</button></p>
-      <div id="leadsListPreview"></div>
-    </div>
-
-    <!-- LEADS LIST (active leads to act on) -->
-    <div class="screen" id="screen-leads">
-      <div class="topbar"><button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button><span class="title" data-i18n="allLeads">All leads</span></div>
-      <div id="leadsListFull"></div>
-    </div>
-
-    <!-- HISTORY (all leads / jobs, newest first) -->
-    <div class="screen" id="screen-history">
-      <div class="topbar"><span class="title" data-i18n="historyTitle">History</span></div>
-      <div id="historyListFull"></div>
-    </div>
-
-    <!-- CHAT -->
-    <div class="screen nonav" id="screen-chat">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" id="chatTitle">Chat</span>
-      </div>
-      <div id="chatBody" class="chat-body"></div>
-      <div class="chat-input">
-        <input id="chatInput" data-i18n-ph="typeMsg" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="btn btn-primary" onclick="sendChat()" data-i18n="sendMsg">Send</button>
-      </div>
-    </div>
-
-    <!-- SERVICE REQUESTS (bookings) -->
-    <div class="screen nonav" id="screen-requests">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="requestsTitle">Service requests</span>
-      </div>
-      <div id="requestsList"></div>
-    </div>
-
-    <!-- LEAD DETAIL -->
-    <div class="screen nonav" id="screen-leaddetail">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="leadDetail">Lead detail</span>
-      </div>
-      <div class="profile-head">
-        <div class="avatar-lg" id="leadAvatar">P</div>
-        <div>
-          <p style="font-weight:600;font-size:14.5px;margin:0" id="leadName"></p>
-          <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="leadTime"></p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Earnings Overview</div>
+        <div class="segpill"><span>Week</span><span class="on">Month</span><span>Year</span></div></div>
+      <div class="card">
+        <div class="bars">
+          <div class="barcol"><div class="bv">₹2.4K</div><div class="bar" style="height:52%"></div><div class="bl">W1</div></div>
+          <div class="barcol"><div class="bv">₹3.8K</div><div class="bar" style="height:88%"></div><div class="bl">W2</div></div>
+          <div class="barcol"><div class="bv">₹2.9K</div><div class="bar" style="height:66%"></div><div class="bl">W3</div></div>
+          <div class="barcol"><div class="bv">₹3.3K</div><div class="bar" style="height:76%"></div><div class="bl">W4</div></div>
         </div>
       </div>
-      <p class="section-label" data-i18n="status">Status</p>
-      <div style="margin-bottom:8px"><span class="badge" id="leadBadge"></span></div>
-      <p class="section-label" data-i18n="request">Request</p>
-      <p style="font-size:13px;color:var(--ink-soft);margin:0 0 16px" id="leadNoteFull"></p>
-      <p class="section-label" data-i18n="contact">Contact</p>
-      <div class="field"><label for="leadPhone" data-i18n="customerNumber">Customer number</label><input id="leadPhone" readonly></div>
-      <button class="btn btn-primary btn-block" id="leadMarkBtn" style="margin-bottom:10px" onclick="markContactedCurrent()">Mark as contacted</button>
-      <a class="btn btn-block" style="text-decoration:none;margin-bottom:10px" id="leadCallBtn" href="#">Call customer</a>
-      <button class="btn btn-block" id="leadCompleteBtn" onclick="markCompletedCurrent()" data-i18n="markCompleted2">Mark job completed</button>
-      <button class="btn btn-block" style="margin-top:10px" onclick="openLeadChat()" data-i18n="chatBtn">Chat with customer</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Recent Transactions</div><span class="link">View All &#8250;</span></div>
+      <div class="card" style="padding:6px 16px" id="txnList"></div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 13 PROFILE -->
+  <div class="screen" id="s-profile">
+    <div class="hdr blue"><div class="htxt"><div class="h1">My Profile</div><div class="sub">Manage your account and settings</div></div><button class="hpill" data-go="reg2">&#9998; Edit</button></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="card">
+        <div style="display:flex;gap:14px;align-items:center"><div class="avatar" id="profAvatar" style="width:64px;height:64px;font-size:24px;position:relative">A<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--success);border:2px solid #fff"></span></div>
+          <div style="flex:1"><div class="h2" id="profName">Aman Sharma</div><div class="sec" id="profTrade" style="font-size:13px">Service Professional</div>
+            <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">&#9733;</span> 4.8 <span class="sec">(124 reviews)</span></div></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span class="pill green" id="statusPill">&#9679; Online</span><div class="toggle on" id="availToggle"></div></div></div>
+        <div style="display:flex;gap:14px;margin-top:12px"><div class="meta"><span class="mi">&#128205;</span><span id="profArea">Ahmedabad, Gujarat</span></div><div class="meta verif"><span class="mi">&#128737;</span>ID Verified</div></div>
+      </div>
+      <div class="stats" style="margin-top:14px">
+        <div class="stat"><div class="si">&#128188;</div><div class="sv">124</div><div class="sn">Jobs Done</div></div>
+        <div class="stat"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
+        <div class="stat"><div class="si">&#128522;</div><div class="sv">96</div><div class="sn">Happy Cust.</div></div>
+        <div class="stat"><div class="si">&#8377;</div><div class="sv" style="font-size:13px">32,450</div><div class="sn">Earnings</div></div>
+      </div>
+      <div class="card" style="margin-top:14px;padding:4px 16px">
+        <div class="mrow" data-go="reg2"><div class="mi">&#128100;</div><div class="mt"><div class="a">Personal Information</div><div class="b">Name, phone, address, documents</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="skills"><div class="mi">&#9881;</div><div class="mt"><div class="a">Service Categories</div><div class="b">Manage your services</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="schedule"><div class="mi">&#128197;</div><div class="mt"><div class="a">My Schedule</div><div class="b">Jobs &amp; availability</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="verify"><div class="mi">&#128196;</div><div class="mt"><div class="a">My Documents</div><div class="b">ID proof, certifications</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="reviews"><div class="mi" style="color:var(--star);background:#FFF6E0">&#9733;</div><div class="mt"><div class="a">Reviews &amp; Ratings</div><div class="b">See what customers say</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="support"><div class="mi">&#127911;</div><div class="mt"><div class="a">Help &amp; Support</div><div class="b">Get help or contact us</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" data-go="settings"><div class="mi">&#128274;</div><div class="mt"><div class="a">Privacy &amp; Settings</div><div class="b">Manage your data</div></div><span class="mc">&#8250;</span></div>
+        <div class="divide"></div>
+        <div class="mrow" id="logoutRow"><div class="mi" style="background:#FDECEC;color:var(--danger)">&#9099;</div><div class="mt"><div class="a" style="color:var(--danger)">Logout</div><div class="b">Sign out from your account</div></div></div>
+      </div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 14 SCHEDULE -->
+  <div class="screen" id="s-schedule">
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">My Schedule</div><div class="sub">Manage your jobs and availability</div></div><button class="hpill">&#128197; Today</button></div>
+    <div class="scroll sheet"><div class="pad">
+      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:8px" id="weekStrip"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px"><div class="h3" id="schedDay">Thu, 22 May 2024</div><span class="sec">4 Jobs Scheduled</span></div>
+      <div id="schedList"></div>
+      <div class="panel blue" style="display:flex;align-items:center;margin-top:4px"><span style="font-size:22px">&#128197;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:14px">Set Your Availability</div><div class="sec" style="font-size:12.5px">Update your working hours and availability</div></div><span class="mc">&#8250;</span></div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 15 CHAT -->
+  <div class="screen" id="s-chat">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="avatar" style="width:38px;height:38px">R</div>
+      <div class="htxt"><div class="h1" style="font-size:16px" id="chatName">Rahul Sharma</div><div class="sub" style="font-size:11.5px">Online</div></div><button class="hpill">&#128222;</button></div>
+    <div class="scroll" style="padding-bottom:8px;display:flex;flex-direction:column" id="chatScroll">
+      <div class="pad" style="padding-bottom:0">
+        <div class="card" style="display:flex;gap:10px;align-items:center;padding:10px 14px"><div class="scirc c-ac" style="width:34px;height:34px;font-size:15px">&#10052;</div><div style="flex:1"><div style="font-weight:700;font-size:13.5px">AC Repair</div><div class="ter">Split AC not cooling properly</div></div><span class="pill blue">In Progress</span></div>
+      </div>
+      <div class="datechip">Today</div>
+      <div class="pad" style="padding-top:0;display:flex;flex-direction:column" id="chatMsgs"></div>
     </div>
+    <div class="chips" style="padding:8px 12px 0;flex:none"><div class="chip" data-quick="On my way">&#128077; On my way</div><div class="chip" data-quick="Reached">&#128336; Reached</div><div class="chip" data-quick="Job completed" style="color:var(--successDark);border-color:#B7E7C4">&#9989; Completed</div></div>
+    <div class="inputbar"><span style="font-size:20px;color:var(--tSecondary)">&#128206;</span><input id="chatInput" placeholder="Type a message..."><button class="send" id="chatSend">&#10148;</button></div>
+  </div>
 
-    <!-- LISTING EDIT (reached from Profile) -->
-    <div class="screen nonav" id="screen-edit">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="editListing">Edit listing</span>
+  <!-- 16 REVIEWS -->
+  <div class="screen" id="s-reviews">
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">Reviews &amp; Ratings</div><div class="sub">What customers say about you</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="card" style="display:flex;gap:16px">
+        <div style="text-align:center"><div style="font-size:38px;font-weight:800;line-height:1">4.8</div><div style="color:var(--star);font-size:14px">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ter" style="margin-top:4px">124 reviews</div></div>
+        <div style="flex:1">
+          <div class="rbar"><span>5&#9733;</span><div class="rtrack"><div class="rfill" style="width:88%"></div></div><span>96</span></div>
+          <div class="rbar"><span>4&#9733;</span><div class="rtrack"><div class="rfill" style="width:30%"></div></div><span>18</span></div>
+          <div class="rbar"><span>3&#9733;</span><div class="rtrack"><div class="rfill" style="width:12%"></div></div><span>6</span></div>
+          <div class="rbar"><span>2&#9733;</span><div class="rtrack"><div class="rfill" style="width:5%"></div></div><span>3</span></div>
+          <div class="rbar"><span>1&#9733;</span><div class="rtrack"><div class="rfill" style="width:2%"></div></div><span>1</span></div>
+        </div>
       </div>
-      <div class="note" data-i18n="listingNote">No shop registration needed — any individual can list their work. This form is a UI demo; saving does not store data anywhere.</div>
-      <div class="field"><label for="edName" data-i18n="yourName">Your name</label><input id="edName" value="Rajesh Kumar"></div>
-      <div class="field"><label for="edSkill" data-i18n="yourSkill">Your skill / trade</label>
-        <select id="edSkill" onchange="onEdSkillChange()"></select>
-      </div>
-      <div class="field" id="edSkillOtherWrap" hidden><label for="edSkillOther" data-i18n="otherSkillLabel">Your trade (Other)</label><input id="edSkillOther" data-i18n-ph="otherSkillPh" placeholder="e.g. Welder, CCTV installer"></div>
-      <div class="field"><label for="edPhone" data-i18n="phoneShownLabel">Mobile number (shown to customers)</label><input id="edPhone" type="tel" inputmode="numeric" value="+91 98765 43210"></div>
-      <div class="field"><label for="edArea" data-i18n="serviceArea">Service area</label><input id="edArea" value="Satellite, Bodakdev, Vastrapur"></div>
-      <div class="field"><label for="edPrice" data-i18n="startingPrice">Starting price (&#8377;)</label><input id="edPrice" type="number" min="0" step="10" value="250"></div>
-      <div class="field"><label for="edAbout" data-i18n="aboutYou">About</label><textarea id="edAbout" data-i18n="aboutDefault">10+ years of experience — tap repair, pipeline fitting, bathroom installation.</textarea></div>
-      <button class="btn btn-primary btn-block" data-i18n="saveChanges" onclick="saveListing()">Save changes</button>
-
-      <!-- Services / price list — customers see these on your profile -->
-      <p class="section-label" style="margin-top:22px" data-i18n="servicesLabel">Services &amp; prices</p>
-      <div id="svcList"></div>
-      <div class="field" style="margin-top:8px"><label for="svcName" data-i18n="addService">Add a service</label><input id="svcName" data-i18n-ph="serviceNamePh" placeholder="e.g. Tap repair"></div>
-      <div style="display:flex;gap:8px;margin-bottom:6px">
-        <input id="svcPrice" type="number" min="0" step="10" placeholder="&#8377;" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--card);outline:none;">
-        <button class="btn btn-primary" style="flex-shrink:0" data-i18n="addBtn" onclick="addServiceRow()">Add</button>
-      </div>
-
-      <!-- Work portfolio — customers see these on your profile -->
-      <p class="section-label" style="margin-top:22px" data-i18n="portfolioLabel">Work photos</p>
-      <div class="photo-grid" id="photoGrid"></div>
-      <label class="btn btn-block" style="cursor:pointer">
-        <span data-i18n="addPhoto">+ Add work photo</span>
-        <input id="photoInput" type="file" accept="image/*" hidden onchange="uploadPhoto()">
-      </label>
-    </div>
-
-    <!-- REVIEWS -->
-    <div class="screen nonav" id="screen-reviews">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="reviewsReceived">Reviews received</span>
-      </div>
+      <div class="chips" style="margin:14px 0"><div class="chip on">All (124)</div><div class="chip">5&#9733; (96)</div><div class="chip">4&#9733; (18)</div><div class="chip">3&#9733; (6)</div></div>
       <div id="reviewsList"></div>
-    </div>
-
-    <!-- EARNINGS -->
-    <div class="screen nonav" id="screen-earnings">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="earnings">Earnings</span>
-      </div>
-      <div class="stat-card static" style="margin-bottom:16px">
-        <div class="num" id="earnMonth">&#8377;18,400</div><div class="lbl" data-i18n="earnedThisMonth">Earned this month</div>
-      </div>
-      <p class="section-label" data-i18n="recentJobs">Recent jobs</p>
-      <div id="earnList"></div>
-      <div class="earn-total"><span id="earnTotalLbl">Total of 4 jobs</span><span id="earnTotal"></span></div>
-    </div>
-
-    <!-- PROFILE -->
-    <div class="screen" id="screen-profile">
-      <div class="topbar"><span class="title" data-i18n="profileTitle">Profile</span></div>
-      <div class="profile-head">
-        <div class="avatar-lg">R</div>
-        <div>
-          <p style="font-weight:600;font-size:14.5px;margin:0" id="profileName">Rajesh Kumar</p>
-          <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="profileMeta">Plumber · +91 98765 43210</p>
-        </div>
-      </div>
-      <button class="list-row" onclick="goTo('edit')"><span class="ic">&#9998;</span><span class="lbl" data-i18n="editListing">Edit listing</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('earnings')"><span class="ic">&#8377;</span><span class="lbl" data-i18n="earnings">Earnings</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('reviews')"><span class="ic">&#11088;</span><span class="lbl" data-i18n="reviewsReceived">Reviews received</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="openNotifications()"><span class="ic">&#128276;</span><span class="lbl" data-i18n="notifications">Notifications</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="goTo('settings')"><span class="ic">&#9881;</span><span class="lbl" data-i18n="settings">Settings</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="toast(t('supportToast'))"><span class="ic">&#128172;</span><span class="lbl" data-i18n="helpSupport">Help and support</span><span class="chev">&#8250;</span></button>
-      <button class="btn btn-outline-danger" style="margin-top:16px" data-i18n="logout" onclick="logout()">Log out</button>
-    </div>
-
-    <!-- NOTIFICATIONS -->
-    <div class="screen nonav" id="screen-notifications">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="notifications">Notifications</span>
-      </div>
-      <div class="list-row static"><span class="ic">&#128172;</span><span class="lbl" data-i18n="pnotif1">New lead — Priya Shah</span></div>
-      <div class="list-row static"><span class="ic">&#11088;</span><span class="lbl" data-i18n="pnotif2">You got a new 5-star review</span></div>
-      <div class="list-row static"><span class="ic">&#8377;</span><span class="lbl" id="pnotif3">&#8377;2,500 payment received</span></div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div class="screen nonav" id="screen-settings">
-      <div class="topbar">
-        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
-        <span class="title" data-i18n="settings">Settings</span>
-      </div>
-      <button class="list-row" onclick="toggleLangPop()"><span class="ic">&#127760;</span><span class="lbl" data-i18n="languageRow">Language</span><span class="chev" id="langRowValue">English</span></button>
-      <div class="list-row static">
-        <span class="ic">&#128276;</span><span class="lbl" data-i18n="leadAlerts">New lead alerts</span>
-        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="leadAlerts" aria-label="New lead alerts" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-      </div>
-      <div class="list-row static">
-        <span class="ic">&#128337;</span><span class="lbl" data-i18n="availableForWork">Available for work</span>
-        <button class="toggle on" role="switch" aria-checked="true" data-i18n-aria="availableForWork" aria-label="Available for work" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-      </div>
-      <button class="list-row" onclick="toast(t('payoutToast'))"><span class="ic">&#128179;</span><span class="lbl" data-i18n="payoutDetails">Payout details</span><span class="chev">&#8250;</span></button>
-      <button class="list-row" onclick="toast(t('aboutToast'))"><span class="ic">&#8505;</span><span class="lbl" data-i18n="about">About</span><span class="chev">&#8250;</span></button>
-    </div>
-
-    <!-- SHARED BOTTOM NAV -->
-    <nav class="bottomnav hidden" id="bottomNav">
-      <button class="navitem" data-nav="dashboard" onclick="goTo('dashboard')"><span class="ic">&#128202;</span><span data-i18n="navDashboard">Dashboard</span></button>
-      <button class="navitem" data-nav="leads" onclick="goTo('leads')"><span class="ic">&#128172;</span><span data-i18n="navLeads">Leads</span></button>
-      <button class="navitem" data-nav="history" onclick="goTo('history')"><span class="ic">&#128337;</span><span data-i18n="navHistory">History</span></button>
-      <button class="navitem" data-nav="profile" onclick="goTo('profile')"><span class="ic">&#128100;</span><span data-i18n="navProfile">Profile</span></button>
-    </nav>
-
-    <!-- LANGUAGE SWITCHER -->
-    <div class="langpop" id="langPop" role="menu" hidden></div>
-    <button class="langfab" id="langFab" aria-haspopup="true" aria-expanded="false" data-i18n-aria="langSelect" aria-label="Select language" onclick="event.stopPropagation(); toggleLangPop()"><span class="globe">&#127760;</span><span id="langCode">EN</span></button>
-
-    <!-- SHARED TOAST -->
-    <div class="toast" id="toastEl" role="status" aria-live="polite"></div>
+      <div class="panel blue" style="display:flex;align-items:center"><span style="font-size:24px">&#127942;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:14px">You're doing great!</div><div class="sec" style="font-size:12.5px">Keep providing excellent service to grow your business.</div></div></div>
+    </div></div>
   </div>
-  <footer data-i18n="footer">The whole provider app is clickable — onboarding, login/OTP, dashboard, leads, lead detail, listing edit, reviews, earnings, profile, notifications and settings all work. No real signup or payment.</footer>
+
+  <!-- 17 SUPPORT -->
+  <div class="screen" id="s-support">
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">Help &amp; Support</div><div class="sub">We're here to help you</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="panel blue" style="display:flex;align-items:center"><span style="font-size:30px">&#127911;</span><div style="flex:1;margin-left:12px"><div style="font-weight:700;font-size:15px">Need help?</div><div class="sec" style="font-size:12.5px">Our support team is available 24/7.</div></div><span class="pill green">&#9679; Live</span></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px">&#128172;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Live Chat</div></div>
+        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px;color:var(--success)">&#128222;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Call Support</div></div>
+        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px;color:#8B44D6">&#9993;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Email Us</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px"><div class="h3">Frequently Asked Questions</div><span class="link">See All</span></div>
+      <div class="card" style="padding:2px 16px">
+        <div class="mrow" style="padding:14px 0"><div class="mt"><div class="a" style="font-weight:500">How do I accept a job request?</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" style="padding:14px 0"><div class="mt"><div class="a" style="font-weight:500">How do I update my availability?</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" style="padding:14px 0"><div class="mt"><div class="a" style="font-weight:500">When will I receive my payment?</div></div><span class="mc">&#8250;</span></div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:14px">Submit Ticket</button>
+    </div></div>
+  </div>
+
+  <!-- 18 SETTINGS -->
+  <div class="screen" id="s-settings">
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">Settings</div><div class="sub">Manage your account and preferences</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="h2" style="margin:4px 0 10px">Account Settings</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow" data-go="reg2"><div class="mi">&#128100;</div><div class="mt"><div class="a">Edit Profile</div><div class="b">Update your details</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-go="verify"><div class="mi">&#128179;</div><div class="mt"><div class="a">KYC &amp; Verification</div><div class="b">Manage your documents</div></div><span class="pill green">&#10003;</span></div>
+      </div>
+      <div class="h2" style="margin:18px 0 10px">App Preferences</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow"><div class="mi">&#128276;</div><div class="mt"><div class="a">Notifications</div><div class="b">Manage preferences</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><div class="mi">&#127760;</div><div class="mt"><div class="a">Language</div><div class="b">Choose language</div></div><span class="sec">English &#8250;</span></div><div class="divide"></div>
+        <div class="mrow"><div class="mi">&#127769;</div><div class="mt"><div class="a">Dark Mode</div><div class="b">Light / dark theme</div></div><div class="toggle"></div></div>
+      </div>
+      <div class="h2" style="margin:18px 0 10px">About</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow"><div class="mi">&#8505;</div><div class="mt"><div class="a">About App</div><div class="b">Version 1.0.0</div></div></div><div class="divide"></div>
+        <div class="mrow"><div class="mi">&#128196;</div><div class="mt"><div class="a">Terms &amp; Conditions</div></div><span class="mc">&#8250;</span></div>
+      </div>
+      <button class="btn btn-out-danger" style="margin-top:16px" id="logoutBtn2">&#9099; Logout</button>
+    </div></div>
+  </div>
+
+  <!-- 22 NOTIFICATIONS -->
+  <div class="screen" id="s-notif">
+    <div class="hdr blue"><div class="ic-btn" data-go="jobs">&#8249;</div><div class="htxt"><div class="h1">Notifications</div><div class="sub">Stay updated with your jobs</div></div><div class="ic-btn" data-go="settings">&#9881;</div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="chips" style="margin-bottom:14px"><div class="chip on">All (12)</div><div class="chip">Jobs (5)</div><div class="chip">Payments (3)</div><div class="chip">System (2)</div></div>
+      <div id="notifList"></div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
 </div>
 <script type="module" src="/src/main.js"></script>
 </body>
