@@ -1,0 +1,17 @@
+{
+  "name": "helpzo-admin",
+  "version": "0.1.0",
+  "description": "HelpZo — Admin dashboard (customers, providers, KYC, bookings, leads)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8"
+  }
+}
