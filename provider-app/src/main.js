@@ -5,6 +5,7 @@
 // =====================================================================
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
+import { embedMapHTML, openMaps } from './maps.js';
 
 /* ---------- tiny helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -155,6 +156,7 @@ function onEnter(id) {
   if (id === 'reg3') renderDocList();
   if (id === 'verify') renderVerifyList();
   if (id === 'jobdetail') renderJobDetail();
+  if (id === 'enroute') { const m = $('enrouteMap'); if (m) m.innerHTML = embedMapHTML('A-702, Shaligram Residency, Bodakdev, Ahmedabad', 'maplg'); }
   if (id === 'chat') openChat();
   if (id === 'progress') startTimer(); else stopTimer();
 }
@@ -317,7 +319,8 @@ function renderJobDetail() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Photos (2)</div><span class="link">View All ›</span></div>
     <div class="grid2"><div class="thumb">❄️</div><div class="thumb">🏭</div></div>
     <div class="h3" style="margin:18px 0 8px">Location</div>
-    <div class="mapbox"><span class="pin">📍</span><div style="position:absolute;bottom:10px;left:10px;background:#fff;padding:6px 10px;border-radius:10px;font-size:12px;font-weight:600">Bodakdev, Ahmedabad</div></div>`;
+    ${embedMapHTML('Bodakdev, Ahmedabad')}
+    <button class="btn btn-out sm" data-maps="Bodakdev, Ahmedabad" style="margin-top:8px">🧭 Open in Google Maps</button>`;
 }
 
 /* ---------- chat ---------- */
@@ -477,6 +480,8 @@ document.addEventListener('click', (e) => {
   if (quick) { $('chatInput').value = quick.getAttribute('data-quick'); sendChat(); return; }
   const rep = e.target.closest('[data-reply]');
   if (rep) { replyReview(rep.getAttribute('data-reply')); return; }
+  const mapsBtn = e.target.closest('[data-maps]');
+  if (mapsBtn) { openMaps(mapsBtn.getAttribute('data-maps')); return; }
   if (e.target.closest('[data-accept]')) { toast('Lead accepted — added to your jobs'); return; }
   if (e.target.closest('[data-reject]')) { toast('Lead rejected'); return; }
 });
