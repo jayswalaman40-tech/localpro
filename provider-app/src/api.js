@@ -104,6 +104,11 @@ export async function markLeadCompleted(leadId) {
   if (error) throw error;
 }
 
+export async function setLeadStatus(leadId, status) {
+  const { error } = await supabase.from('leads').update({ status }).eq('id', leadId);
+  if (error) throw error;
+}
+
 // Realtime: fire cb() whenever a new lead lands for my listing.
 export async function subscribeLeads(cb) {
   const prov = await getMyProvider();

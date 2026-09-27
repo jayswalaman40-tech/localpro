@@ -176,8 +176,33 @@ function jobCard(j) {
       <button class="btn btn-blue sm" ${j.gb ? `data-go="${j.gb}"` : ''}>${esc(j.b)}</button>
     </div></div>`;
 }
-function renderJobs() {
+function bookingCard(b) {
+  const st = b.status || 'pending';
+  const pill = (st === 'confirmed' || st === 'completed') ? 'green' : st === 'cancelled' ? 'grey' : 'orange';
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:12px"><div class="scirc c-more">🛠️</div><div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill ${pill}">${esc(st[0].toUpperCase() + st.slice(1))}</span></div>
+      <div class="meta"><span class="mi">📍</span>${esc(b.address || '—')}</div>
+      <div class="meta"><span class="mi">📅</span>${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</div>
+      <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')}</div>
+      <div class="meta"><span class="mi">📞</span><a href="${telHref(b.customer_phone)}" style="color:inherit;text-decoration:none">${esc(b.customer_phone || '')}</a></div>
+    </div></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-out sm" data-maps="${esc(b.address || 'Ahmedabad')}">🧭 Directions</button>
+      <button class="btn btn-blue sm" data-book-next="${b.id}" data-book-status="${st}">Update Status</button>
+    </div></div>`;
+}
+async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
+  if (hasSupabase && myProvider) {
+    list.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      const rows = await api.getMyBookings();
+      list.innerHTML = rows.length ? rows.map(bookingCard).join('')
+        : `<div class="empty">No active jobs yet.<br>Accepted requests will appear here.</div>`;
+      return;
+    } catch (e) {}
+  }
   list.innerHTML = DEMO_JOBS.map(jobCard).join('');
 }
 function leadCard(l) {
@@ -190,8 +215,30 @@ function leadCard(l) {
     <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-green sm" data-accept>✓ Accept</button><button class="btn btn-out-danger sm" data-reject>Reject</button></div>
   </div>`;
 }
-function renderLeads() {
+function realLeadCard(l) {
+  const when = l.created_at ? new Date(l.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const st = l.status || 'new';
+  const pill = st === 'completed' ? 'green' : st === 'contacted' ? 'blue' : st === 'cancelled' ? 'grey' : 'orange';
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:12px"><div class="scirc c-more">🔔</div><div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(l.customer_name || 'New request')}</div><span class="pill ${pill}">${esc(st)}</span></div>
+      <div class="meta"><span class="mi">📞</span><a href="${telHref(l.customer_phone)}" style="color:inherit;text-decoration:none">${esc(l.customer_phone || '')}</a></div>
+      ${l.note ? `<div class="sec" style="font-size:12.5px;margin-top:2px">${esc(l.note)}</div>` : ''}
+      <div class="ter" style="margin-top:4px">${esc(when)}</div></div></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-green sm" data-accept="${l.id}">✓ Accept</button><button class="btn btn-out-danger sm" data-reject="${l.id}">Reject</button></div>
+  </div>`;
+}
+async function renderLeads() {
   const list = $('leadsList'); if (!list) return;
+  if (hasSupabase && myProvider) {
+    list.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      const rows = await api.getMyLeads();
+      list.innerHTML = rows.length ? rows.map(realLeadCard).join('')
+        : `<div class="empty">No new requests yet.<br>Customer calls/requests will show here.</div>`;
+      return;
+    } catch (e) {}
+  }
   list.innerHTML = DEMO_LEADS.map(leadCard).join('');
 }
 function renderTxns() {
@@ -224,8 +271,24 @@ async function renderReviews() {
   }
   list.innerHTML = rows.map(reviewCard).join('');
 }
-function renderNotif() {
+const NOTIF_ICON = { lead: { cls: 'c-clean', icon: '📅' }, booking: { cls: 'c-plumb', icon: '🧭' }, payment: { cls: 'c-elec', icon: '💳' }, review: { cls: 'c-paint', icon: '★' }, system: { cls: 'c-more', icon: '🔔' } };
+async function renderNotif() {
   const list = $('notifList'); if (!list) return;
+  if (hasSupabase && session) {
+    list.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      const rows = await api.getNotifications();
+      list.innerHTML = rows.length ? rows.map((n) => {
+        const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
+        const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        return `<div class="card" style="display:flex;gap:12px;margin-bottom:10px">
+          <div class="scirc ${ic.cls}" style="width:42px;height:42px;font-size:18px">${ic.icon}</div>
+          <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
+            <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body || '')}</div></div></div>`;
+      }).join('') : `<div class="empty">No notifications yet.</div>`;
+      return;
+    } catch (e) {}
+  }
   list.innerHTML = DEMO_NOTIF.map((n) => `
     <div class="card" style="display:flex;gap:12px;margin-bottom:10px">
       <div class="scirc ${n.cls}" style="width:42px;height:42px;font-size:18px">${n.icon}</div>
@@ -482,9 +545,28 @@ document.addEventListener('click', (e) => {
   if (rep) { replyReview(rep.getAttribute('data-reply')); return; }
   const mapsBtn = e.target.closest('[data-maps]');
   if (mapsBtn) { openMaps(mapsBtn.getAttribute('data-maps')); return; }
-  if (e.target.closest('[data-accept]')) { toast('Lead accepted — added to your jobs'); return; }
-  if (e.target.closest('[data-reject]')) { toast('Lead rejected'); return; }
+  const acc = e.target.closest('[data-accept]');
+  if (acc) { acceptLead(acc.getAttribute('data-accept')); return; }
+  const rej = e.target.closest('[data-reject]');
+  if (rej) { rejectLead(rej.getAttribute('data-reject')); return; }
+  const bn = e.target.closest('[data-book-next]');
+  if (bn) { advanceBooking(bn.getAttribute('data-book-next'), bn.getAttribute('data-book-status')); return; }
 });
+
+/* ---------- lead + booking actions ---------- */
+async function acceptLead(id) {
+  if (hasSupabase && id) { try { await api.markLeadContacted(id); toast('Lead accepted'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
+  toast('Lead accepted — added to your jobs');
+}
+async function rejectLead(id) {
+  if (hasSupabase && id) { try { await api.setLeadStatus(id, 'cancelled'); toast('Lead rejected'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
+  toast('Lead rejected');
+}
+async function advanceBooking(id, cur) {
+  const next = { pending: 'confirmed', confirmed: 'completed', completed: 'completed', cancelled: 'cancelled' }[cur] || 'confirmed';
+  if (hasSupabase && id) { try { await api.setBookingStatus(id, next); toast('Marked ' + next); renderJobs(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
+  toast('Status updated');
+}
 
 /* ---------- KYC file picking ---------- */
 function pickKyc(kind) {
@@ -538,24 +620,22 @@ async function boot() {
   $('chatInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
   $('regBio')?.addEventListener('input', () => { if ($('bioCount')) $('bioCount').textContent = $('regBio').value.length; });
 
-  // Restore session in the background (do NOT block the splash on the network).
-  let ready = false;
-  if (hasSupabase) {
-    (async () => {
-      try { categories = await api.getCategories(); } catch (e) { categories = []; }
-      try { session = await api.getSession(); } catch (e) {}
-      if (session) { try { myProvider = await api.getMyProvider(); } catch (e) {} }
-      ready = true;
-    })();
-  } else { ready = true; }
+  // Restore session + categories before routing, but never hang the splash.
+  const ready = (async () => {
+    if (!hasSupabase) return;
+    try { categories = await api.getCategories(); } catch (e) { categories = []; }
+    try { session = await api.getSession(); } catch (e) {}
+    if (session) { try { myProvider = await api.getMyProvider(); } catch (e) {} }
+  })();
 
-  // Splash → route after ~1.6s regardless of network state.
-  setTimeout(() => {
+  const route = () => {
     stack = ['splash'];
     if (session && myProvider) show('jobs');
     else if (session) { show('reg1'); if ($('regPhone')) $('regPhone').value = session?.user?.phone ? '+' + session.user.phone : ''; }
     else show('login');
-  }, 1600);
+  };
+  Promise.race([ready, new Promise((r) => setTimeout(r, 2600))]).then(() => setTimeout(route, 400));
+  setTimeout(() => { const s = document.querySelector('.screen.on'); if (!s || s.id === 's-splash') route(); }, 2900);
 }
 
 async function logout() {

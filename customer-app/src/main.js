@@ -18,9 +18,29 @@ let stack = ['splash'];
 let session = null;
 let myProfile = null;
 let selectedProvider = null;
-let selectedCat = null;
+let selectedCat = null;            // category key, e.g. 'plumber'
 let savedIds = new Set();
+let catMap = {};                   // category uuid -> label
+let catByKey = {};                 // category key  -> uuid
+let providerCache = {};            // id -> normalized provider (from lists)
 let toastTimer = null;
+
+// Normalize a Supabase provider/RPC row into the shape the UI cards use.
+function provFromRow(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    trade: catMap[p.category_id] || p.custom_category || 'Service Pro',
+    rating: Number(p.rating_avg ?? 0) || 0,
+    reviews: p.rating_count ?? 0,
+    dist: (p.distance_km != null) ? Number(p.distance_km).toFixed(1) : '—',
+    price: p.starting_price ?? 200,
+    exp: p.experience_yrs ? p.experience_yrs + ' years exp' : '',
+    about: p.about || '',
+    area: p.service_area || 'Ahmedabad',
+    verified: p.verified,
+  };
+}
 
 /* ---------- categories (icon + color) ---------- */
 const CATS = [
@@ -110,22 +130,31 @@ function onEnter(id) {
 function catCell(c) {
   return `<div class="scell" data-cat="${c.key}" data-label="${esc(c.label)}"><div class="scirc" style="background:${c.color}">${c.icon}</div><span class="lb">${esc(c.label)}</span></div>`;
 }
-function renderHome() {
-  const grid = $('catGrid'); if (grid) grid.innerHTML = CATS.map(catCell).join('');
-  const top = $('homeTop'); if (!top) return;
-  const p = DEMO_PROVIDERS[0];
-  top.innerHTML = `<div class="card">
+function topCard(p) {
+  return `<div class="card">
     <div style="display:flex;gap:12px">
       <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
       <div style="flex:1">
-        <div><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span></div>
-        <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+        <div><span class="h3">${esc(p.name)}</span> ${p.verified === false ? '' : '<span class="verif">✔</span>'}</div>
+        <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
-        <div class="sec" style="margin-top:2px">${esc(p.trade)} • ${esc(p.exp)}</div>
+        <div class="sec" style="margin-top:2px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''}</div>
       </div>
     </div>
     <button class="btn btn-green pill" style="margin-top:12px" data-open="${p.id}">View Profile</button>
   </div>`;
+}
+async function renderHome() {
+  const grid = $('catGrid'); if (grid) grid.innerHTML = CATS.map(catCell).join('');
+  const top = $('homeTop'); if (!top) return;
+  top.innerHTML = topCard(DEMO_PROVIDERS[0]);
+  if (hasSupabase) {
+    try {
+      const loc = await api.getCurrentLocation();
+      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
+      if (live && live.length) { const p = provFromRow(live[0]); providerCache[p.id] = p; top.innerHTML = topCard(p); }
+    } catch (e) {}
+  }
 }
 function providerCard(p) {
   const saved = savedIds.has(p.id);
@@ -145,43 +174,65 @@ function providerCard(p) {
 async function renderList() {
   if ($('listTitle')) $('listTitle').textContent = selectedCat ? (CATS.find((c) => c.key === selectedCat)?.label || 'Providers') : 'Providers';
   const el = $('listCards'); if (!el) return;
-  let rows = DEMO_PROVIDERS;
+  el.innerHTML = `<div class="empty">Loading…</div>`;
+  let rows = null;
   if (hasSupabase) {
     try {
       const loc = await api.getCurrentLocation();
-      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng });
-      if (live && live.length) rows = live.map((p) => ({ id:p.id, name:p.name, trade:p.category_label || p.custom_category || 'Service Pro', rating:Number(p.rating || 4.5), reviews:p.review_count || 0, dist:p.distance_km ? Number(p.distance_km).toFixed(1) : '—', price:p.starting_price || 200, exp:'' }));
-    } catch (e) {}
+      const catId = selectedCat ? (catByKey[selectedCat] || null) : null;
+      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, categoryId: catId, radiusKm: 50 });
+      rows = (live || []).map(provFromRow);
+      rows.forEach((p) => { providerCache[p.id] = p; });
+    } catch (e) { rows = null; }
   }
+  if (!rows) rows = DEMO_PROVIDERS;                 // not signed in / offline
+  if (!rows.length) { el.innerHTML = `<div class="empty">No providers found nearby.<br>Try a different service.</div>`; return; }
   el.innerHTML = rows.map(providerCard).join('');
 }
-function renderProfile() {
+function reviewRow(r) {
+  const when = r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const stars = '★★★★★☆☆☆☆☆'.slice(5 - (r.rating || 5), 10 - (r.rating || 5));
+  return `<div style="display:flex;gap:10px;margin-top:12px">
+    <div class="avatar" style="width:40px;height:40px">${initials(r.reviewer_name || 'C')}</div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center"><b style="font-size:14px">${esc(r.reviewer_name || 'Customer')}</b><div class="spacer"></div><span class="ter">${esc(when)}</span></div>
+      <div class="rating" style="font-size:13px"><span class="st">${stars}</span> <b>${r.rating || 5}.0</b></div>
+      ${r.body ? `<p class="sec" style="margin:4px 0 0">${esc(r.body)}</p>` : ''}
+      ${r.provider_reply ? `<div class="panel" style="background:var(--bgMuted);border-radius:12px;padding:8px 10px;margin-top:6px"><div class="ter" style="font-weight:700;color:var(--primary)">Provider reply</div><div class="sec" style="font-size:12.5px">${esc(r.provider_reply)}</div></div>` : ''}
+    </div>
+  </div>`;
+}
+async function renderProfile() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
   const el = $('profileBody'); if (!el) return;
   if ($('saveHeart')) $('saveHeart').textContent = savedIds.has(p.id) ? '❤' : '♡';
+  const about = p.about || `Experienced ${String(p.trade || 'professional').toLowerCase()} with great reviews for home and commercial services. Quick & reliable service guaranteed.`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
-      <span class="h2">${esc(p.name)}</span><span class="verif">✔</span>
-      <div class="spacer"></div><span class="pill green">✓ Verified</span>
+      <span class="h2">${esc(p.name)}</span>${p.verified === false ? '' : '<span class="verif">✔</span>'}
+      <div class="spacer"></div>${p.verified === false ? '' : '<span class="pill green">✓ Verified</span>'}
     </div>
-    <div class="rating" style="margin-top:6px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
-    <div class="sec" style="margin-top:4px">${esc(p.trade)} • ${esc(p.exp || 'Experienced')} • Ahmedabad</div>
+    <div class="rating" style="margin-top:6px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
+    <div class="sec" style="margin-top:4px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''} • ${esc(p.area || 'Ahmedabad')}</div>
     <div class="price" style="font-size:18px;margin-top:8px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary);font-size:14px">onwards</span></div>
-    <p class="sec" style="line-height:1.55;margin:12px 0">Experienced ${esc(p.trade.toLowerCase())} with great reviews for home and commercial services. Quick &amp; reliable service guaranteed.</p>
+    <p class="sec" style="line-height:1.55;margin:12px 0">${esc(about)}</p>
     <div class="feat">
       <div class="f"><div class="fi">🕐</div>On Time<br>Service</div>
       <div class="f"><div class="fi">🛡️</div>Verified<br>Provider</div>
       <div class="f"><div class="fi">🎧</div>Customer<br>Satisfaction</div>
     </div>
-    <div class="sectitle" style="margin:8px 0 10px"><span class="h2">Reviews &amp; Ratings</span><span class="link">See All</span></div>
-    <div style="display:flex;gap:10px">
-      <div class="avatar" style="width:40px;height:40px">NP</div>
-      <div style="flex:1">
-        <div style="display:flex;align-items:center"><b style="font-size:14px">Neha Patel</b><div class="spacer"></div><span class="ter">12 Sep 2025</span></div>
-        <div class="rating" style="font-size:13px"><span class="st">★★★★★</span> <b>5.0</b></div>
-        <p class="sec" style="margin:4px 0 0">Very professional and quick service. Highly recommended!</p>
-      </div>
-    </div>`;
+    <div class="sectitle" style="margin:8px 0 4px"><span class="h2">Reviews &amp; Ratings</span></div>
+    <div id="profReviews"><div class="sec" style="font-size:13px">Loading reviews…</div></div>`;
+  // real reviews
+  const rc = $('profReviews');
+  if (hasSupabase && p.id && !String(p.id).startsWith('d')) {
+    try {
+      const revs = await api.getProviderReviews(p.id);
+      rc.innerHTML = (revs && revs.length) ? revs.map(reviewRow).join('') : '<div class="sec" style="font-size:13px">No reviews yet.</div>';
+    } catch (e) { rc.innerHTML = '<div class="sec" style="font-size:13px">No reviews yet.</div>'; }
+  } else {
+    rc.innerHTML = reviewRow({ reviewer_name: 'Neha Patel', rating: 5, body: 'Very professional and quick service. Highly recommended!', created_at: '2025-09-12' });
+  }
 }
 function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
@@ -227,8 +278,25 @@ function renderBookings() {
     }).catch(() => {});
   }
 }
-function renderSaved() {
+function savedRow(p, i) {
+  const np = p.trade ? p : provFromRow(p);
+  return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+    <div class="avatar" style="width:52px;height:52px">${initials(np.name)}</div>
+    <div class="mid" data-open="${np.id}" style="cursor:pointer"><div class="h3">${esc(np.name)}</div><div class="sec">${esc(np.trade)}${np.rating ? ' • ' + np.rating : ''}</div><div class="meta">📍 ${np.area || np.dist || 'Ahmedabad'}</div></div>
+    <span style="color:var(--danger);font-size:22px" data-save="${np.id}">❤</span>
+  </div>`;
+}
+async function renderSaved() {
   const el = $('savedRows'); if (!el) return;
+  if (hasSupabase && session) {
+    el.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      const rows = await api.getSavedProviders();
+      rows.forEach((p) => { const np = provFromRow(p); providerCache[np.id] = np; });
+      el.innerHTML = rows.length ? rows.map((p, i) => savedRow(p, i)).join('') : `<div class="empty">No saved providers yet.<br>Tap ♡ on a provider to save them.</div>`;
+    } catch (e) { el.innerHTML = `<div class="empty">Could not load saved providers.</div>`; }
+    return;
+  }
   el.innerHTML = DEMO_SAVED.map((s, i) => `
     <div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
       <div class="avatar" style="width:52px;height:52px">${initials(s.name)}</div>
@@ -236,8 +304,26 @@ function renderSaved() {
       <span style="color:var(--danger);font-size:22px">❤</span>
     </div>`).join('');
 }
-function renderNotif() {
+function notifIcon(type) {
+  return ({ booking: { c: '#1667E8', i: '📅' }, lead: { c: '#22B24C', i: '✓' }, review: { c: '#F6B01E', i: '★' }, offer: { c: '#F5A623', i: '🏷️' }, system: { c: '#8B44D6', i: '🔔' } })[type] || { c: '#1667E8', i: '🔔' };
+}
+async function renderNotif() {
   const el = $('notifRows'); if (!el) return;
+  if (hasSupabase && session) {
+    el.innerHTML = `<div class="empty">Loading…</div>`;
+    try {
+      const rows = await api.getNotifications();
+      el.innerHTML = rows.length ? rows.map((n, i) => {
+        const ic = notifIcon(n.type);
+        const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        return `<div class="row" style="align-items:flex-start;${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+          <div class="avatar" style="width:44px;height:44px;background:${ic.c};color:#fff">${ic.i}</div>
+          <div class="mid"><div style="display:flex"><div class="h3" style="flex:1">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
+            <div class="sec" style="margin-top:2px">${esc(n.body || '')}</div></div></div>`;
+      }).join('') : `<div class="empty">No notifications yet.</div>`;
+    } catch (e) { el.innerHTML = `<div class="empty">No notifications yet.</div>`; }
+    return;
+  }
   el.innerHTML = DEMO_NOTIF.map((n, i) => `
     <div class="row" style="align-items:flex-start;${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
       <div class="avatar" style="width:44px;height:44px;background:${n.color};color:#fff">${n.ic}</div>
@@ -310,14 +396,14 @@ async function toggleSave(id) {
   }
   toast(on ? 'Added to saved' : 'Removed from saved');
   const cur = stack[stack.length - 1];
-  if (cur === 'list') renderList(); else if (cur === 'profile') renderProfile();
+  if (cur === 'list') renderList(); else if (cur === 'profile') renderProfile(); else if (cur === 'saved') renderSaved();
 }
 
 /* ---------- open a provider ---------- */
 async function openProvider(id) {
-  let p = DEMO_PROVIDERS.find((x) => x.id === id);
+  let p = providerCache[id] || DEMO_PROVIDERS.find((x) => x.id === id);
   if (!p && hasSupabase) {
-    try { const row = await api.getProvider(id); if (row) p = { id: row.id, name: row.name, trade: row.custom_category || 'Service Pro', rating: Number(row.rating || 4.5), reviews: row.review_count || 0, dist: '—', price: row.starting_price || 200, exp: (row.experience_years ? row.experience_years + ' years exp' : '') }; } catch (e) {}
+    try { const row = await api.getProvider(id); if (row) p = provFromRow(row); } catch (e) {}
   }
   selectedProvider = p || DEMO_PROVIDERS[0];
   show('profile');
@@ -368,17 +454,35 @@ async function boot() {
   $('logoutBtn')?.addEventListener('click', logout);
   $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { selectedCat = null; show('list'); } });
 
-  if (hasSupabase) {
-    (async () => {
-      try { session = await api.getSession(); } catch (e) {}
-      if (session) {
-        myProfile = await api.getMyProfile().catch(() => null);
-        savedIds = await api.getSavedIds().catch(() => new Set());
-      }
-    })();
-  }
+  // Restore session + reference data before routing (guarded so the splash
+  // never hangs on the network).
+  const ready = (async () => {
+    if (!hasSupabase) return;
+    try {
+      const cats = await api.getCategories();
+      (cats || []).forEach((c) => {
+        const label = (c.translations && (c.translations.en)) || c.key;
+        catMap[c.id] = label;
+        catByKey[c.key] = c.id;
+      });
+    } catch (e) {}
+    try { session = await api.getSession(); } catch (e) {}
+    if (session) {
+      myProfile = await api.getMyProfile().catch(() => null);
+      savedIds = await api.getSavedIds().catch(() => new Set());
+    }
+  })();
 
-  setTimeout(() => { stack = ['splash']; show(session ? 'home' : 'login'); }, 1600);
+  const route = () => { stack = ['splash']; show(session ? 'home' : 'login'); };
+  // Route after the session settles, but no later than 2.6s (splash cap).
+  Promise.race([ready, new Promise((r) => setTimeout(r, 2600))]).then(() => {
+    setTimeout(route, session != null || !hasSupabase ? 400 : 0);
+  });
+  setTimeout(() => { if (currentScreenIsSplash()) route(); }, 2800);
+}
+function currentScreenIsSplash() {
+  const s = document.querySelector('.screen.on');
+  return !s || s.id === 's-splash';
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

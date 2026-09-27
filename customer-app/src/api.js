@@ -247,6 +247,18 @@ export async function unsaveProvider(providerId) {
   if (error) throw error;
 }
 
+// Full provider rows the customer has saved (for the Saved tab).
+export async function getSavedProviders() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase
+    .from('saved_providers')
+    .select('provider:providers(*)')
+    .eq('customer_id', u.user.id);
+  if (error) throw error;
+  return (data ?? []).map(r => r.provider).filter(Boolean);
+}
+
 // ---------------- NOTIFICATIONS ----------------
 
 export async function getNotifications() {
