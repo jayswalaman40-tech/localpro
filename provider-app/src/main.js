@@ -551,7 +551,23 @@ document.addEventListener('click', (e) => {
   if (rej) { rejectLead(rej.getAttribute('data-reject')); return; }
   const bn = e.target.closest('[data-book-next]');
   if (bn) { advanceBooking(bn.getAttribute('data-book-next'), bn.getAttribute('data-book-status')); return; }
+  const callEl = e.target.closest('[data-call]');
+  if (callEl) { window.location.href = telHref(callEl.getAttribute('data-call')); return; }
+  const photoEl = e.target.closest('[data-photo]');
+  if (photoEl) { pickPhoto(); return; }
+  const clr = e.target.closest('[data-clearsign]');
+  if (clr) { if ($('signPanel')) $('signPanel').textContent = ''; toast('Signature cleared'); return; }
+  const tst = e.target.closest('[data-toast]');
+  if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
+
+/* ---------- work photo picker (job in progress) ---------- */
+function pickPhoto() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+  inp.onchange = () => { if (inp.files && inp.files[0]) toast('Photo added'); };
+  inp.click();
+}
 
 /* ---------- lead + booking actions ---------- */
 async function acceptLead(id) {

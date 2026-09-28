@@ -149,7 +149,7 @@
             <input id="phone" placeholder="Enter Mobile Number" inputmode="numeric" maxlength="10">
           </div>
           <button class="btn btn-blue" id="getOtpBtn" style="margin-top:16px">Get OTP</button>
-          <p class="sec" style="text-align:center;margin-top:22px">By continuing, you agree to our<br><span class="link">Terms &amp; Conditions</span> &nbsp;•&nbsp; <span class="link">Privacy Policy</span></p>
+          <p class="sec" style="text-align:center;margin-top:22px">By continuing, you agree to our<br><span class="link" data-toast="Terms & Conditions">Terms &amp; Conditions</span> &nbsp;•&nbsp; <span class="link" data-toast="Privacy Policy">Privacy Policy</span></p>
         </div>
         <div id="loginOtpStep" hidden>
           <p class="h2" style="text-align:center;margin:28px 0 8px">Verify OTP</p>
@@ -170,7 +170,7 @@
     <div class="hdr">
       <div>
         <div class="wm" style="font-size:22px"><span class="h">Help</span><span class="z">Zo</span></div>
-        <div class="meta" style="margin-top:1px"><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)">Ahmedabad</b> &#9662;</div>
+        <div class="meta" style="margin-top:1px" data-toast="Location: Ahmedabad"><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)">Ahmedabad</b> &#9662;</div>
       </div>
       <div class="spacer"></div>
       <div class="ic-btn" data-go="notifications"><span class="dot"></span>&#128276;</div>
@@ -179,10 +179,10 @@
       <div class="hero">
         <span class="worker">&#128104;&#8205;&#128295;</span>
         <h3>Need a Service?</h3><p>We're here to help!</p>
-        <div class="searchbar"><span>&#128269;</span><input id="homeSearch" placeholder="Search for service (e.g. Plumber)"><div class="go">&#128269;</div></div>
+        <div class="searchbar"><span>&#128269;</span><input id="homeSearch" placeholder="Search for service (e.g. Plumber)"><div class="go" id="homeSearchGo">&#128269;</div></div>
       </div>
       <div class="pad">
-        <div class="sectitle"><span class="h2">Popular Services</span><span class="link">See All</span></div>
+        <div class="sectitle"><span class="h2">Popular Services</span><span class="link" data-seeall>See All</span></div>
         <div class="sgrid" id="catGrid"></div>
         <div class="sectitle"><span class="h2">Top Providers Near You</span><span class="link" data-go="list">See All</span></div>
         <div id="homeTop"></div>
@@ -198,7 +198,7 @@
       <div><p class="h1" id="listTitle">Providers</p><div class="meta">&#128205; Ahmedabad &#9662;</div></div>
     </div>
     <div class="pad" style="padding-bottom:8px"><div class="chips">
-      <div class="chip on">All</div><div class="chip">Top Rated</div><div class="chip">Nearest</div><div class="chip">Price Low</div>
+      <div class="chip on" data-sort="all">All</div><div class="chip" data-sort="rating">Top Rated</div><div class="chip" data-sort="dist">Nearest</div><div class="chip" data-sort="price">Price Low</div>
     </div></div>
     <div class="scroll" style="padding-top:0"><div class="pad" id="listCards"></div></div>
   </div>
@@ -242,7 +242,7 @@
   <div class="screen" id="s-bookings">
     <div class="hdr"><div class="ic-btn" data-go="home">&#8249;</div><p class="h1">My Bookings</p></div>
     <div class="pad" style="padding-bottom:6px"><div class="chips">
-      <div class="chip on">Upcoming</div><div class="chip">Completed</div><div class="chip">Cancelled</div>
+      <div class="chip on" data-bfilter="upcoming">Upcoming</div><div class="chip" data-bfilter="completed">Completed</div><div class="chip" data-bfilter="cancelled">Cancelled</div>
     </div></div>
     <div class="scroll" style="padding-top:0"><div class="pad" id="bookRows"></div></div>
     <div class="tabs" data-tabbar></div>
@@ -268,7 +268,7 @@
       <div style="display:flex;align-items:center;gap:12px;margin-top:calc(6px + env(safe-area-inset-top,0))">
         <div class="avatar" id="accAvatar" style="width:64px;height:64px">PP</div>
         <div style="flex:1"><div class="h2" id="accName">Guest User</div><div class="sec" id="accPhone">+91 -----</div></div>
-        <div class="ic-btn">&#9998;</div>
+        <div class="ic-btn" id="editProfileBtn">&#9998;</div>
       </div>
       <div class="card" style="margin-top:18px">
         <div style="display:flex;align-items:center"><span style="color:var(--success)">&#9673;</span>&nbsp;<b style="color:var(--tPrimary)">Complete Profile</b><div class="spacer"></div><b>80%</b></div>
@@ -277,10 +277,10 @@
       <div class="card" style="margin-top:16px;padding:4px 16px">
         <div class="mrow" data-go="bookings"><span class="mi">&#128197;</span><span class="ml">My Bookings</span><span class="mc">&#8250;</span></div><div class="divide"></div>
         <div class="mrow" data-go="saved"><span class="mi">&#10084;</span><span class="ml">Saved Providers</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><span class="mi">&#128196;</span><span class="ml">Terms &amp; Conditions</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><span class="mi">&#128274;</span><span class="ml">Privacy Policy</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><span class="mi">&#8505;</span><span class="ml">About HelpZo</span><span class="mc">&#8250;</span></div>
+        <a class="mrow" href="mailto:support@helpzo.app" style="text-decoration:none;color:inherit"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></a><div class="divide"></div>
+        <div class="mrow" data-toast="Terms &amp; Conditions"><span class="mi">&#128196;</span><span class="ml">Terms &amp; Conditions</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-toast="Privacy Policy"><span class="mi">&#128274;</span><span class="ml">Privacy Policy</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-toast="HelpZo v1.0 — Your Problem · Our Priority"><span class="mi">&#8505;</span><span class="ml">About HelpZo</span><span class="mc">&#8250;</span></div>
       </div>
       <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
     </div></div>

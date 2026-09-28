@@ -23,6 +23,10 @@ let savedIds = new Set();
 let catMap = {};                   // category uuid -> label
 let catByKey = {};                 // category key  -> uuid
 let providerCache = {};            // id -> normalized provider (from lists)
+let lastListRows = [];             // providers currently shown on the list screen
+let listSort = 'all';              // all | rating | dist | price
+let lastBookings = [];             // bookings currently loaded (for filter chips)
+let bookFilter = 'upcoming';       // upcoming | completed | cancelled
 let toastTimer = null;
 
 // Normalize a Supabase provider/RPC row into the shape the UI cards use.
@@ -38,6 +42,7 @@ function provFromRow(p) {
     exp: p.experience_yrs ? p.experience_yrs + ' years exp' : '',
     about: p.about || '',
     area: p.service_area || 'Ahmedabad',
+    phone: p.phone || null,
     verified: p.verified,
   };
 }
@@ -172,6 +177,8 @@ function providerCard(p) {
   </div>`;
 }
 async function renderList() {
+  listSort = 'all';
+  document.querySelectorAll('[data-sort]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-sort') === 'all'));
   if ($('listTitle')) $('listTitle').textContent = selectedCat ? (CATS.find((c) => c.key === selectedCat)?.label || 'Providers') : 'Providers';
   const el = $('listCards'); if (!el) return;
   el.innerHTML = `<div class="empty">Loading…</div>`;
@@ -186,6 +193,16 @@ async function renderList() {
     } catch (e) { rows = null; }
   }
   if (!rows) rows = DEMO_PROVIDERS;                 // not signed in / offline
+  lastListRows = rows;
+  paintList();
+}
+// Sort + paint the already-loaded list rows (used by the filter chips too).
+function paintList() {
+  const el = $('listCards'); if (!el) return;
+  let rows = lastListRows.slice();
+  if (listSort === 'rating') rows.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (listSort === 'dist') rows.sort((a, b) => (parseFloat(a.dist) || 1e9) - (parseFloat(b.dist) || 1e9));
+  else if (listSort === 'price') rows.sort((a, b) => (a.price || 0) - (b.price || 0));
   if (!rows.length) { el.innerHTML = `<div class="empty">No providers found nearby.<br>Try a different service.</div>`; return; }
   el.innerHTML = rows.map(providerCard).join('');
 }
@@ -249,34 +266,53 @@ function renderBook() {
     dr.innerHTML = days.map((d, i) => `<div class="datecard${i === 0 ? ' on' : ''}" data-date><div class="d1">${labels[i]}</div><div class="d2">${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}</div></div>`).join('');
   }
 }
+// Buckets a raw status into one of the three filter chips.
+function bookBucket(st) {
+  const s = String(st || 'pending').toLowerCase();
+  if (s === 'completed') return 'completed';
+  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
+  return 'upcoming'; // pending / confirmed / anything else
+}
 function renderBookings() {
   const el = $('bookRows'); if (!el) return;
-  let rows = DEMO_BOOKINGS;
-  const html = rows.map((b, i) => `
-    <div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
-      <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
-      <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
-        <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div></div>
-      <span class="pill ${b.pill}">${esc(b.status)}</span>
-    </div>`).join('');
-  el.innerHTML = html;
+  bookFilter = 'upcoming';
+  document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-bfilter') === 'upcoming'));
+  // Seed with demo so the screen is never blank, then swap in live rows.
+  lastBookings = DEMO_BOOKINGS.map((b) => ({
+    service: b.service, provider: b.provider, when: b.when, addr: b.addr, status: b.status,
+  }));
+  paintBookings();
   if (hasSupabase && session) {
     api.getMyBookingList().then((live) => {
       if (live && live.length) {
-        el.innerHTML = live.map((b, i) => {
+        lastBookings = live.map((b) => {
           const pv = b.provider || {};
           const st = (b.status || 'pending');
-          const pill = st === 'confirmed' ? 'green' : st === 'cancelled' ? 'grey' : 'orange';
-          return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
-            <div class="avatar" style="width:52px;height:52px">${initials(pv.name || 'P')}</div>
-            <div class="mid"><div class="h3">${esc(b.service || 'Service')}</div><div class="sec">${esc(pv.name || 'Provider')}</div>
-              <div class="meta">📅 ${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</div><div class="meta">📍 ${esc(b.address || '')}</div></div>
-            <span class="pill ${pill}">${st[0].toUpperCase() + st.slice(1)}</span>
-          </div>`;
-        }).join('');
+          return {
+            service: b.service || 'Service', provider: pv.name || 'Provider',
+            when: `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim(), addr: b.address || '',
+            status: st[0].toUpperCase() + st.slice(1),
+          };
+        });
+        paintBookings();
       }
     }).catch(() => {});
   }
+}
+function paintBookings() {
+  const el = $('bookRows'); if (!el) return;
+  const rows = lastBookings.filter((b) => bookBucket(b.status) === bookFilter);
+  if (!rows.length) { el.innerHTML = `<div class="empty">No ${esc(bookFilter)} bookings.</div>`; return; }
+  el.innerHTML = rows.map((b, i) => {
+    const s = String(b.status).toLowerCase();
+    const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : s.startsWith('cancel') ? 'grey' : 'orange';
+    return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+      <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
+      <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
+        <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div></div>
+      <span class="pill ${pill}">${esc(b.status)}</span>
+    </div>`;
+  }).join('');
 }
 function savedRow(p, i) {
   const np = p.trade ? p : provFromRow(p);
@@ -419,8 +455,41 @@ document.addEventListener('click', (e) => {
   const dc = e.target.closest('[data-date]'); if (dc) { document.querySelectorAll('#dateRow .datecard').forEach((x) => x.classList.remove('on')); dc.classList.add('on'); return; }
   const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
   if (e.target.closest('#saveHeart')) { toggleSave((selectedProvider || DEMO_PROVIDERS[0]).id); return; }
-  if (e.target.closest('#callBtn')) { const p = selectedProvider || DEMO_PROVIDERS[0]; if (hasSupabase && session && !String(p.id).startsWith('d')) { api.createLead(p.id).catch(() => {}); } toast('Calling ' + p.name + '…'); return; }
+  if (e.target.closest('#callBtn')) { dialProvider(); return; }
+  if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
+  const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; show('list'); return; }
+  const sort = e.target.closest('[data-sort]'); if (sort) {
+    document.querySelectorAll('[data-sort]').forEach((c) => c.classList.remove('on'));
+    sort.classList.add('on'); listSort = sort.getAttribute('data-sort'); paintList(); return;
+  }
+  const bf = e.target.closest('[data-bfilter]'); if (bf) {
+    document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.remove('on'));
+    bf.classList.add('on'); bookFilter = bf.getAttribute('data-bfilter'); paintBookings(); return;
+  }
+  const tst = e.target.closest('[data-toast]'); if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
+
+/* ---------- call the selected provider (creates a lead, then dials) ---------- */
+async function dialProvider() {
+  let p = selectedProvider || DEMO_PROVIDERS[0];
+  if (hasSupabase && session && p.id && !String(p.id).startsWith('d')) {
+    api.createLead(p.id).catch(() => {});               // fire-and-forget lead
+    if (!p.phone) { try { const row = await api.getProvider(p.id); if (row?.phone) p.phone = row.phone; } catch (e) {} }
+  }
+  if (p.phone) { toast('Calling ' + p.name + '…'); window.location.href = telHref(p.phone); }
+  else { toast('Request sent to ' + p.name); }
+}
+
+/* ---------- edit profile (name) ---------- */
+async function editProfile() {
+  const cur = myProfile?.full_name || '';
+  const name = prompt('Your name:', cur);
+  if (name == null) return;
+  const clean = name.trim(); if (!clean) return;
+  if (hasSupabase && session) { try { await api.updateMyProfile({ full_name: clean }); } catch (e) {} }
+  if (myProfile) myProfile.full_name = clean; else myProfile = { full_name: clean };
+  renderAccount(); toast('Profile updated');
+}
 
 /* ---------- OTP input UX ---------- */
 function wireOtpInputs() {
@@ -453,6 +522,7 @@ async function boot() {
   $('confirmBookBtn')?.addEventListener('click', confirmBooking);
   $('logoutBtn')?.addEventListener('click', logout);
   $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { selectedCat = null; show('list'); } });
+  $('homeSearchGo')?.addEventListener('click', () => { selectedCat = null; show('list'); });
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).

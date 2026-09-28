@@ -336,7 +336,7 @@
       <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
     <div class="scroll sheet"><div class="pad">
       <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on">Active (5)</div><div class="chip">Completed (18)</div><div class="chip">Cancelled (3)</div></div>
-      <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px">&#9776; Filter</button></div>
+      <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input id="jobSearch" placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px" data-toast="Filters coming soon">&#9776; Filter</button></div>
       <div id="jobsList"></div>
     </div></div>
     <div class="tabs" data-tabbar></div>
@@ -357,13 +357,13 @@
     <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div>
       <div class="htxt"><div class="h1">Job Details</div><div class="sub">View job details and accept</div></div><div class="ic-btn">&#8943;</div></div>
     <div class="scroll sticky-pad sheet"><div class="pad" id="jobDetailBody"></div></div>
-    <div class="sticky"><button class="btn btn-out-danger">Reject</button><button class="btn btn-green" data-go="enroute">&#10003; Accept Job</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-go="leads">Reject</button><button class="btn btn-green" data-go="enroute">&#10003; Accept Job</button></div>
   </div>
 
   <!-- 09 EN ROUTE -->
   <div class="screen" id="s-enroute">
     <div class="hdr blue"><div class="ic-btn" data-go="jobs">&#8249;</div>
-      <div class="htxt"><div class="h1">En Route to Job</div><div class="sub">AC Repair • #SRV1234</div></div><button class="hpill">&#128222; Call</button></div>
+      <div class="htxt"><div class="h1">En Route to Job</div><div class="sub">AC Repair • #SRV1234</div></div><button class="hpill" data-call="+91 98765 43210">&#128222; Call</button></div>
     <div class="scroll sticky-pad sheet"><div class="pad">
       <div class="card" style="display:flex;gap:12px;align-items:center">
         <div class="avatar" style="width:46px;height:46px">R</div>
@@ -387,7 +387,7 @@
         <div class="jpn"><div class="jpc">4</div><div class="jpl">Complete</div><div class="jpt">--:--</div></div>
       </div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out-danger">&#9888; Report</button><button class="btn btn-blue" data-go="progress">&#10003; Arrived</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Report</button><button class="btn btn-blue" data-go="progress">&#10003; Arrived</button></div>
   </div>
 
   <!-- 10 JOB IN PROGRESS -->
@@ -411,7 +411,7 @@
       <div class="panel" style="display:flex;align-items:center;margin-top:14px"><span style="font-size:22px">&#128337;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13px">Job Timer</div><div class="sec" style="font-size:12px">Actual time on site</div></div><div class="green-t" id="jobTimer" style="font-size:22px">00:00:00</div></div>
       <div class="h3" style="margin:18px 0 8px">Work Update</div>
       <textarea class="ta" placeholder="Add work notes...">Checked gas pressure. Found low cooling due to gas leakage. Need to refill gas and replace service valve.</textarea>
-      <div style="display:flex;gap:10px;margin-top:12px"><button class="btn btn-out sm">&#128247; Add Photos</button><button class="btn btn-out sm">&#128206; Add Notes</button></div>
+      <div style="display:flex;gap:10px;margin-top:12px"><button class="btn btn-out sm" data-photo>&#128247; Add Photos</button><button class="btn btn-out sm" data-toast="Notes saved">&#128206; Add Notes</button></div>
       <div class="h3" style="margin:18px 0 8px">Service Items</div>
       <div class="grid2">
         <div class="check" data-check><div class="cbox on">&#10003;</div>Diagnosis</div>
@@ -419,10 +419,10 @@
         <div class="check" data-check><div class="cbox on">&#10003;</div>Gas Refill</div>
         <div class="check" data-check><div class="cbox"></div>Cleaning</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div><span class="link">Clear</span></div>
-      <div class="panel grey" style="height:90px;display:flex;align-items:center;justify-content:center;font-family:cursive;font-size:26px;color:#33415c">Rahul Sharma</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div><span class="link" data-clearsign>Clear</span></div>
+      <div class="panel grey" id="signPanel" style="height:90px;display:flex;align-items:center;justify-content:center;font-family:cursive;font-size:26px;color:#33415c">Rahul Sharma</div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out-danger">&#9888; Issue</button><button class="btn btn-green" data-go="completed">&#10003; Complete Job</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Issue</button><button class="btn btn-green" data-go="completed">&#10003; Complete Job</button></div>
   </div>
 
   <!-- 11 JOB COMPLETED -->
@@ -453,11 +453,11 @@
 
   <!-- 12 EARNINGS -->
   <div class="screen" id="s-earnings">
-    <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill">This Month &#9662;</button></div>
+    <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill" data-toast="Showing: This Month">This Month &#9662;</button></div>
     <div class="scroll sheet"><div class="pad">
       <div style="display:flex;gap:12px">
         <div style="flex:1"><div class="sec" style="font-size:13px">Total Earnings</div><div style="font-size:28px;font-weight:800" id="earnTotal">₹12,480</div><div class="green-t" style="font-size:12px">&#8599; +18% from last month</div></div>
-        <div class="panel" style="width:150px"><span style="font-size:20px">&#128176;</span><div class="sec" style="font-size:12px;margin-top:4px">Available Balance</div><div style="font-weight:800;font-size:18px">₹8,320</div><button class="btn btn-green sm" style="margin-top:8px">Withdraw</button></div>
+        <div class="panel" style="width:150px"><span style="font-size:20px">&#128176;</span><div class="sec" style="font-size:12px;margin-top:4px">Available Balance</div><div style="font-weight:800;font-size:18px">₹8,320</div><button class="btn btn-green sm" style="margin-top:8px" data-toast="Withdrawal requested — payout in 24 hrs">Withdraw</button></div>
       </div>
       <div class="stats" style="margin-top:16px">
         <div class="stat"><div class="si">&#128188;</div><div class="sv" id="earnJobs">24</div><div class="sn">Jobs Done</div></div>
@@ -572,9 +572,9 @@
     <div class="scroll sheet"><div class="pad">
       <div class="panel blue" style="display:flex;align-items:center"><span style="font-size:30px">&#127911;</span><div style="flex:1;margin-left:12px"><div style="font-weight:700;font-size:15px">Need help?</div><div class="sec" style="font-size:12.5px">Our support team is available 24/7.</div></div><span class="pill green">&#9679; Live</span></div>
       <div style="display:flex;gap:10px;margin-top:14px">
-        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px">&#128172;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Live Chat</div></div>
-        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px;color:var(--success)">&#128222;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Call Support</div></div>
-        <div class="card" style="flex:1;text-align:center;padding:14px 8px"><div style="font-size:22px;color:#8B44D6">&#9993;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Email Us</div></div>
+        <div class="card" style="flex:1;text-align:center;padding:14px 8px" data-toast="Live chat opening…"><div style="font-size:22px">&#128172;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Live Chat</div></div>
+        <a class="card" href="tel:+919000000000" style="flex:1;text-align:center;padding:14px 8px;text-decoration:none;color:inherit"><div style="font-size:22px;color:var(--success)">&#128222;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Call Support</div></a>
+        <a class="card" href="mailto:support@helpzo.app" style="flex:1;text-align:center;padding:14px 8px;text-decoration:none;color:inherit"><div style="font-size:22px;color:#8B44D6">&#9993;</div><div style="font-weight:600;font-size:12.5px;margin-top:6px">Email Us</div></a>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px"><div class="h3">Frequently Asked Questions</div><span class="link">See All</span></div>
       <div class="card" style="padding:2px 16px">
@@ -582,7 +582,7 @@
         <div class="mrow" style="padding:14px 0"><div class="mt"><div class="a" style="font-weight:500">How do I update my availability?</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
         <div class="mrow" style="padding:14px 0"><div class="mt"><div class="a" style="font-weight:500">When will I receive my payment?</div></div><span class="mc">&#8250;</span></div>
       </div>
-      <button class="btn btn-blue" style="margin-top:14px">Submit Ticket</button>
+      <button class="btn btn-blue" style="margin-top:14px" data-toast="Support ticket submitted — we'll reply soon">Submit Ticket</button>
     </div></div>
   </div>
 
