@@ -810,3 +810,11 @@ end $$;
 -- Keep the marketing rating numbers from the prototype (the rating trigger
 -- would otherwise recompute from the tiny number of seeded reviews).
 -- Real reviews will drive these once customers start rating.
+
+-- =====================================================================
+-- Reload PostgREST's schema cache so the REST API immediately sees any
+-- newly-added columns/tables. Without this you can hit
+-- "Could not find the column … in the schema cache" right after running
+-- migrations. Safe to run every time.
+-- =====================================================================
+notify pgrst, 'reload schema';
