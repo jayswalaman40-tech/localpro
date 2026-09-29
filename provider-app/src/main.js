@@ -152,6 +152,7 @@ function onEnter(id) {
   if (id === 'notif') renderNotif();
   if (id === 'schedule') renderSchedule();
   if (id === 'profile') renderProfile();
+  if (id === 'certificate') renderCertificate();
   if (id === 'skills') renderSkillGrid();
   if (id === 'reg3') renderDocList();
   if (id === 'verify') renderVerifyList();
@@ -434,71 +435,83 @@ function startTimer() {
 }
 function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
-/* ---------- signature pad (draw with finger, or upload an image) ---------- */
-let signInited = false;
-function initSignature() {
-  const canvas = $('signPad'); if (!canvas) return;
-  // Size the backing store to the element for crisp lines on hi-DPI screens.
+/* ---------- reusable signature pad (draw with finger, or upload an image) ---------- */
+function createSigPad({ pad, img, hint }) {
+  let inited = false, drawn = false, uploadedFile = null;
+  const C = () => $(pad), I = () => $(img), H = () => $(hint);
   const fit = () => {
-    const r = canvas.getBoundingClientRect();
+    const canvas = C(); if (!canvas) return;
+    const r = canvas.getBoundingClientRect(); if (!r.width) return;
     const dpr = window.devicePixelRatio || 1;
-    if (!r.width) return;
-    canvas.width = Math.round(r.width * dpr);
-    canvas.height = Math.round(r.height * dpr);
+    // Preserve any existing drawing across a resize.
+    const prev = (canvas.width && drawn) ? canvas.toDataURL() : null;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0F2547';
+    if (prev) { const im = new Image(); im.onload = () => ctx.drawImage(im, 0, 0, r.width, r.height); im.src = prev; }
   };
-  fit();
-  if (signInited) return;            // only bind listeners once
-  signInited = true;
-  let drawing = false, last = null;
-  const pos = (e) => {
-    const r = canvas.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  const pos = (e) => { const r = C().getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+  function bind() {
+    const canvas = C(); let drawing = false, last = null;
+    const start = (e) => { e.preventDefault(); uploadedFile = null; const im = I(); if (im) im.style.display = 'none'; canvas.style.display = 'block'; const h = H(); if (h) h.style.display = 'none'; drawing = true; drawn = true; last = pos(e); };
+    const move = (e) => { if (!drawing) return; e.preventDefault(); const ctx = canvas.getContext('2d'); const p = pos(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; };
+    const end = () => { drawing = false; };
+    canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end);
+  }
+  return {
+    mount() { if (!C()) return; fit(); if (!inited) { inited = true; bind(); } },
+    clear() { const canvas = C(); if (canvas) { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'block'; } const im = I(); if (im) { im.style.display = 'none'; im.removeAttribute('src'); } const h = H(); if (h) h.style.display = 'flex'; drawn = false; uploadedFile = null; toast('Signature cleared'); },
+    upload() { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return; uploadedFile = f; drawn = false; const im = I(), canvas = C(), h = H(); if (im) { im.src = URL.createObjectURL(f); im.style.display = 'block'; } if (canvas) canvas.style.display = 'none'; if (h) h.style.display = 'none'; toast('Signature added'); }; inp.click(); },
+    hasContent() { return drawn || !!uploadedFile; },
+    showUrl(url) { const im = I(), canvas = C(), h = H(); if (im) { im.src = url; im.style.display = 'block'; } if (canvas) canvas.style.display = 'none'; if (h) h.style.display = 'none'; drawn = false; uploadedFile = null; },
+    // Returns a PNG Blob of the current signature (drawn or uploaded), or null.
+    async toBlob() {
+      if (uploadedFile) return uploadedFile;
+      const canvas = C(); if (!canvas || !drawn) return null;
+      return await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    },
   };
-  const start = (e) => {
-    e.preventDefault();
-    // switch from uploaded image back to draw mode if needed
-    const img = $('signImg'); if (img) img.style.display = 'none';
-    canvas.style.display = 'block';
-    const hint = $('signHint'); if (hint) hint.style.display = 'none';
-    drawing = true; last = pos(e);
-  };
-  const move = (e) => {
-    if (!drawing) return; e.preventDefault();
-    const ctx = canvas.getContext('2d'); const p = pos(e);
-    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-    last = p;
-  };
-  const end = () => { drawing = false; };
-  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
-  window.addEventListener('mouseup', end);
-  canvas.addEventListener('touchstart', start, { passive: false });
-  canvas.addEventListener('touchmove', move, { passive: false });
-  canvas.addEventListener('touchend', end);
 }
-function clearSignature() {
-  const canvas = $('signPad');
-  if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'block'; }
-  const img = $('signImg'); if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
-  const hint = $('signHint'); if (hint) hint.style.display = 'flex';
-  toast('Signature cleared');
+const sigJob = createSigPad({ pad: 'signPad', img: 'signImg', hint: 'signHint' });
+const sigCert = createSigPad({ pad: 'certPad', img: 'certSignImg', hint: 'certSignHint' });
+function initSignature() { sigJob.mount(); }
+
+/* ---------- verification certificate ---------- */
+function isVerified() {
+  return !!(myProvider && (myProvider.verified === true || myProvider.kyc_status === 'verified'));
 }
-function uploadSignature() {
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'image/*';
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0]; if (!f) return;
-    const url = URL.createObjectURL(f);
-    const img = $('signImg'); const canvas = $('signPad'); const hint = $('signHint');
-    if (img) { img.src = url; img.style.display = 'block'; }
-    if (canvas) canvas.style.display = 'none';
-    if (hint) hint.style.display = 'none';
-    toast('Signature uploaded');
-  };
-  inp.click();
+async function renderCertificate() {
+  const pending = $('certPending'), cardEl = $('certCard');
+  if (!isVerified()) { if (pending) pending.style.display = 'block'; if (cardEl) cardEl.style.display = 'none'; return; }
+  if (pending) pending.style.display = 'none';
+  if (cardEl) cardEl.style.display = 'block';
+  if ($('certName')) $('certName').textContent = myProvider.name || 'Provider';
+  if ($('certTrade')) $('certTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
+  if ($('certId')) $('certId').textContent = 'HZ-' + String(myProvider.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
+  if ($('certDate')) $('certDate').textContent = new Date(myProvider.updated_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  sigCert.mount();
+  // Load an already-saved signature, if any.
+  if (hasSupabase && myProvider.signature_path) {
+    try { const url = await api.getKycSignedUrl(myProvider.signature_path); if (url) sigCert.showUrl(url); } catch (e) {}
+    if ($('certSaveBtn')) $('certSaveBtn').textContent = '✓ Update Signature';
+  }
+}
+async function saveCertSignature() {
+  const blob = await sigCert.toBlob();
+  if (!blob) { toast('Please sign or upload first'); return; }
+  const btn = $('certSaveBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    if (hasSupabase && myProvider) {
+      const file = new File([blob], 'signature.png', { type: 'image/png' });
+      const path = await api.uploadKyc(file, 'signature');
+      await api.saveMyProvider({ signature_path: path });
+      myProvider.signature_path = path;
+    }
+    toast('Certificate issued');
+  } catch (e) { toast(e.message || 'Could not save'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '✓ Update Signature'; } }
 }
 
 /* ---------- auth ---------- */
@@ -625,9 +638,13 @@ document.addEventListener('click', (e) => {
   const photoEl = e.target.closest('[data-photo]');
   if (photoEl) { pickPhoto(); return; }
   const clr = e.target.closest('[data-clearsign]');
-  if (clr) { clearSignature(); return; }
+  if (clr) { sigJob.clear(); return; }
   const supl = e.target.closest('[data-signupload]');
-  if (supl) { uploadSignature(); return; }
+  if (supl) { sigJob.upload(); return; }
+  const ccl = e.target.closest('[data-certclear]');
+  if (ccl) { sigCert.clear(); return; }
+  const cup = e.target.closest('[data-certupload]');
+  if (cup) { sigCert.upload(); return; }
   const tst = e.target.closest('[data-toast]');
   if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
@@ -701,6 +718,7 @@ async function boot() {
   $('skillsDoneBtn')?.addEventListener('click', () => { if ($('regCatLabel') && selectedCatLabel) $('regCatLabel').textContent = selectedCatLabel; show('reg2'); });
   $('submitRegBtn')?.addEventListener('click', submitRegistration);
   $('availToggle')?.addEventListener('click', toggleAvail);
+  $('certSaveBtn')?.addEventListener('click', saveCertSignature);
   $('logoutRow')?.addEventListener('click', logout);
   $('logoutBtn2')?.addEventListener('click', logout);
   $('chatSend')?.addEventListener('click', sendChat);

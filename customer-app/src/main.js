@@ -140,7 +140,7 @@ function topCard(p) {
     <div style="display:flex;gap:12px">
       <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
       <div style="flex:1">
-        <div><span class="h3">${esc(p.name)}</span> ${p.verified === false ? '' : '<span class="verif">✔</span>'}</div>
+        <div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
         <div class="sec" style="margin-top:2px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''}</div>
@@ -167,7 +167,7 @@ function providerCard(p) {
     <div style="display:flex;gap:12px">
       <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
       <div style="flex:1">
-        <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span><div class="spacer"></div><span style="color:${saved ? 'var(--danger)' : 'var(--tTertiary)'};font-size:20px" data-save="${p.id}">${saved ? '❤' : '♡'}</span></div>
+        <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}<div class="spacer"></div><span style="color:${saved ? 'var(--danger)' : 'var(--tTertiary)'};font-size:20px" data-save="${p.id}">${saved ? '❤' : '♡'}</span></div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
         <div class="price" style="margin-top:2px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary)">onwards</span></div>
@@ -226,8 +226,8 @@ async function renderProfile() {
   const about = p.about || `Experienced ${String(p.trade || 'professional').toLowerCase()} with great reviews for home and commercial services. Quick & reliable service guaranteed.`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
-      <span class="h2">${esc(p.name)}</span>${p.verified === false ? '' : '<span class="verif">✔</span>'}
-      <div class="spacer"></div>${p.verified === false ? '' : '<span class="pill green">✓ Verified</span>'}
+      <span class="h2">${esc(p.name)}</span>${p.verified === true ? '<span class="verif">✔</span>' : ''}
+      <div class="spacer"></div>${p.verified === true ? '<span class="pill green">✓ Verified</span>' : '<span class="pill grey">Unverified</span>'}
     </div>
     <div class="rating" style="margin-top:6px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
     <div class="sec" style="margin-top:4px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''} • ${esc(p.area || 'Ahmedabad')}</div>
@@ -255,7 +255,7 @@ function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
   const el = $('bookProvider'); if (el) el.innerHTML = `
     <div class="avatar" style="width:48px;height:48px">${initials(p.name)}</div>
-    <div><div><span class="h3">${esc(p.name)}</span> <span class="verif">✔</span></div>
+    <div><div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
     <div class="rating" style="font-size:12.5px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
     <div class="sec" style="font-size:12.5px">${esc(p.trade)} • ${inr(p.price)} onwards</div></div>`;
   const dr = $('dateRow');

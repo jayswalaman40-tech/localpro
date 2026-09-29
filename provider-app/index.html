@@ -488,7 +488,7 @@
 
   <!-- 13 PROFILE -->
   <div class="screen" id="s-profile">
-    <div class="hdr blue"><div class="htxt"><div class="h1">My Profile</div><div class="sub">Manage your account and settings</div></div><button class="hpill" data-go="reg2">&#9998; Edit</button></div>
+    <div class="hdr blue"><div class="htxt"><div class="h1">My Profile</div><div class="sub">Manage your account and settings</div></div><div class="ic-btn" id="certBtn" data-go="certificate" title="Verification certificate">&#128737;</div><button class="hpill" data-go="reg2">&#9998; Edit</button></div>
     <div class="scroll sheet"><div class="pad">
       <div class="card">
         <div style="display:flex;gap:14px;align-items:center"><div class="avatar" id="profAvatar" style="width:64px;height:64px;font-size:24px;position:relative">A<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--success);border:2px solid #fff"></span></div>
@@ -520,6 +520,71 @@
         <div class="divide"></div>
         <div class="mrow" id="logoutRow"><div class="mi" style="background:#FDECEC;color:var(--danger)">&#9099;</div><div class="mt"><div class="a" style="color:var(--danger)">Logout</div><div class="b">Sign out from your account</div></div></div>
       </div>
+    </div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 13b VERIFICATION CERTIFICATE -->
+  <div class="screen" id="s-certificate">
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">Verification Certificate</div><div class="sub">Your HelpZo trust certificate</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+
+      <!-- PENDING state -->
+      <div id="certPending" class="card" style="text-align:center;padding:26px 18px;display:none">
+        <div style="width:76px;height:76px;border-radius:50%;background:#FFF1DC;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:36px">&#9203;</div>
+        <div class="h2" style="margin-top:14px">Verification in progress</div>
+        <div class="sec" style="margin-top:8px;font-size:13.5px">Our team is reviewing your documents. Once approved, your verified certificate will be issued here and a Verified badge will show on your public profile.</div>
+        <div class="pill orange" style="margin-top:14px;display:inline-block">Status: Pending review</div>
+      </div>
+
+      <!-- CERTIFICATE -->
+      <div id="certCard" style="display:none">
+        <div style="border:2px solid var(--primary);border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 8px 24px rgba(15,37,71,.10)">
+          <div style="background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;padding:18px;text-align:center;position:relative">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+              <img src="/logomark.png" alt="" style="height:26px;width:auto;filter:brightness(0) invert(1)">
+              <span style="font-size:20px;font-weight:800;letter-spacing:.3px">HelpZo</span>
+            </div>
+            <div style="font-size:12px;opacity:.85;margin-top:2px;letter-spacing:2px;text-transform:uppercase">Certificate of Verification</div>
+          </div>
+          <div style="padding:20px 18px;text-align:center">
+            <div style="width:66px;height:66px;border-radius:50%;background:#E4F7EA;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:32px;color:var(--success)">&#128737;</div>
+            <div class="sec" style="font-size:12.5px;margin-top:12px">This certifies that</div>
+            <div class="h1" id="certName" style="margin-top:4px">Provider Name</div>
+            <div class="sec" id="certTrade" style="font-size:13.5px;margin-top:2px">Service Professional</div>
+            <p class="sec" style="font-size:12.5px;line-height:1.55;margin:12px 6px 0">has successfully completed HelpZo's identity &amp; document verification and is a trusted, verified service provider.</p>
+
+            <div style="display:flex;gap:12px;margin-top:18px;text-align:left">
+              <div style="flex:1"><div class="ter">Certificate ID</div><div style="font-weight:700;font-size:13px" id="certId">HZ-------</div></div>
+              <div style="flex:1"><div class="ter">Verified on</div><div style="font-weight:700;font-size:13px" id="certDate">--</div></div>
+            </div>
+
+            <div class="divide" style="margin:16px 0"></div>
+            <div style="display:flex;align-items:flex-end;gap:12px">
+              <div style="flex:1;text-align:left">
+                <div class="ter" style="margin-bottom:4px">Provider signature</div>
+                <div id="certSignBox" style="position:relative;border:1px dashed var(--cardBorder);border-radius:12px;height:84px;background:#fff;overflow:hidden;touch-action:none">
+                  <canvas id="certPad" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+                  <img id="certSignImg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none">
+                  <div id="certSignHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tTertiary);font-size:12px;pointer-events:none">Sign here</div>
+                </div>
+              </div>
+              <div style="text-align:center;flex-shrink:0">
+                <div style="font-family:cursive;color:var(--primary);font-size:20px;font-weight:700">HelpZo</div>
+                <div class="ter" style="margin-top:2px">Authorised</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:14px" id="certSignActions">
+          <button class="btn btn-out sm" data-certupload>&#128206; Upload signature</button>
+          <button class="btn btn-out-danger sm" data-certclear>Clear</button>
+        </div>
+        <button class="btn btn-green" style="margin-top:10px" id="certSaveBtn">&#10003; Save &amp; Issue Certificate</button>
+        <div class="sec" style="font-size:12px;text-align:center;margin-top:10px">Your signature is stored privately and shown only on this certificate.</div>
+      </div>
+
     </div></div>
     <div class="tabs" data-tabbar></div>
   </div>

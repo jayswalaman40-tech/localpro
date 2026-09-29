@@ -247,6 +247,14 @@ export async function uploadKyc(file, kind) {
   return path;
 }
 
+// Signed URL for a private kyc file (e.g. the certificate signature).
+export async function getKycSignedUrl(path, expiresIn = 3600) {
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from('kyc').createSignedUrl(path, expiresIn);
+  if (error) return null;
+  return data?.signedUrl || null;
+}
+
 // ---------------- SERVICES (price list under my listing) ----------------
 export async function getMyServices() {
   const prov = await getMyProvider();

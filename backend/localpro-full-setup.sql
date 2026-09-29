@@ -811,6 +811,11 @@ end $$;
 -- would otherwise recompute from the tiny number of seeded reviews).
 -- Real reviews will drive these once customers start rating.
 
+-- ============ 0012 PROVIDER SIGNATURE (verification certificate) ============
+-- Stores the storage path (in the private "kyc" bucket) of the provider's
+-- signature that appears on their HelpZo verification certificate.
+alter table public.providers add column if not exists signature_path text;
+
 -- =====================================================================
 -- Reload PostgREST's schema cache so the REST API immediately sees any
 -- newly-added columns/tables. Without this you can hit
