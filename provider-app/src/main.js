@@ -322,7 +322,7 @@ function renderProfile() {
   if (myProvider) {
     if ($('profName')) $('profName').textContent = myProvider.name || 'Provider';
     if ($('profTrade')) $('profTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
-    if ($('profArea')) $('profArea').textContent = myProvider.area || myProvider.city || 'Ahmedabad, Gujarat';
+    if ($('profArea')) $('profArea').textContent = myProvider.service_area || myProvider.city || 'Ahmedabad, Gujarat';
     if ($('profAvatar')) $('profAvatar').firstChild.textContent = (myProvider.name || 'P')[0].toUpperCase();
     const av = myProvider.available !== false;
     $('availToggle')?.classList.toggle('on', av);
@@ -477,13 +477,15 @@ async function submitRegistration() {
   const btn = $('submitRegBtn'); btn.disabled = true; btn.textContent = 'Submitting…';
   try {
     if (hasSupabase && session) {
+      const regPhone = ($('regPhone')?.value || '').trim() || (session?.user?.phone ? '+' + session.user.phone : (pendingPhone || ''));
       const fields = {
         name: $('regName').value.trim() || 'Provider',
+        phone: regPhone,                                  // providers.phone is NOT NULL
         email: $('regEmail').value.trim() || null,
-        area: $('regArea').value.trim() || null,
+        service_area: $('regArea').value.trim() || null,
         city: $('regArea').value.trim() || null,
-        bio: $('regBio').value.trim() || null,
-        experience_years: Number($('regExp').value) || selectedExp || 0,
+        about: $('regBio').value.trim() || null,          // column is "about", not "bio"
+        experience_yrs: Number($('regExp').value) || selectedExp || 0,  // column is "experience_yrs"
       };
       if (selectedCatId && selectedCatId !== 'other') {
         const c = categories.find((x) => x.key === selectedCatId);
