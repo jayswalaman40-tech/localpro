@@ -158,7 +158,7 @@ function onEnter(id) {
   if (id === 'jobdetail') renderJobDetail();
   if (id === 'enroute') { const m = $('enrouteMap'); if (m) m.innerHTML = embedMapHTML('A-702, Shaligram Residency, Bodakdev, Ahmedabad', 'maplg'); }
   if (id === 'chat') openChat();
-  if (id === 'progress') startTimer(); else stopTimer();
+  if (id === 'progress') { startTimer(); initSignature(); } else stopTimer();
 }
 
 /* ---------- renderers ---------- */
@@ -434,6 +434,73 @@ function startTimer() {
 }
 function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
+/* ---------- signature pad (draw with finger, or upload an image) ---------- */
+let signInited = false;
+function initSignature() {
+  const canvas = $('signPad'); if (!canvas) return;
+  // Size the backing store to the element for crisp lines on hi-DPI screens.
+  const fit = () => {
+    const r = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0F2547';
+  };
+  fit();
+  if (signInited) return;            // only bind listeners once
+  signInited = true;
+  let drawing = false, last = null;
+  const pos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  const start = (e) => {
+    e.preventDefault();
+    // switch from uploaded image back to draw mode if needed
+    const img = $('signImg'); if (img) img.style.display = 'none';
+    canvas.style.display = 'block';
+    const hint = $('signHint'); if (hint) hint.style.display = 'none';
+    drawing = true; last = pos(e);
+  };
+  const move = (e) => {
+    if (!drawing) return; e.preventDefault();
+    const ctx = canvas.getContext('2d'); const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    last = p;
+  };
+  const end = () => { drawing = false; };
+  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+}
+function clearSignature() {
+  const canvas = $('signPad');
+  if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'block'; }
+  const img = $('signImg'); if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+  const hint = $('signHint'); if (hint) hint.style.display = 'flex';
+  toast('Signature cleared');
+}
+function uploadSignature() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f);
+    const img = $('signImg'); const canvas = $('signPad'); const hint = $('signHint');
+    if (img) { img.src = url; img.style.display = 'block'; }
+    if (canvas) canvas.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+    toast('Signature uploaded');
+  };
+  inp.click();
+}
+
 /* ---------- auth ---------- */
 async function doGetOtp() {
   const raw = ($('phone').value || '').replace(/\D/g, '');
@@ -558,7 +625,9 @@ document.addEventListener('click', (e) => {
   const photoEl = e.target.closest('[data-photo]');
   if (photoEl) { pickPhoto(); return; }
   const clr = e.target.closest('[data-clearsign]');
-  if (clr) { if ($('signPanel')) $('signPanel').textContent = ''; toast('Signature cleared'); return; }
+  if (clr) { clearSignature(); return; }
+  const supl = e.target.closest('[data-signupload]');
+  if (supl) { uploadSignature(); return; }
   const tst = e.target.closest('[data-toast]');
   if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });

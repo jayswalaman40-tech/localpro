@@ -31,7 +31,7 @@
   .sec{color:var(--tSecondary);font-size:14px;} .ter{color:var(--tTertiary);font-size:12px;}
   .green-t{color:var(--successDark);font-weight:700;}
   .link{color:var(--primary);font-weight:600;font-size:14px;cursor:pointer;}
-  .hdr{display:flex;align-items:center;gap:10px;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0));}
+  .hdr{display:flex;align-items:center;gap:10px;padding:16px;padding-top:calc(16px + max(env(safe-area-inset-top,0px),22px));}
   .hdr.blue{background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;}
   .hdr.blue .h1{color:#fff;} .hdr.blue .sub{color:rgba(255,255,255,.82);font-size:13px;margin-top:2px;}
   .htxt{flex:1;min-width:0;}
@@ -419,8 +419,13 @@
         <div class="check" data-check><div class="cbox on">&#10003;</div>Gas Refill</div>
         <div class="check" data-check><div class="cbox"></div>Cleaning</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div><span class="link" data-clearsign>Clear</span></div>
-      <div class="panel grey" id="signPanel" style="height:90px;display:flex;align-items:center;justify-content:center;font-family:cursive;font-size:26px;color:#33415c">Rahul Sharma</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div>
+        <div style="display:flex;gap:14px;align-items:center"><span class="link" data-signupload>&#128206; Upload</span><span class="link" data-clearsign>Clear</span></div></div>
+      <div id="signWrap" style="position:relative;border:1.5px dashed var(--cardBorder);border-radius:14px;height:150px;background:#fff;overflow:hidden;touch-action:none">
+        <canvas id="signPad" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+        <img id="signImg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none">
+        <div id="signHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tTertiary);font-size:13px;pointer-events:none">Sign here with your finger</div>
+      </div>
     </div></div>
     <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Issue</button><button class="btn btn-green" data-go="completed">&#10003; Complete Job</button></div>
   </div>
