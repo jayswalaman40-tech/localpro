@@ -6,7 +6,7 @@
 <title>HelpZo Partner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
   :root{
     --primary:#1667E8; --primaryDark:#0B3E9E; --primaryDeep:#062B7A;
@@ -156,6 +156,41 @@
   .otp-row input{width:46px;height:54px;border:1px solid var(--cardBorder);border-radius:14px;text-align:center;font-size:22px;font-weight:700;color:var(--tPrimary);outline:none;font-family:inherit;}
   .otp-row input:focus{border-color:var(--primary);}
   .empty{text-align:center;color:var(--tSecondary);font-size:14px;padding:40px 20px;}
+
+  /* ===== Premium verification certificate ===== */
+  .certwrap{position:relative;background:#FCFCFA;border-radius:6px;padding:30px 22px 24px;overflow:hidden;box-shadow:0 14px 40px rgba(15,37,71,.16);}
+  .certwrap::before{content:"";position:absolute;top:0;left:0;border-top:74px solid #C29A3B;border-right:74px solid transparent;z-index:1;}
+  .certwrap::after{content:"";position:absolute;bottom:0;right:0;border-bottom:64px solid #EADFC6;border-left:64px solid transparent;z-index:0;}
+  .cfrm{position:absolute;pointer-events:none;}
+  .cfrm.a{inset:9px;border:1.5px solid #C29A3B;border-radius:3px;}
+  .cfrm.b{inset:13px;border:1px solid rgba(194,154,59,.45);border-radius:2px;}
+  .ccorner{position:absolute;width:58px;height:58px;pointer-events:none;z-index:2;}
+  .ccorner.tl{top:6px;left:6px;} .ccorner.tr{top:6px;right:6px;transform:rotate(90deg);}
+  .ccorner.br{bottom:6px;right:6px;transform:rotate(180deg);} .ccorner.bl{bottom:6px;left:6px;transform:rotate(270deg);}
+  .cinner{position:relative;z-index:3;text-align:center;padding:6px 6px 2px;}
+  .cbrand{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:14px;}
+  .cbrand img{height:22px;width:auto;}
+  .cbrand span{font-size:18px;font-weight:800;color:var(--primaryDeep);letter-spacing:.3px;}
+  .ctitle{font-family:'Playfair Display',Georgia,serif;font-weight:800;font-size:38px;line-height:.98;color:#16264A;letter-spacing:3px;}
+  .csub{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:15px;letter-spacing:7px;color:#C29A3B;margin-top:7px;}
+  .cgiven{letter-spacing:2.5px;font-size:10.5px;color:#6A7284;text-transform:uppercase;margin-top:20px;}
+  .cname{font-family:'Great Vibes',cursive;font-size:46px;line-height:1;color:#16264A;margin-top:2px;}
+  .cnl{height:1px;background:linear-gradient(90deg,transparent,#C29A3B,transparent);max-width:82%;margin:8px auto 0;}
+  .cdesc{font-size:12.5px;line-height:1.6;color:#5A6377;max-width:88%;margin:14px auto 0;}
+  .cribbon{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,#D8B252,#C29A3B);color:#fff;font-size:11px;font-weight:800;letter-spacing:2px;padding:6px 16px;border-radius:3px;margin-top:16px;box-shadow:0 4px 10px rgba(194,154,59,.35);position:relative;}
+  .cribbon::before,.cribbon::after{content:"";position:absolute;top:0;width:0;height:0;border-top:14px solid #9C7B29;}
+  .cribbon::before{left:-8px;border-left:8px solid transparent;}
+  .cribbon::after{right:-8px;border-right:8px solid transparent;}
+  .csigs{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:20px;}
+  .csig{flex:1;min-width:0;text-align:center;}
+  .csig .box{position:relative;height:56px;display:flex;align-items:flex-end;justify-content:center;}
+  .csig .line{height:1px;background:#B9C0CC;margin:4px 6px 0;}
+  .csig .who{font-weight:700;font-size:12.5px;color:#16264A;margin-top:4px;}
+  .csig .role{font-size:10.5px;color:#8A92A2;}
+  .csig .hz{font-family:'Great Vibes',cursive;font-size:26px;color:var(--primary);line-height:1;}
+  .claurel{width:88px;flex-shrink:0;align-self:flex-end;margin-bottom:-2px;}
+  .cmeta{font-size:10.5px;color:#8A92A2;margin-top:14px;letter-spacing:.3px;}
+  .csignpad{position:absolute;inset:0;bottom:0;width:100%;height:100%;display:block;}
 </style>
 </head>
 <body>
@@ -539,41 +574,57 @@
 
       <!-- CERTIFICATE -->
       <div id="certCard" style="display:none">
-        <div style="border:2px solid var(--primary);border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 8px 24px rgba(15,37,71,.10)">
-          <div style="background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;padding:18px;text-align:center;position:relative">
-            <div style="display:flex;align-items:center;justify-content:center;gap:8px">
-              <img src="/logomark.png" alt="" style="height:26px;width:auto;filter:brightness(0) invert(1)">
-              <span style="font-size:20px;font-weight:800;letter-spacing:.3px">HelpZo</span>
-            </div>
-            <div style="font-size:12px;opacity:.85;margin-top:2px;letter-spacing:2px;text-transform:uppercase">Certificate of Verification</div>
-          </div>
-          <div style="padding:20px 18px;text-align:center">
-            <div style="width:66px;height:66px;border-radius:50%;background:#E4F7EA;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:32px;color:var(--success)">&#128737;</div>
-            <div class="sec" style="font-size:12.5px;margin-top:12px">This certifies that</div>
-            <div class="h1" id="certName" style="margin-top:4px">Provider Name</div>
-            <div class="sec" id="certTrade" style="font-size:13.5px;margin-top:2px">Service Professional</div>
-            <p class="sec" style="font-size:12.5px;line-height:1.55;margin:12px 6px 0">has successfully completed HelpZo's identity &amp; document verification and is a trusted, verified service provider.</p>
+        <div class="certwrap">
+          <div class="cfrm a"></div><div class="cfrm b"></div>
+          <svg class="ccorner tl" viewBox="0 0 60 60"><g fill="none" stroke="#C29A3B" stroke-width="1"><path d="M3 3H44M3 3V44"/><path d="M7 7H36M7 7V36"/><path d="M11 11H28M11 11V28"/></g></svg>
+          <svg class="ccorner tr" viewBox="0 0 60 60"><g fill="none" stroke="#C29A3B" stroke-width="1"><path d="M3 3H44M3 3V44"/><path d="M7 7H36M7 7V36"/><path d="M11 11H28M11 11V28"/></g></svg>
+          <svg class="ccorner br" viewBox="0 0 60 60"><g fill="none" stroke="#C29A3B" stroke-width="1"><path d="M3 3H44M3 3V44"/><path d="M7 7H36M7 7V36"/><path d="M11 11H28M11 11V28"/></g></svg>
+          <svg class="ccorner bl" viewBox="0 0 60 60"><g fill="none" stroke="#C29A3B" stroke-width="1"><path d="M3 3H44M3 3V44"/><path d="M7 7H36M7 7V36"/><path d="M11 11H28M11 11V28"/></g></svg>
 
-            <div style="display:flex;gap:12px;margin-top:18px;text-align:left">
-              <div style="flex:1"><div class="ter">Certificate ID</div><div style="font-weight:700;font-size:13px" id="certId">HZ-------</div></div>
-              <div style="flex:1"><div class="ter">Verified on</div><div style="font-weight:700;font-size:13px" id="certDate">--</div></div>
-            </div>
+          <div class="cinner">
+            <div class="cbrand"><img src="/logomark.png" alt=""><span>HelpZo</span></div>
+            <div class="ctitle">CERTIFICATE</div>
+            <div class="csub">OF VERIFICATION</div>
+            <div class="cgiven">This certifies that</div>
+            <div class="cname" id="certName">Provider Name</div>
+            <div class="cnl"></div>
+            <div class="cdesc"><span id="certTrade" style="font-weight:700;color:#16264A">Service Professional</span> has successfully completed HelpZo's identity &amp; document verification and is recognised as a trusted, verified service provider.</div>
+            <div class="cribbon">&#128737; VERIFIED PROVIDER</div>
 
-            <div class="divide" style="margin:16px 0"></div>
-            <div style="display:flex;align-items:flex-end;gap:12px">
-              <div style="flex:1;text-align:left">
-                <div class="ter" style="margin-bottom:4px">Provider signature</div>
-                <div id="certSignBox" style="position:relative;border:1px dashed var(--cardBorder);border-radius:12px;height:84px;background:#fff;overflow:hidden;touch-action:none">
-                  <canvas id="certPad" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+            <div class="csigs">
+              <div class="csig">
+                <div class="box"><span class="hz">HelpZo</span></div>
+                <div class="line"></div>
+                <div class="who">HelpZo Verification</div>
+                <div class="role">Authorised Signatory</div>
+              </div>
+              <svg class="claurel" viewBox="0 0 120 96">
+                <g fill="#C29A3B">
+                  <g id="lb">
+                    <path d="M60 90 C42 84 32 66 31 44" fill="none" stroke="#C29A3B" stroke-width="1.5"/>
+                    <ellipse cx="33" cy="50" rx="6.5" ry="2.6" transform="rotate(-38 33 50)"/>
+                    <ellipse cx="32" cy="60" rx="6.5" ry="2.6" transform="rotate(-22 32 60)"/>
+                    <ellipse cx="34" cy="70" rx="6.5" ry="2.6" transform="rotate(-6 34 70)"/>
+                    <ellipse cx="40" cy="79" rx="6.2" ry="2.5" transform="rotate(12 40 79)"/>
+                    <ellipse cx="48" cy="85" rx="5.6" ry="2.4" transform="rotate(28 48 85)"/>
+                  </g>
+                  <use href="#lb" transform="translate(120,0) scale(-1,1)"/>
+                  <circle cx="60" cy="34" r="10" fill="none" stroke="#C29A3B" stroke-width="1.4"/>
+                  <path d="M55 34 l3.5 3.5 L66 30" fill="none" stroke="#C29A3B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+              </svg>
+              <div class="csig">
+                <div class="box" style="touch-action:none">
+                  <canvas id="certPad" class="csignpad"></canvas>
                   <img id="certSignImg" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none">
-                  <div id="certSignHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tTertiary);font-size:12px;pointer-events:none">Sign here</div>
+                  <div id="certSignHint" style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;color:var(--tTertiary);font-size:11px;pointer-events:none">Sign here</div>
                 </div>
-              </div>
-              <div style="text-align:center;flex-shrink:0">
-                <div style="font-family:cursive;color:var(--primary);font-size:20px;font-weight:700">HelpZo</div>
-                <div class="ter" style="margin-top:2px">Authorised</div>
+                <div class="line"></div>
+                <div class="who" id="certSignName">Provider</div>
+                <div class="role">Verified Provider</div>
               </div>
             </div>
+            <div class="cmeta">Certificate ID <b id="certId" style="color:#16264A">HZ-------</b> &nbsp;•&nbsp; Verified on <b id="certDate" style="color:#16264A">--</b></div>
           </div>
         </div>
 
@@ -582,7 +633,7 @@
           <button class="btn btn-out-danger sm" data-certclear>Clear</button>
         </div>
         <button class="btn btn-green" style="margin-top:10px" id="certSaveBtn">&#10003; Save &amp; Issue Certificate</button>
-        <div class="sec" style="font-size:12px;text-align:center;margin-top:10px">Your signature is stored privately and shown only on this certificate.</div>
+        <div class="sec" style="font-size:12px;text-align:center;margin-top:10px">Draw or upload your signature above. It is stored privately and shown only on this certificate.</div>
       </div>
 
     </div></div>

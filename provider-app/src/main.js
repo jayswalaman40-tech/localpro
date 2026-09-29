@@ -488,6 +488,7 @@ async function renderCertificate() {
   if (pending) pending.style.display = 'none';
   if (cardEl) cardEl.style.display = 'block';
   if ($('certName')) $('certName').textContent = myProvider.name || 'Provider';
+  if ($('certSignName')) $('certSignName').textContent = myProvider.name || 'Provider';
   if ($('certTrade')) $('certTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
   if ($('certId')) $('certId').textContent = 'HZ-' + String(myProvider.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
   if ($('certDate')) $('certDate').textContent = new Date(myProvider.updated_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
