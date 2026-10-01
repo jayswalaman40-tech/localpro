@@ -22,6 +22,7 @@ let pendingPhone = null;
 let selectedCatId = null;
 let selectedCatLabel = null;
 let selectedExp = 2;
+let editMode = false;      // true = reg2 opened from Profile as "Edit Profile"
 let chatCustomer = null;   // { id, name } for the active chat
 let chatChannel = null;
 let timerHandle = null;
@@ -41,18 +42,21 @@ const CATS = [
 const catCls = (key) => (CATS.find((c) => c.key === key) || CATS[7]).cls;
 const catIcon = (key) => (CATS.find((c) => c.key === key) || CATS[7]).icon;
 
-/* ---------- KYC documents ---------- */
+/* ---------- KYC documents ----------
+   Aadhaar needs BOTH sides, so it has two upload slots (front + back).      */
 const DOCS = [
-  { kind: 'aadhaar', title: 'Aadhaar Card', sub: 'Front & Back', icon: '💳', tile: '#EAF1FE', color: 'var(--primary)' },
+  { kind: 'aadhaar', title: 'Aadhaar Card', sub: 'Front & Back', icon: '💳', tile: '#EAF1FE', color: 'var(--primary)', slots: ['aadhaar_front', 'aadhaar_back'], slotLabels: ['Front', 'Back'] },
   { kind: 'pan',     title: 'PAN Card',     sub: 'Front',        icon: '💳', tile: '#EAF1FE', color: 'var(--primary)' },
   { kind: 'selfie',  title: 'Selfie with Aadhaar', sub: 'Live Photo', icon: '🧑', tile: '#EAF1FE', color: 'var(--primary)' },
   { kind: 'bank',    title: 'Bank Details', sub: 'Cancel Cheque / Passbook', icon: '🏦', tile: '#FFF1DC', color: '#E08A1E' },
 ];
-const kycFiles = {};      // kind -> File
-const kycUploaded = {};   // kind -> path (verified/uploaded)
+// Which provider column each uploaded KYC slot is saved to.
+const KYC_COL = { aadhaar_front: 'aadhaar_path', aadhaar_back: 'aadhaar_back_path', pan: 'pan_path', selfie: 'selfie_path' };
+const kycFiles = {};      // slot -> File
+const kycUploaded = {};   // slot -> path (verified/uploaded)
 
-/* ---------- Gujarat cities (City field autocomplete) ---------- */
-const GUJARAT_CITIES = ['Ahmedabad','Surat','Vadodara','Rajkot','Bhavnagar','Jamnagar','Junagadh','Gandhinagar','Anand','Nadiad','Morbi','Mehsana','Bharuch','Vapi','Navsari','Veraval','Porbandar','Godhra','Bhuj','Gandhidham','Palanpur','Valsad','Patan','Botad','Amreli'];
+/* ---------- Ahmedabad service areas (Service Area autocomplete) ---------- */
+const AHMEDABAD_AREAS = ['Bodakdev','Satellite','Vastrapur','Thaltej','Bopal','South Bopal','Prahlad Nagar','Jodhpur','Ambawadi','Navrangpura','Naranpura','Vadaj','Sabarmati','Chandkheda','Motera','Gota','Chandlodia','Ghatlodia','Nirnaynagar','Ranip','New Ranip','Memnagar','Vastrapur','Jivraj Park','Vejalpur','Juhapura','Sarkhej','Makarba','Ghuma','Shela','Science City','Sola','Shilaj','Gurukul','Drive-In','Helmet','Chanakyapuri','Usmanpura','Ashram Road','Paldi','Vasna','Maninagar','Isanpur','Vatva','Ghodasar','Khokhra','Amraiwadi','Nikol','Naroda','Bapunagar','Odhav','Vastral','Ramol','CTM','Hatkeshwar','Rakhial','Saraspur','Gomtipur','Shahibaug','Dariapur','Kalupur','Shahpur','Raikhad','Jamalpur','Behrampura','Danilimda','Narol','Lambha','Chandola','Kankaria','Ellis Bridge','Law Garden','Gulbai Tekra','Stadium','Commerce Six Roads','SG Highway','Thaltej Road','Sindhu Bhavan Road','Shyamal','Anandnagar','Ramdevnagar'];
 
 /* ---------- DEMO data (keeps screens populated like the mockups) ---------- */
 const DEMO_JOBS = [
@@ -147,11 +151,12 @@ function buildTabBars() {
 function onEnter(id) {
   if (id === 'jobs') renderJobs();
   if (id === 'leads') renderLeads();
-  if (id === 'earnings') renderTxns();
+  if (id === 'earnings') renderEarnings();
   if (id === 'reviews') renderReviews();
   if (id === 'notif') renderNotif();
   if (id === 'schedule') renderSchedule();
   if (id === 'profile') renderProfile();
+  if (id === 'reg2') applyReg2Mode();
   if (id === 'certificate') renderCertificate();
   if (id === 'skills') renderSkillGrid();
   if (id === 'reg3') renderDocList();
@@ -193,18 +198,43 @@ function bookingCard(b) {
       <button class="btn btn-blue sm" data-book-next="${b.id}" data-book-status="${st}">Update Status</button>
     </div></div>`;
 }
+let jobTab = 'active';
+let lastJobsRows = null;   // real bookings array, or null = use demo
+function jobBucket(st) {
+  const s = String(st || 'pending').toLowerCase();
+  if (s === 'completed') return 'completed';
+  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
+  return 'active'; // pending / confirmed / on the way / in progress / scheduled
+}
 async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
+  jobTab = 'active';
+  document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === 'active'));
   if (hasSupabase && myProvider) {
     list.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const rows = await api.getMyBookings();
-      list.innerHTML = rows.length ? rows.map(bookingCard).join('')
-        : `<div class="empty">No active jobs yet.<br>Accepted requests will appear here.</div>`;
-      return;
-    } catch (e) {}
+    try { lastJobsRows = await api.getMyBookings(); updateJobCounts(); paintJobs(); return; } catch (e) {}
   }
-  list.innerHTML = DEMO_JOBS.map(jobCard).join('');
+  lastJobsRows = null;
+  paintJobs();
+}
+function updateJobCounts() {
+  const c = { active: 0, completed: 0, cancelled: 0 };
+  (lastJobsRows || []).forEach((b) => { c[jobBucket(b.status)]++; });
+  document.querySelectorAll('[data-jobtab]').forEach((ch) => {
+    const k = ch.getAttribute('data-jobtab');
+    ch.textContent = k[0].toUpperCase() + k.slice(1) + (lastJobsRows ? ` (${c[k]})` : '');
+  });
+}
+function paintJobs() {
+  const list = $('jobsList'); if (!list) return;
+  if (lastJobsRows === null) {   // demo / not signed in
+    list.innerHTML = jobTab === 'active'
+      ? DEMO_JOBS.map(jobCard).join('')
+      : `<div class="empty">No ${jobTab} jobs.</div>`;
+    return;
+  }
+  const rows = lastJobsRows.filter((b) => jobBucket(b.status) === jobTab);
+  list.innerHTML = rows.length ? rows.map(bookingCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
 }
 function leadCard(l) {
   return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
@@ -229,23 +259,71 @@ function realLeadCard(l) {
     <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-green sm" data-accept="${l.id}">✓ Accept</button><button class="btn btn-out-danger sm" data-reject="${l.id}">Reject</button></div>
   </div>`;
 }
+let leadTab = 'all';
+let lastLeadsRows = null;   // real leads array, or null = demo
+function leadBucket(st) {
+  const s = String(st || 'new').toLowerCase();
+  if (s === 'contacted' || s === 'completed') return 'accepted';
+  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
+  return 'pending'; // new
+}
 async function renderLeads() {
   const list = $('leadsList'); if (!list) return;
+  leadTab = 'all';
+  document.querySelectorAll('[data-ltab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-ltab') === 'all'));
   if (hasSupabase && myProvider) {
     list.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const rows = await api.getMyLeads();
-      list.innerHTML = rows.length ? rows.map(realLeadCard).join('')
-        : `<div class="empty">No new requests yet.<br>Customer calls/requests will show here.</div>`;
-      return;
-    } catch (e) {}
+    try { lastLeadsRows = await api.getMyLeads(); updateLeadCounts(); paintLeads(); return; } catch (e) {}
   }
-  list.innerHTML = DEMO_LEADS.map(leadCard).join('');
+  lastLeadsRows = null;
+  paintLeads();
+}
+function updateLeadCounts() {
+  const c = { all: (lastLeadsRows || []).length, pending: 0, accepted: 0 };
+  (lastLeadsRows || []).forEach((l) => { const b = leadBucket(l.status); if (b === 'pending') c.pending++; else if (b === 'accepted') c.accepted++; });
+  document.querySelectorAll('[data-ltab]').forEach((ch) => {
+    const k = ch.getAttribute('data-ltab');
+    const lbl = k[0].toUpperCase() + k.slice(1);
+    ch.textContent = lbl + (lastLeadsRows ? ` (${c[k]})` : '');
+  });
+}
+function paintLeads() {
+  const list = $('leadsList'); if (!list) return;
+  if (lastLeadsRows === null) {   // demo
+    list.innerHTML = (leadTab === 'all' || leadTab === 'pending')
+      ? DEMO_LEADS.map(leadCard).join('')
+      : `<div class="empty">No ${leadTab} leads.</div>`;
+    return;
+  }
+  const rows = leadTab === 'all' ? lastLeadsRows : lastLeadsRows.filter((l) => leadBucket(l.status) === leadTab);
+  list.innerHTML = rows.length ? rows.map(realLeadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
+}
+/* ---------- earnings ---------- */
+const EARN_DATA = {
+  week:  { label: 'This Week',  total: 3300, jobs: 6,  bars: [['M', 40], ['T', 70], ['W', 55], ['T', 85], ['F', 60], ['S', 95]] },
+  month: { label: 'This Month', total: 12480, jobs: 24, bars: [['W1', 52], ['W2', 88], ['W3', 66], ['W4', 76]] },
+  year:  { label: 'This Year',  total: 148600, jobs: 286, bars: [['Q1', 48], ['Q2', 72], ['Q3', 90], ['Q4', 64]] },
+};
+let earnPeriod = 'month';
+let txnsExpanded = false;
+function setEarnPeriod(p) {
+  earnPeriod = p; const d = EARN_DATA[p] || EARN_DATA.month;
+  if ($('earnTotal')) $('earnTotal').textContent = inr(d.total);
+  if ($('earnJobs')) $('earnJobs').textContent = d.jobs;
+  const btn = $('earnPeriodBtn'); if (btn) btn.innerHTML = d.label + ' ▾';
+  document.querySelectorAll('[data-earnseg]').forEach((s) => s.classList.toggle('on', s.getAttribute('data-earnseg') === p));
+  const bars = $('earnBars');
+  if (bars) bars.innerHTML = d.bars.map(([l, h]) => `<div class="barcol"><div class="bv"></div><div class="bar" style="height:${h}%"></div><div class="bl">${l}</div></div>`).join('');
+}
+function renderEarnings() {
+  setEarnPeriod(earnPeriod);
+  renderTxns();
 }
 function renderTxns() {
   const el = $('txnList'); if (!el) return;
-  el.innerHTML = DEMO_TXN.map((x, i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < DEMO_TXN.length - 1 ? 'border-bottom:1px solid var(--cardBorder)' : ''}">
+  const rows = txnsExpanded ? DEMO_TXN.concat(DEMO_TXN) : DEMO_TXN; // demo: "View All" shows more
+  el.innerHTML = rows.map((x, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < rows.length - 1 ? 'border-bottom:1px solid var(--cardBorder)' : ''}">
       <div class="scirc ${catCls(x.cat)}" style="width:40px;height:40px;font-size:17px">${catIcon(x.cat)}</div>
       <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(x.t)}</div><div class="ter">${esc(x.d)}</div></div>
       <div style="text-align:right"><div class="green-t">+ ${inr(x.amt)}</div><div class="ter">Completed</div></div>
@@ -298,16 +376,78 @@ async function renderNotif() {
       ${n.unread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px"></span>' : ''}
     </div>`).join('');
 }
+/* ---------- schedule (clickable week + month calendar) ---------- */
+let schedSel = new Date();          // selected date
+let calMonth = new Date();          // month shown in the calendar
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 function renderSchedule() {
-  const strip = $('weekStrip');
-  if (strip) {
-    const days = ['M','T','W','T','F','S','S']; const nums = [19,20,21,22,23,24,25]; const sel = 3;
-    strip.innerHTML = days.map((d, i) => `
-      <div style="flex:0 0 46px;text-align:center;border:1px solid var(--cardBorder);border-radius:14px;padding:10px 0;cursor:pointer;${i === sel ? 'background:#EAF1FE;border-color:var(--primary)' : ''}">
-        <div style="font-size:12px;color:${i === sel ? 'var(--primary)' : 'var(--tSecondary)'}">${d}</div>
-        <div style="font-size:15px;font-weight:700;margin-top:2px;${i === sel ? 'color:var(--primary)' : ''}">${nums[i]}</div>
-      </div>`).join('');
+  renderWeekStrip();
+  const cal = $('schedCal'); if (cal) cal.style.display = 'none';   // calendar closed on enter
+  renderSchedList();
+}
+function renderWeekStrip() {
+  const strip = $('weekStrip'); if (!strip) return;
+  const dow = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  // Week (Mon-first) containing the selected date.
+  const base = new Date(schedSel);
+  const offset = (base.getDay() + 6) % 7;      // 0 = Monday
+  const monday = new Date(base); monday.setDate(base.getDate() - offset);
+  const today = new Date();
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    const on = sameDay(d, schedSel);
+    const isToday = sameDay(d, today);
+    html += `<div data-schday="${iso(d)}" style="flex:0 0 46px;text-align:center;border:1px solid ${on ? 'var(--primary)' : 'var(--cardBorder)'};border-radius:14px;padding:10px 0;cursor:pointer;${on ? 'background:#EAF1FE' : ''}">
+      <div style="font-size:12px;color:${on ? 'var(--primary)' : 'var(--tSecondary)'}">${dow[d.getDay()]}</div>
+      <div style="font-size:15px;font-weight:700;margin-top:2px;${on ? 'color:var(--primary)' : isToday ? 'color:var(--success)' : ''}">${d.getDate()}</div>
+    </div>`;
   }
+  strip.innerHTML = html;
+  if ($('schedDay')) $('schedDay').textContent = schedSel.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+}
+function renderCalendar() {
+  const cal = $('schedCal'); if (!cal) return;
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay() + 6) % 7;  // Monday-first
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const today = new Date();
+  const dow = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  let cells = '';
+  for (let i = 0; i < startOffset; i++) cells += `<div class="cal-cell muted"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(y, m, d);
+    const cls = ['cal-cell'];
+    if (sameDay(date, schedSel)) cls.push('on');
+    else if (sameDay(date, today)) cls.push('today');
+    cells += `<div class="${cls.join(' ')}" data-schday="${iso(date)}">${d}</div>`;
+  }
+  cal.innerHTML = `<div class="cal">
+    <div class="cal-head">
+      <div class="cal-nav" data-calnav="-1">‹</div>
+      <div style="font-weight:700;font-size:15px">${calMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
+      <div class="cal-nav" data-calnav="1">›</div>
+    </div>
+    <div class="cal-grid">${dow.map((x) => `<div class="cal-dow">${x}</div>`).join('')}${cells}</div>
+  </div>`;
+}
+function toggleCalendar() {
+  const cal = $('schedCal'); if (!cal) return;
+  const open = cal.style.display === 'none' || !cal.style.display;
+  if (open) { calMonth = new Date(schedSel); renderCalendar(); cal.style.display = 'block'; }
+  else cal.style.display = 'none';
+}
+function selectSchedDay(isoStr) {
+  const [y, mo, d] = isoStr.split('-').map(Number);
+  schedSel = new Date(y, mo - 1, d);
+  renderWeekStrip();
+  const cal = $('schedCal'); if (cal && cal.style.display === 'block') renderCalendar();
+  renderSchedList();
+}
+function renderSchedList() {
+  if ($('schedCount')) $('schedCount').textContent = DEMO_SCHED.length + ' Jobs Scheduled';
   const list = $('schedList'); if (!list) return;
   list.innerHTML = DEMO_SCHED.map((s) => `
     <div class="card" style="margin-bottom:12px"><div style="display:flex;gap:10px">
@@ -342,7 +482,24 @@ function renderSkillGrid() {
 }
 
 /* ---------- KYC document rows ---------- */
+function slotBtn(slot, label, mode) {
+  const done = kycUploaded[slot] || kycFiles[slot];
+  if (mode === 'verify') return `<span class="pill ${done ? 'green' : 'grey'}" style="margin-left:6px">${esc(label)} ${done ? '✓' : '•'}</span>`;
+  return done
+    ? `<span class="pill green" style="margin-left:6px">${esc(label)} ✓</span>`
+    : `<button class="btn btn-out-green sm" style="margin-left:6px;padding:0 10px" data-upload="${slot}">⬆ ${esc(label)}</button>`;
+}
 function docRow(d, mode) {
+  // Multi-slot document (Aadhaar front + back)
+  if (d.slots) {
+    const btns = d.slots.map((s, i) => slotBtn(s, d.slotLabels[i], mode)).join('');
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="ftile" style="background:${d.tile};color:${d.color}">${d.icon}</div>
+        <div style="flex:1"><div class="h3" style="font-size:15px">${esc(d.title)}</div><div class="sec" style="font-size:13px">${esc(d.sub)}</div></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:2px;margin-top:10px">${btns}</div></div>`;
+  }
   const done = kycUploaded[d.kind] || kycFiles[d.kind];
   const right = mode === 'verify'
     ? `<span class="pill ${done ? 'green' : 'grey'}">${done ? 'Verified' : 'Pending'}</span><span class="mc" style="margin-left:6px">›</span>`
@@ -547,8 +704,71 @@ async function doVerify() {
     toast(e.message || 'Invalid code');
   } finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
 }
+/* ---------- edit profile (Option A: reuse reg2 as "Edit Profile") ---------- */
+function openEditProfile() {
+  editMode = true;
+  prefillReg2();
+  show('reg2');
+}
+function prefillReg2() {
+  if (!myProvider) return;
+  if ($('regName')) $('regName').value = myProvider.name || '';
+  if ($('regEmail')) $('regEmail').value = myProvider.email || '';
+  if ($('regArea')) $('regArea').value = myProvider.service_area || myProvider.city || '';
+  if ($('regExp')) $('regExp').value = myProvider.experience_yrs ?? '';
+  if ($('regBio')) { $('regBio').value = myProvider.about || ''; if ($('bioCount')) $('bioCount').textContent = ($('regBio').value || '').length; }
+  // category from the saved listing
+  if (myProvider.category_id) {
+    const c = categories.find((x) => x.id === myProvider.category_id);
+    if (c) { selectedCatId = c.key; selectedCatLabel = (c.translations && c.translations.en) || c.key; }
+  } else if (myProvider.custom_category) {
+    selectedCatId = 'other'; selectedCatLabel = myProvider.custom_category;
+  }
+  if ($('regCatLabel') && selectedCatLabel) $('regCatLabel').textContent = selectedCatLabel;
+}
+function applyReg2Mode() {
+  const steps = $('reg2Steps'), title = $('reg2Title'), sub = $('reg2Sub'), nextBtn = $('reg2NextBtn');
+  if (editMode) {
+    if (steps) steps.style.display = 'none';
+    if (title) title.textContent = 'Edit Profile';
+    if (sub) sub.textContent = 'Update your details';
+    if (nextBtn) nextBtn.textContent = '✓ Save Changes';
+  } else {
+    if (steps) steps.style.display = '';
+    if (title) title.textContent = 'Register as Provider';
+    if (sub) sub.textContent = 'Join HelpZo and get more work';
+    if (nextBtn) nextBtn.textContent = 'Next';
+  }
+}
+async function saveProfileEdits() {
+  const btn = $('reg2NextBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    if (hasSupabase && session) {
+      const fields = {
+        name: $('regName').value.trim() || myProvider?.name || 'Provider',
+        email: $('regEmail').value.trim() || null,
+        service_area: $('regArea').value.trim() || null,
+        city: $('regArea').value.trim() || null,
+        about: $('regBio').value.trim() || null,
+        experience_yrs: Number($('regExp').value) || selectedExp || 0,
+      };
+      if (selectedCatId && selectedCatId !== 'other') {
+        const c = categories.find((x) => x.key === selectedCatId);
+        if (c) { fields.category_id = c.id; fields.custom_category = null; } else fields.custom_category = selectedCatLabel;
+      } else if (selectedCatId === 'other') { fields.custom_category = selectedCatLabel || 'Other'; }
+      await api.saveMyProvider(fields);
+      myProvider = await api.getMyProvider().catch(() => myProvider);
+    }
+    editMode = false;
+    toast('Profile updated');
+    show('profile');
+  } catch (e) { toast(e.message || 'Could not save'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '✓ Save Changes'; } }
+}
+
 function afterLogin() {
   stack = ['splash'];
+  editMode = false;
   if (myProvider) { show('jobs'); }
   else { show('reg1'); }
 }
@@ -576,10 +796,17 @@ async function submitRegistration() {
       }
       await api.saveMyProvider(fields);
       myProvider = await api.getMyProvider().catch(() => null);
-      // upload any selected KYC files
-      for (const kind of Object.keys(kycFiles)) {
-        try { kycUploaded[kind] = await api.uploadKyc(kycFiles[kind], kind); } catch (e) {}
+      // upload any selected KYC files and save their storage paths onto the
+      // provider row so the admin panel can see the documents.
+      const pathFields = {};
+      for (const slot of Object.keys(kycFiles)) {
+        try {
+          const p = await api.uploadKyc(kycFiles[slot], slot);
+          kycUploaded[slot] = p;
+          if (KYC_COL[slot]) pathFields[KYC_COL[slot]] = p;
+        } catch (e) {}
       }
+      if (Object.keys(pathFields).length) { try { await api.saveMyProvider(pathFields); } catch (e) {} }
     }
     show('reg4');
   } catch (e) {
@@ -646,6 +873,24 @@ document.addEventListener('click', (e) => {
   if (ccl) { sigCert.clear(); return; }
   const cup = e.target.closest('[data-certupload]');
   if (cup) { sigCert.upload(); return; }
+  // Jobs status tabs
+  const jt = e.target.closest('[data-jobtab]');
+  if (jt) { document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.remove('on')); jt.classList.add('on'); jobTab = jt.getAttribute('data-jobtab'); paintJobs(); return; }
+  // Leads status tabs
+  const lt = e.target.closest('[data-ltab]');
+  if (lt) { document.querySelectorAll('[data-ltab]').forEach((c) => c.classList.remove('on')); lt.classList.add('on'); leadTab = lt.getAttribute('data-ltab'); paintLeads(); return; }
+  // Earnings period segment
+  const es = e.target.closest('[data-earnseg]');
+  if (es) { setEarnPeriod(es.getAttribute('data-earnseg')); return; }
+  // Calendar month navigation
+  const cn = e.target.closest('[data-calnav]');
+  if (cn) { calMonth.setMonth(calMonth.getMonth() + Number(cn.getAttribute('data-calnav'))); renderCalendar(); return; }
+  // Schedule day / calendar date pick
+  const sd = e.target.closest('[data-schday]');
+  if (sd) { selectSchedDay(sd.getAttribute('data-schday')); return; }
+  // Edit profile (from profile page → reg2 in edit mode)
+  const ep = e.target.closest('[data-editprofile]');
+  if (ep) { openEditProfile(); return; }
   const tst = e.target.closest('[data-toast]');
   if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
@@ -707,8 +952,9 @@ function wireOtpInputs() {
 async function boot() {
   buildTabBars();
   wireOtpInputs();
-  // datalist for area
-  const dl = $('gujCities'); if (dl) dl.innerHTML = GUJARAT_CITIES.map((c) => `<option value="${esc(c)}"></option>`).join('');
+  // datalist: Ahmedabad service areas (dedupe)
+  const dl = $('ahmAreas');
+  if (dl) dl.innerHTML = [...new Set(AHMEDABAD_AREAS)].sort().map((c) => `<option value="${esc(c)}"></option>`).join('');
 
   // static button wiring
   $('getOtpBtn')?.addEventListener('click', doGetOtp);
@@ -718,6 +964,11 @@ async function boot() {
   $('phone')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doGetOtp(); });
   $('skillsDoneBtn')?.addEventListener('click', () => { if ($('regCatLabel') && selectedCatLabel) $('regCatLabel').textContent = selectedCatLabel; show('reg2'); });
   $('submitRegBtn')?.addEventListener('click', submitRegistration);
+  $('reg2Back')?.addEventListener('click', () => { if (editMode) { editMode = false; show('profile'); } else show('reg1'); });
+  $('reg2NextBtn')?.addEventListener('click', () => { if (editMode) saveProfileEdits(); else show('reg3'); });
+  $('earnPeriodBtn')?.addEventListener('click', () => { const order = ['week', 'month', 'year']; setEarnPeriod(order[(order.indexOf(earnPeriod) + 1) % 3]); });
+  $('earnViewAll')?.addEventListener('click', () => { txnsExpanded = !txnsExpanded; renderTxns(); $('earnViewAll').textContent = txnsExpanded ? 'Show Less ‹' : 'View All ›'; });
+  $('schedCalBtn')?.addEventListener('click', toggleCalendar);
   $('availToggle')?.addEventListener('click', toggleAvail);
   $('certSaveBtn')?.addEventListener('click', saveCertSignature);
   $('logoutRow')?.addEventListener('click', logout);

@@ -100,13 +100,14 @@ export async function getProviderLeads(id) {
 // KYC docs are stored as path columns on the provider row (private "kyc" bucket).
 export async function getProviderDocuments(id) {
   const { data, error } = await supabase.from('providers')
-    .select('selfie_path, aadhaar_path, pan_path, kyc_status, updated_at').eq('id', id).maybeSingle();
+    .select('selfie_path, aadhaar_path, aadhaar_back_path, pan_path, kyc_status, updated_at').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return [];
   const docs = [];
   const add = (label, path) => { if (path) docs.push({ doc_type: label, file_path: path, status: data.kyc_status, created_at: data.updated_at }); };
   add('Selfie with Aadhaar', data.selfie_path);
-  add('Aadhaar Card', data.aadhaar_path);
+  add('Aadhaar Card (Front)', data.aadhaar_path);
+  add('Aadhaar Card (Back)', data.aadhaar_back_path);
   add('PAN Card', data.pan_path);
   return docs;
 }

@@ -32,7 +32,7 @@
   .green-t{color:var(--successDark);font-weight:700;}
   .link{color:var(--primary);font-weight:600;font-size:14px;cursor:pointer;}
   .hdr{display:flex;align-items:center;gap:10px;padding:16px;padding-top:calc(16px + max(env(safe-area-inset-top,0px),22px));}
-  .hdr.blue{background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;}
+  .hdr.blue{background:linear-gradient(180deg,var(--primaryDark),var(--primary));color:#fff;padding-bottom:34px;}
   .hdr.blue .h1{color:#fff;} .hdr.blue .sub{color:rgba(255,255,255,.82);font-size:13px;margin-top:2px;}
   .htxt{flex:1;min-width:0;}
   .ic-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--cardBorder);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tPrimary);flex-shrink:0;font-size:18px;}
@@ -157,6 +157,17 @@
   .otp-row input:focus{border-color:var(--primary);}
   .empty{text-align:center;color:var(--tSecondary);font-size:14px;padding:40px 20px;}
 
+  /* ===== Month calendar (schedule) ===== */
+  .cal{background:#fff;border:1px solid var(--cardBorder);border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 4px 12px rgba(15,37,71,.05);}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cal-nav{width:32px;height:32px;border-radius:50%;border:1px solid var(--cardBorder);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--tPrimary);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-dow{text-align:center;font-size:11px;color:var(--tTertiary);font-weight:700;padding:4px 0;}
+  .cal-cell{text-align:center;padding:9px 0;border-radius:10px;font-size:13px;cursor:pointer;color:var(--tPrimary);}
+  .cal-cell.muted{color:var(--tTertiary);opacity:.35;}
+  .cal-cell.on{background:var(--primary);color:#fff;font-weight:700;}
+  .cal-cell.today{box-shadow:inset 0 0 0 1.5px var(--primary);font-weight:700;}
+
   /* ===== Premium verification certificate ===== */
   .certwrap{position:relative;background:#FCFCFA;border-radius:6px;padding:30px 22px 24px;overflow:hidden;box-shadow:0 14px 40px rgba(15,37,71,.16);}
   .certwrap::before{content:"";position:absolute;top:0;left:0;border-top:74px solid #C29A3B;border-right:74px solid transparent;z-index:1;}
@@ -233,7 +244,7 @@
           <div class="field" style="min-height:56px">
             <span class="flag">&#127470;&#127475;</span><span class="cc">+91</span><span style="color:var(--tSecondary)">&#9662;</span>
             <span class="divl"></span>
-            <input id="phone" placeholder="Enter Mobile Number" inputmode="numeric" maxlength="10" style="margin-top:0">
+            <input id="phone" type="tel" placeholder="Enter Mobile Number" inputmode="numeric" autocomplete="tel" maxlength="10" style="margin-top:0">
           </div>
           <button class="btn btn-blue" id="getOtpBtn" style="margin-top:16px">Get OTP</button>
           <div class="sec" style="text-align:center;margin-top:16px">By continuing, you agree to our<br><span class="link">Terms &amp; Conditions</span> and <span class="link">Privacy Policy</span></div>
@@ -277,10 +288,10 @@
 
   <!-- 19 REGISTER DETAILS -->
   <div class="screen" id="s-reg2">
-    <div class="hdr blue"><div class="ic-btn" data-go="reg1">&#8249;</div>
-      <div class="htxt"><div class="h1">Register as Provider</div><div class="sub">Join HelpZo and get more work</div></div></div>
+    <div class="hdr blue"><div class="ic-btn" id="reg2Back">&#8249;</div>
+      <div class="htxt"><div class="h1" id="reg2Title">Register as Provider</div><div class="sub" id="reg2Sub">Join HelpZo and get more work</div></div></div>
     <div class="scroll sheet"><div class="pad">
-      <div class="steps">
+      <div class="steps" id="reg2Steps">
         <div class="step done"><div class="sc">&#10003;</div><div class="sl">Basic</div></div><div class="stepline done"></div>
         <div class="step on"><div class="sc">2</div><div class="sl">Details</div></div><div class="stepline"></div>
         <div class="step"><div class="sc">3</div><div class="sl">Docs</div></div><div class="stepline"></div>
@@ -288,15 +299,15 @@
       </div>
       <div class="h2" style="margin-bottom:12px">Service Details</div>
       <div class="field" data-go="skills" style="cursor:pointer"><div class="ftile">&#9638;</div><div class="fmid"><div class="fl">Select Service Category</div><div class="fp" id="regCatLabel">Choose your primary service</div></div><span class="mc">&#8250;</span></div>
-      <div class="field" style="margin-top:12px"><div class="ftile">&#128205;</div><div class="fmid"><div class="fl">Service Area</div><input id="regArea" placeholder="e.g. Bodakdev, Ahmedabad" list="gujCities"></div></div>
+      <div class="field" style="margin-top:12px"><div class="ftile">&#128205;</div><div class="fmid"><div class="fl">Service Area</div><input id="regArea" placeholder="Select your area in Ahmedabad" list="ahmAreas" autocomplete="off"></div></div>
       <div class="h2" style="margin:18px 0 12px">Experience</div>
       <div class="field"><div class="ftile">&#128188;</div><div class="fmid"><div class="fl">Experience (Years)</div><input id="regExp" placeholder="e.g. 3" inputmode="numeric"></div></div>
       <div class="h2" style="margin:18px 0 12px">About You</div>
       <textarea class="ta" id="regBio" maxlength="300" placeholder="Enter your short bio..."></textarea>
       <div class="ter" style="text-align:right;margin-top:4px"><span id="bioCount">0</span>/300</div>
-      <button class="btn btn-blue" style="margin-top:16px" data-go="reg3">Next</button>
+      <button class="btn btn-blue" style="margin-top:16px" id="reg2NextBtn">Next</button>
     </div></div>
-    <datalist id="gujCities"></datalist>
+    <datalist id="ahmAreas"></datalist>
   </div>
 
   <!-- 04 SERVICE & SKILLS -->
@@ -370,7 +381,7 @@
     <div class="hdr blue"><div class="htxt"><div class="h1">Active Jobs</div><div class="sub">Manage your ongoing jobs</div></div>
       <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
     <div class="scroll sheet"><div class="pad">
-      <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on">Active (5)</div><div class="chip">Completed (18)</div><div class="chip">Cancelled (3)</div></div>
+      <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
       <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input id="jobSearch" placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px" data-toast="Filters coming soon">&#9776; Filter</button></div>
       <div id="jobsList"></div>
     </div></div>
@@ -381,7 +392,7 @@
   <div class="screen" id="s-leads">
     <div class="hdr blue"><div class="htxt"><div class="h1">New Service Requests</div><div class="sub">Incoming leads for you</div></div><div class="ic-btn">&#9776;</div></div>
     <div class="scroll sheet"><div class="pad">
-      <div class="chips" style="margin-bottom:14px"><div class="chip on">All (12)</div><div class="chip">Pending (8)</div><div class="chip">Accepted (3)</div></div>
+      <div class="chips" style="margin-bottom:14px" id="leadsTabs"><div class="chip on" data-ltab="all">All</div><div class="chip" data-ltab="pending">Pending</div><div class="chip" data-ltab="accepted">Accepted</div></div>
       <div id="leadsList"></div>
     </div></div>
     <div class="tabs" data-tabbar></div>
@@ -493,7 +504,7 @@
 
   <!-- 12 EARNINGS -->
   <div class="screen" id="s-earnings">
-    <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill" data-toast="Showing: This Month">This Month &#9662;</button></div>
+    <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill" id="earnPeriodBtn">This Month &#9662;</button></div>
     <div class="scroll sheet"><div class="pad">
       <div style="display:flex;gap:12px">
         <div style="flex:1"><div class="sec" style="font-size:13px">Total Earnings</div><div style="font-size:28px;font-weight:800" id="earnTotal">₹12,480</div><div class="green-t" style="font-size:12px">&#8599; +18% from last month</div></div>
@@ -506,16 +517,16 @@
         <div class="stat"><div class="si">&#128101;</div><div class="sv">18</div><div class="sn">Repeat</div></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Earnings Overview</div>
-        <div class="segpill"><span>Week</span><span class="on">Month</span><span>Year</span></div></div>
+        <div class="segpill" id="earnSeg"><span data-earnseg="week">Week</span><span class="on" data-earnseg="month">Month</span><span data-earnseg="year">Year</span></div></div>
       <div class="card">
-        <div class="bars">
+        <div class="bars" id="earnBars">
           <div class="barcol"><div class="bv">₹2.4K</div><div class="bar" style="height:52%"></div><div class="bl">W1</div></div>
           <div class="barcol"><div class="bv">₹3.8K</div><div class="bar" style="height:88%"></div><div class="bl">W2</div></div>
           <div class="barcol"><div class="bv">₹2.9K</div><div class="bar" style="height:66%"></div><div class="bl">W3</div></div>
           <div class="barcol"><div class="bv">₹3.3K</div><div class="bar" style="height:76%"></div><div class="bl">W4</div></div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Recent Transactions</div><span class="link">View All &#8250;</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Recent Transactions</div><span class="link" id="earnViewAll">View All &#8250;</span></div>
       <div class="card" style="padding:6px 16px" id="txnList"></div>
     </div></div>
     <div class="tabs" data-tabbar></div>
@@ -523,7 +534,7 @@
 
   <!-- 13 PROFILE -->
   <div class="screen" id="s-profile">
-    <div class="hdr blue"><div class="htxt"><div class="h1">My Profile</div><div class="sub">Manage your account and settings</div></div><div class="ic-btn" id="certBtn" data-go="certificate" title="Verification certificate">&#128737;</div><button class="hpill" data-go="reg2">&#9998; Edit</button></div>
+    <div class="hdr blue"><div class="htxt"><div class="h1">My Profile</div><div class="sub">Manage your account and settings</div></div><div class="ic-btn" id="certBtn" data-go="certificate" title="Verification certificate">&#128737;</div><button class="hpill" data-editprofile>&#9998; Edit</button></div>
     <div class="scroll sheet"><div class="pad">
       <div class="card">
         <div style="display:flex;gap:14px;align-items:center"><div class="avatar" id="profAvatar" style="width:64px;height:64px;font-size:24px;position:relative">A<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--success);border:2px solid #fff"></span></div>
@@ -533,15 +544,15 @@
         <div style="display:flex;gap:14px;margin-top:12px"><div class="meta"><span class="mi">&#128205;</span><span id="profArea">Ahmedabad, Gujarat</span></div><div class="meta verif"><span class="mi">&#128737;</span>ID Verified</div></div>
       </div>
       <div class="stats" style="margin-top:14px">
-        <div class="stat"><div class="si">&#128188;</div><div class="sv">124</div><div class="sn">Jobs Done</div></div>
-        <div class="stat"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
-        <div class="stat"><div class="si">&#128522;</div><div class="sv">96</div><div class="sn">Happy Cust.</div></div>
-        <div class="stat"><div class="si">&#8377;</div><div class="sv" style="font-size:13px">32,450</div><div class="sn">Earnings</div></div>
+        <div class="stat" data-go="jobs"><div class="si">&#128188;</div><div class="sv">124</div><div class="sn">Jobs Done</div></div>
+        <div class="stat" data-go="reviews"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
+        <div class="stat" data-toast="96 happy customers served"><div class="si">&#128522;</div><div class="sv">96</div><div class="sn">Happy Cust.</div></div>
+        <div class="stat" data-go="earnings"><div class="si">&#8377;</div><div class="sv" style="font-size:13px">32,450</div><div class="sn">Earnings</div></div>
       </div>
       <div class="card" style="margin-top:14px;padding:4px 16px">
-        <div class="mrow" data-go="reg2"><div class="mi">&#128100;</div><div class="mt"><div class="a">Personal Information</div><div class="b">Name, phone, address, documents</div></div><span class="mc">&#8250;</span></div>
+        <div class="mrow" data-editprofile><div class="mi">&#128100;</div><div class="mt"><div class="a">Personal Information</div><div class="b">Name, phone, address, documents</div></div><span class="mc">&#8250;</span></div>
         <div class="divide"></div>
-        <div class="mrow" data-go="skills"><div class="mi">&#9881;</div><div class="mt"><div class="a">Service Categories</div><div class="b">Manage your services</div></div><span class="mc">&#8250;</span></div>
+        <div class="mrow" data-editprofile><div class="mi">&#9881;</div><div class="mt"><div class="a">Service Categories</div><div class="b">Manage your services</div></div><span class="mc">&#8250;</span></div>
         <div class="divide"></div>
         <div class="mrow" data-go="schedule"><div class="mi">&#128197;</div><div class="mt"><div class="a">My Schedule</div><div class="b">Jobs &amp; availability</div></div><span class="mc">&#8250;</span></div>
         <div class="divide"></div>
@@ -642,12 +653,13 @@
 
   <!-- 14 SCHEDULE -->
   <div class="screen" id="s-schedule">
-    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">My Schedule</div><div class="sub">Manage your jobs and availability</div></div><button class="hpill">&#128197; Today</button></div>
+    <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">My Schedule</div><div class="sub">Manage your jobs and availability</div></div><button class="hpill" id="schedCalBtn">&#128197; Calendar</button></div>
     <div class="scroll sheet"><div class="pad">
       <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:8px" id="weekStrip"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px"><div class="h3" id="schedDay">Thu, 22 May 2024</div><span class="sec">4 Jobs Scheduled</span></div>
+      <div id="schedCal" style="display:none"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px"><div class="h3" id="schedDay">Thu, 22 May 2024</div><span class="sec" id="schedCount">4 Jobs Scheduled</span></div>
       <div id="schedList"></div>
-      <div class="panel blue" style="display:flex;align-items:center;margin-top:4px"><span style="font-size:22px">&#128197;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:14px">Set Your Availability</div><div class="sec" style="font-size:12.5px">Update your working hours and availability</div></div><span class="mc">&#8250;</span></div>
+      <div class="panel blue" style="display:flex;align-items:center;margin-top:4px" data-toast="Availability settings coming soon"><span style="font-size:22px">&#128197;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:14px">Set Your Availability</div><div class="sec" style="font-size:12.5px">Update your working hours and availability</div></div><span class="mc">&#8250;</span></div>
     </div></div>
     <div class="tabs" data-tabbar></div>
   </div>

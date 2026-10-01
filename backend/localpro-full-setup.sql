@@ -816,6 +816,10 @@ end $$;
 -- signature that appears on their HelpZo verification certificate.
 alter table public.providers add column if not exists signature_path text;
 
+-- ============ 0013 AADHAAR BACK SIDE ============
+-- Aadhaar now captures both sides; aadhaar_path = front, this = back.
+alter table public.providers add column if not exists aadhaar_back_path text;
+
 -- =====================================================================
 -- Reload PostgREST's schema cache so the REST API immediately sees any
 -- newly-added columns/tables. Without this you can hit

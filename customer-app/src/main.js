@@ -19,7 +19,6 @@ let session = null;
 let myProfile = null;
 let selectedProvider = null;
 let selectedCat = null;            // category key, e.g. 'plumber'
-let savedIds = new Set();
 let catMap = {};                   // category uuid -> label
 let catByKey = {};                 // category key  -> uuid
 let providerCache = {};            // id -> normalized provider (from lists)
@@ -71,11 +70,6 @@ const DEMO_BOOKINGS = [
   { service:'Electrician', provider:'Ajay Sharma', when:'15 Sep 2025 • 4:00 PM', addr:'Satellite, Ahmedabad', pill:'orange', status:'Pending' },
   { service:'Carpenter', provider:'Mahesh Patel', when:'18 Sep 2025 • 11:00 AM', addr:'Thaltej, Ahmedabad', pill:'green', status:'Confirmed' },
 ];
-const DEMO_SAVED = [
-  { name:'Ramesh Singh', sub:'Plumber • 4.8', dist:2.1 },
-  { name:'Jayesh Patel', sub:'Electrician • 4.6', dist:3.5 },
-  { name:'Imran Khan', sub:'AC Repair • 4.5', dist:4.8 },
-];
 const DEMO_NOTIF = [
   { color:'#22B24C', ic:'✓', title:'Service Request Accepted', body:'Ramesh Singh has accepted your AC repair request.', ago:'2m ago' },
   { color:'#1667E8', ic:'📅', title:'Booking Confirmed', body:'Your booking for electrician service is confirmed for 15 Sep 2025.', ago:'1h ago' },
@@ -92,7 +86,7 @@ function toast(msg) {
 }
 
 /* ---------- navigation ---------- */
-const TAB_SCREENS = ['home', 'bookings', 'saved', 'account'];
+const TAB_SCREENS = ['home', 'bookings', 'account'];
 function show(id, push = true) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('on'));
   const el = $('s-' + id); if (!el) return;
@@ -108,7 +102,6 @@ window.show = show;
 const TABS = [
   { id:'home', ic:'🏠', lb:'Home' },
   { id:'bookings', ic:'📋', lb:'Bookings' },
-  { id:'saved', ic:'❤️', lb:'Saved' },
   { id:'account', ic:'👤', lb:'Profile' },
 ];
 function buildTabBars() {
@@ -126,7 +119,6 @@ function onEnter(id) {
   if (id === 'profile') renderProfile();
   if (id === 'book') renderBook();
   if (id === 'bookings') renderBookings();
-  if (id === 'saved') renderSaved();
   if (id === 'notifications') renderNotif();
   if (id === 'account') renderAccount();
 }
@@ -162,12 +154,11 @@ async function renderHome() {
   }
 }
 function providerCard(p) {
-  const saved = savedIds.has(p.id);
   return `<div class="card" style="margin-bottom:12px">
     <div style="display:flex;gap:12px">
       <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
       <div style="flex:1">
-        <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}<div class="spacer"></div><span style="color:${saved ? 'var(--danger)' : 'var(--tTertiary)'};font-size:20px" data-save="${p.id}">${saved ? '❤' : '♡'}</span></div>
+        <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
         <div class="price" style="margin-top:2px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary)">onwards</span></div>
@@ -222,7 +213,6 @@ function reviewRow(r) {
 async function renderProfile() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
   const el = $('profileBody'); if (!el) return;
-  if ($('saveHeart')) $('saveHeart').textContent = savedIds.has(p.id) ? '❤' : '♡';
   const about = p.about || `Experienced ${String(p.trade || 'professional').toLowerCase()} with great reviews for home and commercial services. Quick & reliable service guaranteed.`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
@@ -314,32 +304,6 @@ function paintBookings() {
     </div>`;
   }).join('');
 }
-function savedRow(p, i) {
-  const np = p.trade ? p : provFromRow(p);
-  return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
-    <div class="avatar" style="width:52px;height:52px">${initials(np.name)}</div>
-    <div class="mid" data-open="${np.id}" style="cursor:pointer"><div class="h3">${esc(np.name)}</div><div class="sec">${esc(np.trade)}${np.rating ? ' • ' + np.rating : ''}</div><div class="meta">📍 ${np.area || np.dist || 'Ahmedabad'}</div></div>
-    <span style="color:var(--danger);font-size:22px" data-save="${np.id}">❤</span>
-  </div>`;
-}
-async function renderSaved() {
-  const el = $('savedRows'); if (!el) return;
-  if (hasSupabase && session) {
-    el.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const rows = await api.getSavedProviders();
-      rows.forEach((p) => { const np = provFromRow(p); providerCache[np.id] = np; });
-      el.innerHTML = rows.length ? rows.map((p, i) => savedRow(p, i)).join('') : `<div class="empty">No saved providers yet.<br>Tap ♡ on a provider to save them.</div>`;
-    } catch (e) { el.innerHTML = `<div class="empty">Could not load saved providers.</div>`; }
-    return;
-  }
-  el.innerHTML = DEMO_SAVED.map((s, i) => `
-    <div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
-      <div class="avatar" style="width:52px;height:52px">${initials(s.name)}</div>
-      <div class="mid"><div class="h3">${esc(s.name)}</div><div class="sec">${esc(s.sub)}</div><div class="meta">📍 ${s.dist} km away</div></div>
-      <span style="color:var(--danger);font-size:22px">❤</span>
-    </div>`).join('');
-}
 function notifIcon(type) {
   return ({ booking: { c: '#1667E8', i: '📅' }, lead: { c: '#22B24C', i: '✓' }, review: { c: '#F6B01E', i: '★' }, offer: { c: '#F5A623', i: '🏷️' }, system: { c: '#8B44D6', i: '🔔' } })[type] || { c: '#1667E8', i: '🔔' };
 }
@@ -400,7 +364,6 @@ async function doVerify() {
       await api.verifyOtp(window._pendingPhone, code);
       session = await api.getSession();
       myProfile = await api.getMyProfile().catch(() => null);
-      savedIds = await api.getSavedIds().catch(() => new Set());
     }
     stack = ['splash']; show('home');
   } catch (e) { toast(e.message || 'Invalid code'); }
@@ -423,18 +386,6 @@ async function confirmBooking() {
   finally { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
 }
 
-/* ---------- save/unsave ---------- */
-async function toggleSave(id) {
-  const on = !savedIds.has(id);
-  if (on) savedIds.add(id); else savedIds.delete(id);
-  if (hasSupabase && session && !String(id).startsWith('d')) {
-    try { on ? await api.saveProvider(id) : await api.unsaveProvider(id); } catch (e) {}
-  }
-  toast(on ? 'Added to saved' : 'Removed from saved');
-  const cur = stack[stack.length - 1];
-  if (cur === 'list') renderList(); else if (cur === 'profile') renderProfile(); else if (cur === 'saved') renderSaved();
-}
-
 /* ---------- open a provider ---------- */
 async function openProvider(id) {
   let p = providerCache[id] || DEMO_PROVIDERS.find((x) => x.id === id);
@@ -451,10 +402,8 @@ document.addEventListener('click', (e) => {
   const tab = e.target.closest('[data-tab]'); if (tab) { stack = [tab.getAttribute('data-tab')]; show(tab.getAttribute('data-tab'), false); return; }
   const cat = e.target.closest('[data-cat]'); if (cat) { selectedCat = cat.getAttribute('data-cat'); show('list'); return; }
   const open = e.target.closest('[data-open]'); if (open) { openProvider(open.getAttribute('data-open')); return; }
-  const sv = e.target.closest('[data-save]'); if (sv) { e.stopPropagation(); toggleSave(sv.getAttribute('data-save')); return; }
   const dc = e.target.closest('[data-date]'); if (dc) { document.querySelectorAll('#dateRow .datecard').forEach((x) => x.classList.remove('on')); dc.classList.add('on'); return; }
   const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
-  if (e.target.closest('#saveHeart')) { toggleSave((selectedProvider || DEMO_PROVIDERS[0]).id); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; show('list'); return; }
@@ -503,7 +452,7 @@ function wireOtpInputs() {
 /* ---------- logout ---------- */
 async function logout() {
   try { if (hasSupabase) await api.signOut(); } catch (e) {}
-  session = null; myProfile = null; savedIds = new Set();
+  session = null; myProfile = null;
   $('loginOtpStep').hidden = true; $('loginPhoneStep').hidden = false;
   document.querySelectorAll('[data-otp]').forEach((i) => (i.value = ''));
   if ($('phone')) $('phone').value = '';
@@ -539,7 +488,6 @@ async function boot() {
     try { session = await api.getSession(); } catch (e) {}
     if (session) {
       myProfile = await api.getMyProfile().catch(() => null);
-      savedIds = await api.getSavedIds().catch(() => new Set());
     }
   })();
 
