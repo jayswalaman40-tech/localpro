@@ -212,9 +212,12 @@ async function renderJobs() {
   document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === 'active'));
   if (hasSupabase && myProvider) {
     list.innerHTML = `<div class="empty">Loading…</div>`;
-    try { lastJobsRows = await api.getMyBookings(); updateJobCounts(); paintJobs(); return; } catch (e) {}
+    try {
+      const rows = await api.getMyBookings();
+      if (rows && rows.length) { lastJobsRows = rows; updateJobCounts(); paintJobs(); return; }
+    } catch (e) {}
   }
-  lastJobsRows = null;
+  lastJobsRows = null;   // no real jobs yet → show demo so the screen looks populated
   paintJobs();
 }
 function updateJobCounts() {
@@ -273,9 +276,12 @@ async function renderLeads() {
   document.querySelectorAll('[data-ltab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-ltab') === 'all'));
   if (hasSupabase && myProvider) {
     list.innerHTML = `<div class="empty">Loading…</div>`;
-    try { lastLeadsRows = await api.getMyLeads(); updateLeadCounts(); paintLeads(); return; } catch (e) {}
+    try {
+      const rows = await api.getMyLeads();
+      if (rows && rows.length) { lastLeadsRows = rows; updateLeadCounts(); paintLeads(); return; }
+    } catch (e) {}
   }
-  lastLeadsRows = null;
+  lastLeadsRows = null;   // no real leads yet → show demo so the screen looks populated
   paintLeads();
 }
 function updateLeadCounts() {
@@ -357,15 +363,18 @@ async function renderNotif() {
     list.innerHTML = `<div class="empty">Loading…</div>`;
     try {
       const rows = await api.getNotifications();
-      list.innerHTML = rows.length ? rows.map((n) => {
-        const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
-        const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-        return `<div class="card" style="display:flex;gap:12px;margin-bottom:10px">
-          <div class="scirc ${ic.cls}" style="width:42px;height:42px;font-size:18px">${ic.icon}</div>
-          <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
-            <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body || '')}</div></div></div>`;
-      }).join('') : `<div class="empty">No notifications yet.</div>`;
-      return;
+      if (rows && rows.length) {
+        list.innerHTML = rows.map((n) => {
+          const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
+          const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          return `<div class="card" style="display:flex;gap:12px;margin-bottom:10px">
+            <div class="scirc ${ic.cls}" style="width:42px;height:42px;font-size:18px">${ic.icon}</div>
+            <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
+              <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body || '')}</div></div></div>`;
+        }).join('');
+        return;
+      }
+      // else: fall through to demo notifications so the screen looks populated
     } catch (e) {}
   }
   list.innerHTML = DEMO_NOTIF.map((n) => `
