@@ -5,7 +5,7 @@
 // =====================================================================
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
-import { embedMapHTML, openMaps, liveMap } from './maps.js';
+import { openMaps, liveMap } from './maps.js';
 
 /* ---------- tiny helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -56,6 +56,19 @@ const kycFiles = {};      // slot -> File
 const kycUploaded = {};   // slot -> path (verified/uploaded)
 
 /* ---------- Ahmedabad service areas (Service Area autocomplete) ---------- */
+// Provider's map coordinates — without lat/lng a listing never appears in the
+// customer "nearby" search (the RPC filters out rows with null lat/lng).
+const DEF_LAT = Number(import.meta.env.VITE_DEFAULT_LAT ?? 23.0225);
+const DEF_LNG = Number(import.meta.env.VITE_DEFAULT_LNG ?? 72.5714);
+function providerCoords() {
+  return new Promise((res) => {
+    if (!navigator.geolocation) return res({ lat: DEF_LAT, lng: DEF_LNG });
+    navigator.geolocation.getCurrentPosition(
+      (p) => res({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => res({ lat: DEF_LAT, lng: DEF_LNG }),
+      { timeout: 6000, maximumAge: 60000 });
+  });
+}
 const AHMEDABAD_AREAS = ['Bodakdev','Satellite','Vastrapur','Thaltej','Bopal','South Bopal','Prahlad Nagar','Jodhpur','Ambawadi','Navrangpura','Naranpura','Vadaj','Sabarmati','Chandkheda','Motera','Gota','Chandlodia','Ghatlodia','Nirnaynagar','Ranip','New Ranip','Memnagar','Vastrapur','Jivraj Park','Vejalpur','Juhapura','Sarkhej','Makarba','Ghuma','Shela','Science City','Sola','Shilaj','Gurukul','Drive-In','Helmet','Chanakyapuri','Usmanpura','Ashram Road','Paldi','Vasna','Maninagar','Isanpur','Vatva','Ghodasar','Khokhra','Amraiwadi','Nikol','Naroda','Bapunagar','Odhav','Vastral','Ramol','CTM','Hatkeshwar','Rakhial','Saraspur','Gomtipur','Shahibaug','Dariapur','Kalupur','Shahpur','Raikhad','Jamalpur','Behrampura','Danilimda','Narol','Lambha','Chandola','Kankaria','Ellis Bridge','Law Garden','Gulbai Tekra','Stadium','Commerce Six Roads','SG Highway','Thaltej Road','Sindhu Bhavan Road','Shyamal','Anandnagar','Ramdevnagar'];
 
 /* ---------- DEMO data (keeps screens populated like the mockups) ---------- */
@@ -773,6 +786,9 @@ async function saveProfileEdits() {
         const c = categories.find((x) => x.key === selectedCatId);
         if (c) { fields.category_id = c.id; fields.custom_category = null; } else fields.custom_category = selectedCatLabel;
       } else if (selectedCatId === 'other') { fields.custom_category = selectedCatLabel || 'Other'; }
+      if (!myProvider?.lat || !myProvider?.lng) {          // backfill coords so the listing is findable
+        const loc = await providerCoords(); fields.lat = loc.lat; fields.lng = loc.lng;
+      }
       await api.saveMyProvider(fields);
       myProvider = await api.getMyProvider().catch(() => myProvider);
     }
@@ -805,6 +821,8 @@ async function submitRegistration() {
         about: $('regBio').value.trim() || null,          // column is "about", not "bio"
         experience_yrs: Number($('regExp').value) || selectedExp || 0,  // column is "experience_yrs"
       };
+      const loc = await providerCoords();                 // so the listing is findable nearby
+      fields.lat = loc.lat; fields.lng = loc.lng;
       if (selectedCatId && selectedCatId !== 'other') {
         const c = categories.find((x) => x.key === selectedCatId);
         if (c) fields.category_id = c.id; else fields.custom_category = selectedCatLabel;
