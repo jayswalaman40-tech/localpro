@@ -5,7 +5,7 @@
 // =====================================================================
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
-import { embedMapHTML, openMaps } from './maps.js';
+import { embedMapHTML, openMaps, liveMap } from './maps.js';
 
 /* ---------- tiny helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -162,7 +162,14 @@ function onEnter(id) {
   if (id === 'reg3') renderDocList();
   if (id === 'verify') renderVerifyList();
   if (id === 'jobdetail') renderJobDetail();
-  if (id === 'enroute') { const m = $('enrouteMap'); if (m) m.innerHTML = embedMapHTML('A-702, Shaligram Residency, Bodakdev, Ahmedabad', 'maplg'); }
+  if (id === 'enroute') {
+    const m = $('enrouteMap');
+    if (m) liveMap(m, 'A-702, Shaligram Residency, Bodakdev, Ahmedabad', (info) => {
+      if (info.dur && $('etaMin')) $('etaMin').textContent = info.dur;
+      if (info.dist && $('etaKm')) $('etaKm').textContent = info.dist;
+      if (info.arr && $('etaArr')) $('etaArr').textContent = info.arr.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    });
+  }
   if (id === 'chat') openChat();
   if (id === 'progress') { startTimer(); initSignature(); } else stopTimer();
 }
@@ -549,8 +556,9 @@ function renderJobDetail() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Photos (2)</div><span class="link">View All ›</span></div>
     <div class="grid2"><div class="thumb">❄️</div><div class="thumb">🏭</div></div>
     <div class="h3" style="margin:18px 0 8px">Location</div>
-    ${embedMapHTML('Bodakdev, Ahmedabad')}
+    <div id="jobDetailMap"></div>
     <button class="btn btn-out sm" data-maps="Bodakdev, Ahmedabad" style="margin-top:8px">🧭 Open in Google Maps</button>`;
+  liveMap($('jobDetailMap'), 'Bodakdev, Ahmedabad');
 }
 
 /* ---------- chat ---------- */
