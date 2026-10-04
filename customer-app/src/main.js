@@ -19,6 +19,9 @@ let session = null;
 let myProfile = null;
 let selectedProvider = null;
 let selectedCat = null;            // category key, e.g. 'plumber'
+let selectedSub = null;            // chosen subcategory label (for list title)
+let searchQuery = '';              // active search text
+let subcatParent = null;           // category key whose subcategories are shown
 let catMap = {};                   // category uuid -> label
 let catByKey = {};                 // category key  -> uuid
 let providerCache = {};            // id -> normalized provider (from lists)
@@ -47,6 +50,8 @@ function provFromRow(p) {
 }
 
 /* ---------- categories (icon + color) ---------- */
+// Full catalog. The first 7 are the "Popular Services" shown on Home; the rest
+// surface via the "More" tile / All Categories screen.
 const CATS = [
   { key:'plumber', label:'Plumber', icon:'🚰', color:'#2680EB' },
   { key:'electrician', label:'Electrician', icon:'⚡', color:'#F5A623' },
@@ -55,15 +60,54 @@ const CATS = [
   { key:'painter', label:'Painter', icon:'🎨', color:'#C724B1' },
   { key:'cleaning', label:'Cleaning', icon:'🧹', color:'#2E9E5B' },
   { key:'home_repair', label:'Home Repair', icon:'🏠', color:'#F5821F' },
-  { key:'other', label:'More', icon:'⋯', color:'#B8C0CC' },
+  { key:'appliance', label:'Appliance Repair', icon:'🔌', color:'#7E57C2' },
+  { key:'pest_control', label:'Pest Control', icon:'🐜', color:'#8D6E63' },
+  { key:'salon', label:'Salon at Home', icon:'💇', color:'#EC407A' },
+  { key:'cctv', label:'CCTV & Security', icon:'📹', color:'#455A64' },
+  { key:'geyser', label:'Geyser Repair', icon:'🔥', color:'#EF5350' },
+  { key:'ro', label:'RO / Water Purifier', icon:'💧', color:'#26C6DA' },
+  { key:'gardening', label:'Gardening', icon:'🌱', color:'#43A047' },
+  { key:'movers', label:'Packers & Movers', icon:'📦', color:'#FB8C00' },
 ];
+const POPULAR = CATS.slice(0, 7);   // Home grid (7 + a "More" tile)
+const MORE_TILE = { key:'__more', label:'More', icon:'⋯', color:'#B8C0CC' };
+
+// Subcategories per category — tapping a category opens this list.
+const SUBCATS = {
+  plumber: ['Tap & Mixer Repair','Pipe Fitting','Leakage Repair','Drain / Blockage','Water Tank','Bathroom Fitting','Motor & Pump','Wash Basin / Sink'],
+  electrician: ['Wiring & Rewiring','Switch & Socket','Fan Installation','Lights & Fixtures','MCB & Fuse','Inverter & Battery','Doorbell','Appliance Wiring'],
+  ac_repair: ['AC Service','AC Installation','Gas Refilling','AC Not Cooling','AC Repair','AC Uninstall','Window AC','Split AC'],
+  carpenter: ['Furniture Repair','Door & Window','Modular Kitchen','Bed & Sofa','Wardrobe / Almirah','Wood Polish','Drawer & Hinges','Curtain Rod'],
+  painter: ['Interior Painting','Exterior Painting','Wall Texture','Waterproofing','Wood / Metal Paint','POP & False Ceiling','Single Room','Full Home'],
+  cleaning: ['Home Deep Cleaning','Bathroom Cleaning','Kitchen Cleaning','Sofa Cleaning','Water Tank Cleaning','Move-in / Move-out','Office Cleaning','Floor Scrubbing'],
+  home_repair: ['Minor Repairs','Wall Mounting','Furniture Assembly','Door Lock','Handyman','Tile / Grouting'],
+  appliance: ['Washing Machine','Refrigerator','Microwave','Chimney','Dishwasher','Water Purifier (RO)'],
+  pest_control: ['General Pest Control','Cockroach','Termite','Bed Bugs','Mosquito','Rodent / Rat'],
+  salon: ['Haircut & Styling','Facial & Cleanup','Waxing','Manicure & Pedicure','Massage','Bridal Makeup'],
+  cctv: ['CCTV Installation','CCTV Repair','DVR / NVR Setup','Video Door Phone','Biometric Lock'],
+  geyser: ['Geyser Service','Geyser Installation','Geyser Repair','Element / Thermostat'],
+  ro: ['RO Service','RO Installation','RO Repair','Filter Change','Water Purifier AMC'],
+  gardening: ['Garden Maintenance','Lawn Mowing','Plant Care','Landscaping','Tree Trimming'],
+  movers: ['House Shifting','Office Shifting','Packing & Moving','Loading & Unloading','Single Item Move'],
+};
 
 /* ---------- demo data (keeps screens populated) ---------- */
 const DEMO_PROVIDERS = [
-  { id:'d1', name:'Ramesh Singh', trade:'Plumber', rating:4.8, reviews:124, dist:2.1, price:200, exp:'5+ years exp' },
-  { id:'d2', name:'Jayesh Patel', trade:'Electrician', rating:4.6, reviews:98, dist:3.5, price:250, exp:'4 years exp' },
-  { id:'d3', name:'Imran Khan', trade:'AC Repair', rating:4.5, reviews:76, dist:4.8, price:220, exp:'6 years exp' },
-  { id:'d4', name:'Mukesh Yadav', trade:'Carpenter', rating:4.3, reviews:54, dist:5.2, price:180, exp:'3 years exp' },
+  { id:'d1', name:'Ramesh Singh', cat:'plumber', trade:'Plumber', rating:4.8, reviews:124, dist:2.1, price:200, exp:'5+ years exp' },
+  { id:'d2', name:'Jayesh Patel', cat:'electrician', trade:'Electrician', rating:4.6, reviews:98, dist:3.5, price:250, exp:'4 years exp' },
+  { id:'d3', name:'Imran Khan', cat:'ac_repair', trade:'AC Repair', rating:4.5, reviews:76, dist:4.8, price:220, exp:'6 years exp' },
+  { id:'d4', name:'Mukesh Yadav', cat:'carpenter', trade:'Carpenter', rating:4.3, reviews:54, dist:5.2, price:180, exp:'3 years exp' },
+  { id:'d5', name:'Sanjay Mehta', cat:'painter', trade:'Painter', rating:4.7, reviews:88, dist:3.0, price:300, exp:'7 years exp' },
+  { id:'d6', name:'Pooja Shah', cat:'cleaning', trade:'Cleaning', rating:4.9, reviews:142, dist:1.8, price:150, exp:'4 years exp' },
+  { id:'d7', name:'Rakesh Verma', cat:'home_repair', trade:'Home Repair', rating:4.4, reviews:61, dist:4.1, price:200, exp:'5 years exp' },
+  { id:'d8', name:'Amit Chauhan', cat:'appliance', trade:'Appliance Repair', rating:4.5, reviews:73, dist:3.9, price:250, exp:'6 years exp' },
+  { id:'d9', name:'HealthyHome Pest', cat:'pest_control', trade:'Pest Control', rating:4.6, reviews:52, dist:5.0, price:500, exp:'8 years exp' },
+  { id:'d10', name:'Glow Salon at Home', cat:'salon', trade:'Salon at Home', rating:4.8, reviews:110, dist:2.6, price:400, exp:'5 years exp' },
+  { id:'d11', name:'SecureView CCTV', cat:'cctv', trade:'CCTV & Security', rating:4.4, reviews:39, dist:6.2, price:800, exp:'7 years exp' },
+  { id:'d12', name:'Nitin Prajapati', cat:'geyser', trade:'Geyser Repair', rating:4.5, reviews:47, dist:3.3, price:250, exp:'4 years exp' },
+  { id:'d13', name:'AquaCare RO', cat:'ro', trade:'RO / Water Purifier', rating:4.7, reviews:64, dist:2.9, price:350, exp:'5 years exp' },
+  { id:'d14', name:'GreenThumb Garden', cat:'gardening', trade:'Gardening', rating:4.6, reviews:33, dist:4.7, price:400, exp:'6 years exp' },
+  { id:'d15', name:'QuickShift Movers', cat:'movers', trade:'Packers & Movers', rating:4.5, reviews:81, dist:5.5, price:1500, exp:'9 years exp' },
 ];
 const DEMO_BOOKINGS = [
   { service:'AC Repair', provider:'Suresh Kumar', when:'12 Sep 2025 • 5:00 PM', addr:'Bopal, Ahmedabad', pill:'green', status:'Confirmed' },
@@ -142,7 +186,7 @@ function topCard(p) {
   </div>`;
 }
 async function renderHome() {
-  const grid = $('catGrid'); if (grid) grid.innerHTML = CATS.map(catCell).join('');
+  const grid = $('catGrid'); if (grid) grid.innerHTML = POPULAR.map(catCell).join('') + catCell(MORE_TILE);
   const top = $('homeTop'); if (!top) return;
   top.innerHTML = topCard(DEMO_PROVIDERS[0]);
   if (hasSupabase) {
@@ -152,6 +196,30 @@ async function renderHome() {
       if (live && live.length) { const p = provFromRow(live[0]); providerCache[p.id] = p; top.innerHTML = topCard(p); }
     } catch (e) {}
   }
+}
+
+/* ---------- All Categories / Subcategories browse ---------- */
+function openAllCategories() {
+  subcatParent = null;
+  if ($('subcatTitle')) $('subcatTitle').textContent = 'All Categories';
+  if ($('subcatSub')) $('subcatSub').textContent = 'Choose a service type';
+  const grid = $('subcatGrid');
+  if (grid) grid.innerHTML = `<div class="sgrid">${CATS.map(catCell).join('')}</div>`;
+  show('subcats');
+}
+function openSubcats(key) {
+  const c = CATS.find((x) => x.key === key);
+  if (!c || !(SUBCATS[key] && SUBCATS[key].length)) { selectedCat = key; selectedSub = null; searchQuery = ''; show('list'); return; }
+  subcatParent = key;
+  if ($('subcatTitle')) $('subcatTitle').textContent = c.label;
+  if ($('subcatSub')) $('subcatSub').textContent = 'Select a service';
+  const grid = $('subcatGrid');
+  if (grid) {
+    grid.innerHTML = SUBCATS[key].map((s) => `<div class="subrow" data-subcat="${esc(s)}">
+      <div class="subic" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+      <div class="subtxt">${esc(s)}</div><span class="mc">›</span></div>`).join('');
+  }
+  show('subcats');
 }
 function providerCard(p) {
   return `<div class="card" style="margin-bottom:12px">
@@ -170,7 +238,12 @@ function providerCard(p) {
 async function renderList() {
   listSort = 'all';
   document.querySelectorAll('[data-sort]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-sort') === 'all'));
-  if ($('listTitle')) $('listTitle').textContent = selectedCat ? (CATS.find((c) => c.key === selectedCat)?.label || 'Providers') : 'Providers';
+  // Title: subcategory > search term > category > default
+  let title = 'Providers';
+  if (selectedSub) title = selectedSub;
+  else if (searchQuery) title = `“${searchQuery}”`;
+  else if (selectedCat) title = CATS.find((c) => c.key === selectedCat)?.label || 'Providers';
+  if ($('listTitle')) $('listTitle').textContent = title;
   const el = $('listCards'); if (!el) return;
   el.innerHTML = `<div class="empty">Loading…</div>`;
   let rows = null;
@@ -183,9 +256,39 @@ async function renderList() {
       rows.forEach((p) => { providerCache[p.id] = p; });
     } catch (e) { rows = null; }
   }
-  if (!rows) rows = DEMO_PROVIDERS;                 // not signed in / offline
-  lastListRows = rows;
+  if (!rows) rows = DEMO_PROVIDERS.slice();          // not signed in / offline
+  lastListRows = filterRows(rows);
   paintList();
+}
+
+// Run a search from the Home search bar.
+function doSearch() {
+  const q = ($('homeSearch')?.value || '').trim();
+  searchQuery = q; selectedSub = null;
+  // If the query is (part of) a single category name, scope to that category.
+  const matched = CATS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()));
+  selectedCat = (q && matched.length === 1) ? matched[0].key : null;
+  show('list');
+}
+
+// Apply the active category + search filter to a set of provider rows.
+function filterRows(rows) {
+  let out = rows.slice();
+  if (selectedCat) {
+    const catLabel = (CATS.find((c) => c.key === selectedCat)?.label || '').toLowerCase();
+    out = out.filter((p) => p.cat === selectedCat
+      || String(p.trade || '').toLowerCase() === catLabel);
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    // match a category by name so e.g. "ac" or "painter" narrows the list
+    const matchedCats = CATS.filter((c) => c.label.toLowerCase().includes(q)).map((c) => c.key);
+    out = out.filter((p) =>
+      String(p.name || '').toLowerCase().includes(q)
+      || String(p.trade || '').toLowerCase().includes(q)
+      || matchedCats.includes(p.cat));
+  }
+  return out;
 }
 // Sort + paint the already-loaded list rows (used by the filter chips too).
 function paintList() {
@@ -400,13 +503,23 @@ async function openProvider(id) {
 document.addEventListener('click', (e) => {
   const go = e.target.closest('[data-go]'); if (go) { show(go.getAttribute('data-go')); return; }
   const tab = e.target.closest('[data-tab]'); if (tab) { stack = [tab.getAttribute('data-tab')]; show(tab.getAttribute('data-tab'), false); return; }
-  const cat = e.target.closest('[data-cat]'); if (cat) { selectedCat = cat.getAttribute('data-cat'); show('list'); return; }
+  const cat = e.target.closest('[data-cat]'); if (cat) {
+    const key = cat.getAttribute('data-cat');
+    searchQuery = ''; selectedSub = null;
+    if (key === '__more') { openAllCategories(); return; }
+    selectedCat = key; openSubcats(key); return;
+  }
+  const subc = e.target.closest('[data-subcat]'); if (subc) {
+    selectedSub = subc.getAttribute('data-subcat');
+    selectedCat = subcatParent || selectedCat; searchQuery = '';
+    show('list'); return;
+  }
   const open = e.target.closest('[data-open]'); if (open) { openProvider(open.getAttribute('data-open')); return; }
   const dc = e.target.closest('[data-date]'); if (dc) { document.querySelectorAll('#dateRow .datecard').forEach((x) => x.classList.remove('on')); dc.classList.add('on'); return; }
   const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
-  const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; show('list'); return; }
+  const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; searchQuery = ''; openAllCategories(); return; }
   const sort = e.target.closest('[data-sort]'); if (sort) {
     document.querySelectorAll('[data-sort]').forEach((c) => c.classList.remove('on'));
     sort.classList.add('on'); listSort = sort.getAttribute('data-sort'); paintList(); return;
@@ -470,8 +583,8 @@ async function boot() {
   $('phone')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doGetOtp(); });
   $('confirmBookBtn')?.addEventListener('click', confirmBooking);
   $('logoutBtn')?.addEventListener('click', logout);
-  $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { selectedCat = null; show('list'); } });
-  $('homeSearchGo')?.addEventListener('click', () => { selectedCat = null; show('list'); });
+  $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  $('homeSearchGo')?.addEventListener('click', doSearch);
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).
