@@ -105,9 +105,11 @@ const DEMO_NOTIF = [
   { icon:'🔔', cls:'c-more', title:'System Update', body:'New features have been added to improve your experience.', ago:'2 days', unread:false },
 ];
 const DEMO_SCHED = [
-  { t1:'10:00 AM', t2:'11:00 AM', cat:'ac_repair', title:'AC Repair', name:'Rahul Sharma', area:'Bodakdev', desc:'Split AC not cooling properly', pill:'Upcoming', p:'blue' },
-  { t1:'1:00 PM', t2:'2:00 PM', cat:'plumber', title:'Plumbing', name:'Neha Patel', area:'Vastrapur', desc:'Water leakage in kitchen', pill:'Upcoming', p:'blue' },
-  { t1:'4:00 PM', t2:'5:00 PM', cat:'electrician', title:'Electrical', name:'Kishan Makwana', area:'Maninagar', desc:'Switch board not working', pill:'Upcoming', p:'blue' },
+  { day:0, t1:'10:00 AM', t2:'11:00 AM', cat:'ac_repair', title:'AC Repair', name:'Rahul Sharma', area:'Bodakdev', desc:'Split AC not cooling properly', pill:'Upcoming', p:'blue' },
+  { day:0, t1:'1:00 PM', t2:'2:00 PM', cat:'plumber', title:'Plumbing', name:'Neha Patel', area:'Vastrapur', desc:'Water leakage in kitchen', pill:'Upcoming', p:'blue' },
+  { day:1, t1:'11:00 AM', t2:'12:00 PM', cat:'electrician', title:'Electrical', name:'Kishan Makwana', area:'Maninagar', desc:'Switch board not working', pill:'Upcoming', p:'blue' },
+  { day:1, t1:'3:00 PM', t2:'4:00 PM', cat:'carpenter', title:'Carpenter', name:'Priya Desai', area:'Satellite', desc:'Fix wardrobe hinges & drawer', pill:'Upcoming', p:'blue' },
+  { day:2, t1:'9:30 AM', t2:'10:30 AM', cat:'cleaning', title:'Deep Cleaning', name:'Amit Shah', area:'Thaltej', desc:'Full home deep cleaning', pill:'Upcoming', p:'blue' },
 ];
 const DEMO_CHAT = [
   { me:false, body:"Hi, I'm Rahul. My AC is not cooling properly. Can you check today?", time:'9:12 AM' },
@@ -476,9 +478,14 @@ function selectSchedDay(isoStr) {
   renderSchedList();
 }
 function renderSchedList() {
-  if ($('schedCount')) $('schedCount').textContent = DEMO_SCHED.length + ' Jobs Scheduled';
   const list = $('schedList'); if (!list) return;
-  list.innerHTML = DEMO_SCHED.map((s) => `
+  // Show only the jobs for the selected day (demo jobs are pinned to day offsets).
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const offset = Math.round((new Date(schedSel.getFullYear(), schedSel.getMonth(), schedSel.getDate()) - today) / 86400000);
+  const rows = DEMO_SCHED.filter((s) => s.day === offset);
+  if ($('schedCount')) $('schedCount').textContent = rows.length + (rows.length === 1 ? ' Job Scheduled' : ' Jobs Scheduled');
+  if (!rows.length) { list.innerHTML = `<div class="empty">No jobs scheduled for this day.</div>`; return; }
+  list.innerHTML = rows.map((s) => `
     <div class="card" style="margin-bottom:12px"><div style="display:flex;gap:10px">
       <div style="text-align:center;flex-shrink:0"><div style="font-weight:700;font-size:12px">${s.t1}</div><div class="ter" style="margin-top:4px">${s.t2}</div></div>
       <div style="width:1px;background:var(--cardBorder)"></div>
@@ -791,6 +798,15 @@ async function saveProfileEdits() {
       }
       await api.saveMyProvider(fields);
       myProvider = await api.getMyProvider().catch(() => myProvider);
+    } else {
+      // Demo / offline: reflect the edits locally so the profile actually updates.
+      myProvider = Object.assign({}, myProvider, {
+        name: $('regName').value.trim() || myProvider?.name || 'Provider',
+        email: $('regEmail').value.trim() || myProvider?.email || null,
+        service_area: $('regArea').value.trim() || myProvider?.service_area || null,
+        about: $('regBio').value.trim() || myProvider?.about || null,
+        experience_yrs: Number($('regExp').value) || myProvider?.experience_yrs || 0,
+      });
     }
     editMode = false;
     toast('Profile updated');
@@ -860,6 +876,12 @@ async function toggleAvail() {
 
 /* ---------- global click handling (event delegation) ---------- */
 document.addEventListener('click', (e) => {
+  // Action buttons must win over a surrounding card's data-go navigation,
+  // otherwise tapping Accept/Reject on a lead card just opens the card.
+  const accTop = e.target.closest('[data-accept]');
+  if (accTop) { acceptLead(accTop.getAttribute('data-accept'), accTop.closest('.card')); return; }
+  const rejTop = e.target.closest('[data-reject]');
+  if (rejTop) { rejectLead(rejTop.getAttribute('data-reject'), rejTop.closest('.card')); return; }
   const go = e.target.closest('[data-go]');
   if (go) { e.stopPropagation(); show(go.getAttribute('data-go')); return; }
   const bk = e.target.closest('[data-back]');
@@ -890,10 +912,6 @@ document.addEventListener('click', (e) => {
   if (rep) { replyReview(rep.getAttribute('data-reply')); return; }
   const mapsBtn = e.target.closest('[data-maps]');
   if (mapsBtn) { openMaps(mapsBtn.getAttribute('data-maps')); return; }
-  const acc = e.target.closest('[data-accept]');
-  if (acc) { acceptLead(acc.getAttribute('data-accept')); return; }
-  const rej = e.target.closest('[data-reject]');
-  if (rej) { rejectLead(rej.getAttribute('data-reject')); return; }
   const bn = e.target.closest('[data-book-next]');
   if (bn) { advanceBooking(bn.getAttribute('data-book-next'), bn.getAttribute('data-book-status')); return; }
   const callEl = e.target.closest('[data-call]');
@@ -939,13 +957,20 @@ function pickPhoto() {
 }
 
 /* ---------- lead + booking actions ---------- */
-async function acceptLead(id) {
+async function acceptLead(id, cardEl) {
   if (hasSupabase && id) { try { await api.markLeadContacted(id); toast('Lead accepted'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
-  toast('Lead accepted — added to your jobs');
+  removeLeadCard(cardEl); toast('Lead accepted — added to your jobs');
 }
-async function rejectLead(id) {
+async function rejectLead(id, cardEl) {
   if (hasSupabase && id) { try { await api.setLeadStatus(id, 'cancelled'); toast('Lead rejected'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
-  toast('Lead rejected');
+  removeLeadCard(cardEl); toast('Lead rejected');
+}
+// Demo feedback: drop the acted-on lead card, show empty state if none left.
+function removeLeadCard(cardEl) {
+  if (!cardEl) return;
+  const list = cardEl.parentElement;
+  cardEl.remove();
+  if (list && !list.querySelector('.card')) list.innerHTML = `<div class="empty">No new leads right now.</div>`;
 }
 async function advanceBooking(id, cur) {
   const next = { pending: 'confirmed', confirmed: 'completed', completed: 'completed', cancelled: 'cancelled' }[cur] || 'confirmed';
