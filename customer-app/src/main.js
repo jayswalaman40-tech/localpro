@@ -28,6 +28,7 @@ let providerCache = {};            // id -> normalized provider (from lists)
 let lastListRows = [];             // providers currently shown on the list screen
 let listSort = 'all';              // all | rating | dist | price
 let lastBookings = [];             // bookings currently loaded (for filter chips)
+let localBookings = [];            // bookings made this session (shown immediately)
 let bookFilter = 'upcoming';       // upcoming | completed | cancelled
 let toastTimer = null;
 
@@ -370,15 +371,16 @@ function renderBookings() {
   const el = $('bookRows'); if (!el) return;
   bookFilter = 'upcoming';
   document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-bfilter') === 'upcoming'));
-  // Seed with demo so the screen is never blank, then swap in live rows.
-  lastBookings = DEMO_BOOKINGS.map((b) => ({
+  // Seed with this session's bookings + demo so the screen is never blank,
+  // then swap in live rows (keeping session bookings on top).
+  lastBookings = localBookings.concat(DEMO_BOOKINGS.map((b) => ({
     service: b.service, provider: b.provider, when: b.when, addr: b.addr, status: b.status,
-  }));
+  })));
   paintBookings();
   if (hasSupabase && session) {
     api.getMyBookingList().then((live) => {
       if (live && live.length) {
-        lastBookings = live.map((b) => {
+        const liveRows = live.map((b) => {
           const pv = b.provider || {};
           const st = (b.status || 'pending');
           return {
@@ -387,6 +389,8 @@ function renderBookings() {
             status: st[0].toUpperCase() + st.slice(1),
           };
         });
+        // Keep demo-provider bookings made this session (not persisted server-side).
+        lastBookings = localBookings.filter((b) => b._demo).concat(liveRows);
         paintBookings();
       }
     }).catch(() => {});
@@ -478,11 +482,22 @@ async function confirmBooking() {
   const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
   try {
     const p = selectedProvider || DEMO_PROVIDERS[0];
-    const date = document.querySelector('#dateRow .datecard.on .d2')?.textContent || '';
+    const dateCard = document.querySelector('#dateRow .datecard.on');
+    const dayNum = dateCard?.querySelector('.d2')?.textContent || '';
+    const dayMon = dateCard?.querySelector('.d1')?.textContent || '';
     const time = document.querySelector('#slotRow .slot.on')?.textContent || '';
-    if (hasSupabase && session && p.id && !String(p.id).startsWith('d')) {
-      await api.createBooking(p.id, { service: p.trade, date, time, address: $('bookAddr').value, note: $('bookNote').value });
+    const addr = $('bookAddr')?.value || '';
+    const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
+    if (!isDemo) {
+      await api.createBooking(p.id, { service: p.trade, date: dayNum, time, address: addr, note: $('bookNote')?.value || '' });
     }
+    // Show the new booking immediately at the top of My Bookings.
+    localBookings.unshift({
+      service: selectedSub || p.trade || 'Service',
+      provider: p.name || 'Provider',
+      when: `${dayMon} ${dayNum}`.trim() + (time ? ' • ' + time : ''),
+      addr, status: 'Pending', _demo: isDemo,
+    });
     toast('Booking confirmed!');
     setTimeout(() => show('bookings'), 500);
   } catch (e) { toast(e.message || 'Could not book'); }
@@ -520,6 +535,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; searchQuery = ''; openAllCategories(); return; }
+  const allprov = e.target.closest('[data-allprov]'); if (allprov) { selectedCat = null; selectedSub = null; searchQuery = ''; show('list'); return; }
   const sort = e.target.closest('[data-sort]'); if (sort) {
     document.querySelectorAll('[data-sort]').forEach((c) => c.classList.remove('on'));
     sort.classList.add('on'); listSort = sort.getAttribute('data-sort'); paintList(); return;
