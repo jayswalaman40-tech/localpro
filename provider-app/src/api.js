@@ -136,6 +136,42 @@ export async function setBookingStatus(id, status) {
   const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
   if (error) throw error;
 }
+
+// ---------------- BILL (job line-items + payment) ----------------
+export async function getJobItems(bookingId) {
+  const { data, error } = await supabase.from('job_items')
+    .select('*').eq('booking_id', bookingId).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function addJobItem(bookingId, label, amount) {
+  const { data, error } = await supabase.from('job_items')
+    .insert({ booking_id: bookingId, label, amount: Math.round(Number(amount) || 0) })
+    .select('*').single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteJobItem(id) {
+  const { error } = await supabase.from('job_items').delete().eq('id', id);
+  if (error) throw error;
+}
+// Provider sends the itemised bill to the customer for approval.
+export async function sendBill(bookingId) {
+  const items = await getJobItems(bookingId);
+  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
+  const { error } = await supabase.from('bookings')
+    .update({ total_amount: total, bill_status: 'sent' }).eq('id', bookingId);
+  if (error) throw error;
+  return total;
+}
+// Provider records a cash payment and closes the job.
+export async function recordPayment(bookingId, amount, method = 'cash') {
+  await supabase.from('payments').insert({ booking_id: bookingId, amount: Math.round(Number(amount) || 0), method, status: 'paid' });
+  const { error } = await supabase.from('bookings')
+    .update({ paid: true, paid_at: new Date().toISOString(), payment_method: method, bill_status: 'paid', status: 'completed' })
+    .eq('id', bookingId);
+  if (error) throw error;
+}
 export async function subscribeBookings(cb) {
   const prov = await getMyProvider();
   if (!prov) return null;

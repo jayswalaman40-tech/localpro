@@ -458,13 +458,15 @@
       <div class="h3" style="margin:18px 0 8px">Work Update</div>
       <textarea class="ta" placeholder="Add work notes...">Checked gas pressure. Found low cooling due to gas leakage. Need to refill gas and replace service valve.</textarea>
       <div style="display:flex;gap:10px;margin-top:12px"><button class="btn btn-out sm" data-photo>&#128247; Add Photos</button><button class="btn btn-out sm" data-toast="Notes saved">&#128206; Add Notes</button></div>
-      <div class="h3" style="margin:18px 0 8px">Service Items</div>
-      <div class="grid2">
-        <div class="check" data-check><div class="cbox on">&#10003;</div>Diagnosis</div>
-        <div class="check" data-check><div class="cbox"></div>Valve Replace</div>
-        <div class="check" data-check><div class="cbox on">&#10003;</div>Gas Refill</div>
-        <div class="check" data-check><div class="cbox"></div>Cleaning</div>
+      <div class="h3" style="margin:18px 0 8px">Bill — Charges</div>
+      <div class="sec" style="font-size:12px;margin:-4px 0 8px">Add parts/labour. Customer approves this bill before payment.</div>
+      <div style="display:flex;gap:8px">
+        <input id="billLabel" placeholder="Item (e.g. Gas refill)" style="flex:1;border:1px solid var(--cardBorder);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--cardBg,#fff);color:var(--tPrimary)">
+        <input id="billAmt" inputmode="numeric" placeholder="&#8377;" style="width:80px;border:1px solid var(--cardBorder);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--cardBg,#fff);color:var(--tPrimary)">
+        <button class="btn btn-out sm" id="billAddBtn" style="width:auto;padding:0 14px">Add</button>
       </div>
+      <div id="billItems" style="margin-top:10px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--cardBorder)"><b>Total</b><b id="billTotal" style="font-size:18px">&#8377;0</b></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Signature</div>
         <div style="display:flex;gap:14px;align-items:center"><span class="link" data-signupload>&#128206; Upload</span><span class="link" data-clearsign>Clear</span></div></div>
       <div id="signWrap" style="position:relative;border:1.5px dashed var(--cardBorder);border-radius:14px;height:150px;background:#fff;overflow:hidden;touch-action:none">
@@ -473,7 +475,7 @@
         <div id="signHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tTertiary);font-size:13px;pointer-events:none">Sign here with your finger</div>
       </div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Issue</button><button class="btn btn-green" data-go="completed">&#10003; Complete Job</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Issue</button><button class="btn btn-green" id="completeBtn">&#10003; Send Bill &amp; Complete</button></div>
   </div>
 
   <!-- 11 JOB COMPLETED -->
@@ -487,17 +489,9 @@
         <div class="sec" style="margin-top:6px">Service has been successfully completed.</div>
       </div>
       <div class="card" style="display:flex;gap:12px;align-items:center;margin-top:14px"><div class="avatar j-initial" style="width:44px;height:44px">R</div><div style="flex:1"><div class="h3 j-cust">Rahul Sharma</div><div class="meta"><span class="mi">&#128222;</span><span class="j-phone">+91 98765 43210</span></div></div><span class="pill green">&#10003; Completed</span></div>
-      <div class="h3" style="margin:18px 0 10px">Service Details</div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Diagnosis / Inspection</span><span>₹0</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Gas Refill (R32)</span><span>₹850</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; Service Valve Replacement</span><span>₹350</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0"><span>&#10003; General Cleaning</span><span>₹200</span></div>
-        <div class="divide" style="margin:10px 0"></div>
-        <div style="display:flex;justify-content:space-between"><b>Total Amount</b><b>₹1,400</b></div>
-      </div>
-      <div class="panel" style="display:flex;align-items:center;margin-top:14px"><span style="font-size:22px">&#128176;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Payment Status</div><div class="sec" style="font-size:12px">Paid via UPI • May 20, 5:55 PM</div></div><span class="pill green">&#10003; Paid</span></div>
-      <div class="panel blue" style="display:flex;align-items:center;margin-top:12px"><span style="font-size:22px;color:var(--star)">&#9733;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Customer Rating <span style="color:var(--star)">&#9733;&#9733;&#9733;&#9733;&#9733; 5.0</span></div><div class="sec" style="font-size:12px">"Great service! Very professional and on time."</div></div></div>
+      <div class="h3" style="margin:18px 0 10px">Service Bill</div>
+      <div class="card" id="compBill"></div>
+      <div id="compPay" style="margin-top:14px"></div>
     </div></div>
     <div class="sticky"><button class="btn btn-out" data-go="jobs">&#127968; Home</button><button class="btn btn-blue" data-go="leads">Next Job &#8250;</button></div>
   </div>

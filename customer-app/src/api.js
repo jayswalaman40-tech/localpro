@@ -180,7 +180,7 @@ export async function getMyBookingList() {
   if (!u?.user) return [];
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, service, scheduled_date, scheduled_time, address, note, status, created_at, provider:providers(name, phone, category_id, custom_category)')
+    .select('id, service, scheduled_date, scheduled_time, address, note, status, created_at, total_amount, bill_status, paid, payment_method, provider:providers(name, phone, category_id, custom_category)')
     .eq('customer_id', u.user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -188,6 +188,35 @@ export async function getMyBookingList() {
 }
 export async function cancelBooking(id) {
   const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+  if (error) throw error;
+}
+
+// ---------------- BILL approval + payment ----------------
+export async function getBill(bookingId) {
+  const { data: b, error: be } = await supabase.from('bookings')
+    .select('id, service, total_amount, bill_status, paid, payment_method, provider:providers(name)')
+    .eq('id', bookingId).single();
+  if (be) throw be;
+  const { data: items, error: ie } = await supabase.from('job_items')
+    .select('*').eq('booking_id', bookingId).order('created_at');
+  if (ie) throw ie;
+  return { booking: b, items: items ?? [] };
+}
+export async function approveBill(bookingId) {
+  const { error } = await supabase.from('bookings')
+    .update({ bill_status: 'approved', approved_at: new Date().toISOString() }).eq('id', bookingId);
+  if (error) throw error;
+}
+export async function disputeBill(bookingId) {
+  const { error } = await supabase.from('bookings').update({ bill_status: 'disputed' }).eq('id', bookingId);
+  if (error) throw error;
+}
+// Customer pays (online/UPI) and the job is closed.
+export async function payBooking(bookingId, amount, method = 'online') {
+  await supabase.from('payments').insert({ booking_id: bookingId, amount: Math.round(Number(amount) || 0), method, status: 'paid' });
+  const { error } = await supabase.from('bookings')
+    .update({ paid: true, paid_at: new Date().toISOString(), payment_method: method, bill_status: 'paid', status: 'completed' })
+    .eq('id', bookingId);
   if (error) throw error;
 }
 

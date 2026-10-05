@@ -402,9 +402,10 @@ function renderBookings() {
           const pv = b.provider || {};
           const st = (b.status || 'pending');
           return {
-            service: b.service || 'Service', provider: pv.name || 'Provider',
+            id: b.id, service: b.service || 'Service', provider: pv.name || 'Provider',
             when: `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim(), addr: b.address || '',
             status: st[0].toUpperCase() + st.slice(1),
+            bill: b.bill_status || 'none', total: b.total_amount, paid: !!b.paid,
           };
         });
         // Keep demo-provider bookings made this session (not persisted server-side).
@@ -424,10 +425,57 @@ function paintBookings() {
     return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
       <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
       <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
-        <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div></div>
+        <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div>
+        ${billLine(b)}</div>
       <span class="pill ${pill}">${esc(b.status)}</span>
     </div>`;
   }).join('');
+}
+// Bill call-to-action under a booking row.
+function billLine(b) {
+  if (!b.id) return '';
+  if (b.paid) return `<div class="meta" style="color:var(--success)">✓ Paid${b.total ? ' • ' + inr(b.total) : ''}</div>`;
+  if (b.bill === 'sent') return `<button class="btn btn-green pill" style="margin-top:8px;padding:8px 14px" data-bill="${b.id}">Review &amp; Pay${b.total ? ' ' + inr(b.total) : ''}</button>`;
+  if (b.bill === 'approved') return `<button class="btn btn-green pill" style="margin-top:8px;padding:8px 14px" data-bill="${b.id}">Pay Now${b.total ? ' ' + inr(b.total) : ''}</button>`;
+  if (b.bill === 'disputed') return `<div class="meta" style="color:var(--danger)">⚠ Bill disputed — support will contact you</div>`;
+  return '';
+}
+let billBooking = null;   // booking id currently shown on the bill screen
+async function openBill(id) {
+  billBooking = id;
+  if (!(hasSupabase && session)) { show('bill'); return; }
+  try {
+    const { booking, items } = await api.getBill(id);
+    const total = items.reduce((s, it) => s + (it.amount || 0), 0) || booking.total_amount || 0;
+    const prov = booking.provider || {};
+    if ($('billHead')) $('billHead').innerHTML = `<div class="h3">${esc(booking.service || 'Service')}</div>
+      <div class="sec" style="margin-top:2px">${esc(prov.name || 'Provider')}</div>`;
+    if ($('billBody')) $('billBody').innerHTML = (items.length ? items.map((it) =>
+      `<div style="display:flex;justify-content:space-between;padding:6px 0"><span>${esc(it.label)}</span><span>${inr(it.amount)}</span></div>`).join('')
+      : `<div class="sec" style="font-size:13px">No extra charges — base price applies.</div>`)
+      + `<div class="divide" style="margin:10px 0"></div><div style="display:flex;justify-content:space-between"><b>Total</b><b style="font-size:17px">${inr(total)}</b></div>`;
+    const act = $('billActions');
+    if (act) {
+      if (booking.paid) act.innerHTML = `<button class="btn btn-out" data-go="bookings">Done</button>`;
+      else act.innerHTML = `<button class="btn btn-out-danger" data-billdispute="${id}">Dispute</button>
+        <button class="btn btn-green" data-billpay="${id}" data-amt="${total}">✓ Approve &amp; Pay</button>`;
+    }
+  } catch (e) { toast(e.message || 'Could not load bill'); return; }
+  show('bill');
+}
+async function approveAndPay(id, amount) {
+  if (!(hasSupabase && session)) { toast('Payment demo — approved'); show('bookings'); return; }
+  try {
+    await api.approveBill(id);
+    await api.payBooking(id, amount, 'online');
+    toast('Payment successful 🎉');
+    show('bookings'); renderBookings();
+  } catch (e) { toast(e.message || 'Payment failed'); }
+}
+async function disputeBill(id) {
+  if (hasSupabase && session) { try { await api.disputeBill(id); } catch (e) {} }
+  toast('Bill disputed — our team will reach out');
+  show('bookings'); renderBookings();
 }
 function notifIcon(type) {
   return ({ booking: { c: '#1667E8', i: '📅' }, lead: { c: '#22B24C', i: '✓' }, review: { c: '#F6B01E', i: '★' }, offer: { c: '#F5A623', i: '🏷️' }, system: { c: '#8B44D6', i: '🔔' } })[type] || { c: '#1667E8', i: '🔔' };
@@ -553,6 +601,9 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
+  const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
+  const payBtn = e.target.closest('[data-billpay]'); if (payBtn) { approveAndPay(payBtn.getAttribute('data-billpay'), Number(payBtn.getAttribute('data-amt')) || 0); return; }
+  const dispBtn = e.target.closest('[data-billdispute]'); if (dispBtn) { disputeBill(dispBtn.getAttribute('data-billdispute')); return; }
   const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; searchQuery = ''; openAllCategories(); return; }
   const allprov = e.target.closest('[data-allprov]'); if (allprov) { selectedCat = null; selectedSub = null; searchQuery = ''; show('list'); return; }
   const sort = e.target.closest('[data-sort]'); if (sort) {

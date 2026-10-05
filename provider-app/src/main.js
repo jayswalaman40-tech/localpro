@@ -188,7 +188,8 @@ function onEnter(id) {
     });
   }
   if (id === 'chat') openChat();
-  if (id === 'progress') { startTimer(); initSignature(); } else stopTimer();
+  if (id === 'completed') renderCompleted();
+  if (id === 'progress') { startTimer(); initSignature(); initBill(); } else stopTimer();
 }
 
 /* ---------- current job (drives En Route / Progress / Completed / Chat) ---------- */
@@ -199,6 +200,7 @@ function normalizeJob(src) {
   if (!src) return null;
   const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
   if (real) return {
+    rawId: src.id || null, bill_status: src.bill_status || 'none', paid: !!src.paid,
     cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
     service: src.service || 'Service', desc: src.note || src.description || '',
     addr: src.address || 'Ahmedabad',
@@ -206,6 +208,7 @@ function normalizeJob(src) {
     when: `${src.scheduled_date || ''} ${src.scheduled_time || ''}`.trim(),
   };
   return {
+    rawId: null, bill_status: 'none', paid: false,
     cust: src.name || 'Customer', phone: src.phone || '',
     service: src.title || 'Service', desc: src.desc || '',
     addr: src.area || 'Ahmedabad', id: src.id || '#SRV1234', when: src.when || '',
@@ -221,6 +224,83 @@ function fillJob(j) {
   document.querySelectorAll('.j-call').forEach((e) => { if (j.phone) e.setAttribute('data-call', j.phone); });
   document.querySelectorAll('.j-maps').forEach((e) => { e.setAttribute('data-maps', j.addr || 'Ahmedabad'); });
   if ($('chatName') && j.cust) $('chatName').textContent = j.cust;
+}
+
+/* ---------- bill (job line-items → customer approval → payment) ---------- */
+let billItems = [];   // [{id?, label, amount}]
+async function initBill() {
+  billItems = [];
+  if (hasSupabase && currentJob && currentJob.rawId) {
+    try { billItems = (await api.getJobItems(currentJob.rawId)).map((it) => ({ id: it.id, label: it.label, amount: it.amount })); } catch (e) {}
+  }
+  renderBillEditor();
+}
+function billSum() { return billItems.reduce((s, it) => s + (Number(it.amount) || 0), 0); }
+function renderBillEditor() {
+  const el = $('billItems'); if (!el) return;
+  el.innerHTML = billItems.length ? billItems.map((it, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cardBorder)">
+      <div style="flex:1;font-size:14px">${esc(it.label)}</div>
+      <div style="font-weight:700">${inr(it.amount)}</div>
+      <span class="link" data-billdel="${i}" style="color:var(--danger)">✕</span></div>`).join('')
+    : `<div class="sec" style="font-size:12.5px">No charges added yet.</div>`;
+  if ($('billTotal')) $('billTotal').textContent = inr(billSum());
+}
+async function addBillItem() {
+  const label = ($('billLabel').value || '').trim();
+  const amount = Math.round(Number($('billAmt').value) || 0);
+  if (!label) { toast('Enter item name'); return; }
+  if (!amount) { toast('Enter amount'); return; }
+  const item = { label, amount };
+  if (hasSupabase && currentJob && currentJob.rawId) {
+    try { const row = await api.addJobItem(currentJob.rawId, label, amount); item.id = row.id; } catch (e) { toast(e.message || 'Could not add'); return; }
+  }
+  billItems.push(item);
+  $('billLabel').value = ''; $('billAmt').value = '';
+  renderBillEditor();
+}
+async function removeBillItem(i) {
+  const it = billItems[i]; if (!it) return;
+  if (hasSupabase && it.id) { try { await api.deleteJobItem(it.id); } catch (e) {} }
+  billItems.splice(i, 1); renderBillEditor();
+}
+// "Send Bill & Complete": send the bill to the customer for approval.
+async function completeJob() {
+  const btn = $('completeBtn');
+  if (hasSupabase && currentJob && currentJob.rawId) {
+    if (!billItems.length) { toast('Add at least one charge, or use the base price'); }
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try { await api.sendBill(currentJob.rawId); toast('Bill sent to customer for approval'); }
+    catch (e) { toast(e.message || 'Could not send bill'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '✓ Send Bill & Complete'; } }
+    if (currentJob) currentJob.bill_status = 'sent';
+  }
+  show('completed');
+}
+function renderCompleted() {
+  const bill = $('compBill');
+  const total = billSum();
+  if (bill) {
+    bill.innerHTML = (billItems.length ? billItems.map((it) =>
+      `<div style="display:flex;justify-content:space-between;padding:5px 0"><span>${esc(it.label)}</span><span>${inr(it.amount)}</span></div>`).join('')
+      : `<div class="sec" style="font-size:13px">No extra charges — base price applies.</div>`)
+      + `<div class="divide" style="margin:10px 0"></div><div style="display:flex;justify-content:space-between"><b>Total Amount</b><b>${inr(total)}</b></div>`;
+  }
+  const pay = $('compPay');
+  if (pay) {
+    const st = (currentJob && currentJob.bill_status) || (hasSupabase ? 'sent' : 'none');
+    const paid = currentJob && currentJob.paid;
+    let label, cls;
+    if (paid) { label = 'Paid'; cls = 'green'; }
+    else if (st === 'approved') { label = 'Approved — awaiting payment'; cls = 'blue'; }
+    else if (st === 'disputed') { label = 'Disputed'; cls = 'grey'; }
+    else if (st === 'sent') { label = 'Sent — awaiting customer approval'; cls = 'orange'; }
+    else { label = 'Not billed'; cls = 'grey'; }
+    pay.innerHTML = `<div class="panel" style="display:flex;align-items:center"><span style="font-size:22px">💰</span>
+      <div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Payment Status</div>
+      <div class="sec" style="font-size:12px">Customer approves the bill in their app before paying.</div></div>
+      <span class="pill ${cls}">${esc(label)}</span></div>`;
+  }
 }
 
 /* ---------- renderers ---------- */
@@ -1053,6 +1133,8 @@ document.addEventListener('click', (e) => {
   // Edit profile (from profile page → reg2 in edit mode)
   const ep = e.target.closest('[data-editprofile]');
   if (ep) { openEditProfile(); return; }
+  const bdel = e.target.closest('[data-billdel]');
+  if (bdel) { removeBillItem(Number(bdel.getAttribute('data-billdel'))); return; }
   const tst = e.target.closest('[data-toast]');
   if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
@@ -1139,6 +1221,9 @@ async function boot() {
   $('earnViewAll')?.addEventListener('click', () => { txnsExpanded = !txnsExpanded; renderTxns(); $('earnViewAll').textContent = txnsExpanded ? 'Show Less ‹' : 'View All ›'; });
   $('schedCalBtn')?.addEventListener('click', toggleCalendar);
   $('availToggle')?.addEventListener('click', toggleAvail);
+  $('billAddBtn')?.addEventListener('click', addBillItem);
+  $('billAmt')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBillItem(); });
+  $('completeBtn')?.addEventListener('click', completeJob);
   $('certSaveBtn')?.addEventListener('click', saveCertSignature);
   $('logoutRow')?.addEventListener('click', logout);
   $('logoutBtn2')?.addEventListener('click', logout);

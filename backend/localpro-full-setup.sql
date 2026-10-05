@@ -827,3 +827,63 @@ alter table public.providers add column if not exists aadhaar_back_path text;
 -- migrations. Safe to run every time.
 -- =====================================================================
 notify pgrst, 'reload schema';
+
+-- ============ 0014 JOB ITEMS + BILL APPROVAL + PAYMENTS ============
+-- Provider adds line-items (job_items), sends the bill, the customer approves
+-- it in-app, then it is paid. Base price stays the provider's price-list.
+create table if not exists public.job_items (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references public.bookings(id) on delete cascade,
+  label text not null,
+  amount int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_job_items_booking on public.job_items(booking_id);
+alter table public.job_items enable row level security;
+drop policy if exists "job_items provider all"  on public.job_items;
+drop policy if exists "job_items customer read" on public.job_items;
+create policy "job_items provider all" on public.job_items for all
+  using (exists (select 1 from public.bookings b join public.providers p on p.id = b.provider_id where b.id = booking_id and p.user_id = auth.uid()))
+  with check (exists (select 1 from public.bookings b join public.providers p on p.id = b.provider_id where b.id = booking_id and p.user_id = auth.uid()));
+create policy "job_items customer read" on public.job_items for select
+  using (exists (select 1 from public.bookings b where b.id = booking_id and (b.customer_id = auth.uid() or public.is_admin())));
+
+alter table public.bookings add column if not exists total_amount   int;
+alter table public.bookings add column if not exists bill_status    text not null default 'none';
+alter table public.bookings add column if not exists payment_method text;
+alter table public.bookings add column if not exists paid           boolean not null default false;
+alter table public.bookings add column if not exists approved_at    timestamptz;
+alter table public.bookings add column if not exists paid_at        timestamptz;
+
+create table if not exists public.payments (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references public.bookings(id) on delete cascade,
+  amount int not null,
+  method text not null default 'cash',
+  status text not null default 'paid',
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_payments_booking on public.payments(booking_id);
+alter table public.payments enable row level security;
+drop policy if exists "payments read"  on public.payments;
+drop policy if exists "payments write" on public.payments;
+create policy "payments read" on public.payments for select
+  using (exists (select 1 from public.bookings b where b.id = booking_id and (b.customer_id = auth.uid() or public.is_admin() or exists (select 1 from public.providers p where p.id = b.provider_id and p.user_id = auth.uid()))));
+create policy "payments write" on public.payments for insert
+  with check (exists (select 1 from public.bookings b where b.id = booking_id and (b.customer_id = auth.uid() or exists (select 1 from public.providers p where p.id = b.provider_id and p.user_id = auth.uid()))));
+
+create or replace function public.bookings_bill_notify()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.bill_status = 'sent' and coalesce(old.bill_status,'none') <> 'sent' then
+    insert into public.notifications (user_id, type, title, body)
+    values (new.customer_id, 'booking', 'Bill ready for approval',
+            'Your ' || coalesce(new.service,'service') || ' bill is ₹' || coalesce(new.total_amount,0)::text || '. Tap to review and approve.');
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_bookings_bill on public.bookings;
+create trigger trg_bookings_bill after update on public.bookings
+  for each row execute function public.bookings_bill_notify();
+
+notify pgrst, 'reload schema';
