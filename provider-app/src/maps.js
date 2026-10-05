@@ -51,14 +51,36 @@ export function loadMapsJs() {
   return _jsP;
 }
 
-// Clean, Rapido-like style (hide clutter)
+// Clean, Rapido-like map styling.
 const MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#eef2f7' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }, { weight: 2 }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#f4f6fa' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#dcebdd' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#bcd6f5' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
   { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#ffe3a3' }] },
 ];
 const DEST_PIN = 'data:image/svg+xml,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="#E53935" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>');
+  '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24"><path fill="#E53935" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>');
+// HelpZo serviceman on a scooter (Rapido-style moving marker), facing right.
+const RIDER = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+  '<ellipse cx="32" cy="57" rx="19" ry="4" fill="rgba(16,32,58,.22)"/>' +
+  '<circle cx="18" cy="48" r="8" fill="#2A3340"/><circle cx="18" cy="48" r="3" fill="#9AA6BC"/>' +
+  '<circle cx="48" cy="48" r="8" fill="#2A3340"/><circle cx="48" cy="48" r="3" fill="#9AA6BC"/>' +
+  '<path d="M14 48 Q24 34 40 36 L50 48 Z" fill="#1667E8"/>' +
+  '<path d="M40 36 L45 24" stroke="#0B3E9E" stroke-width="3.5" stroke-linecap="round"/>' +
+  '<rect x="30" y="25" width="13" height="12" rx="3" fill="#E53935"/><rect x="33" y="29" width="7" height="2" rx="1" fill="#fff"/>' +
+  '<path d="M26 37 Q30 22 38 24 L34 38 Z" fill="#1B9E3E"/>' +
+  '<path d="M34 26 L46 32" stroke="#F3C197" stroke-width="4" stroke-linecap="round"/>' +
+  '<circle cx="30" cy="16" r="8" fill="#F3C197"/>' +
+  '<path d="M22 16 a8 8 0 0 1 16 0 Z" fill="#F5A623"/><rect x="22" y="14.5" width="16" height="3.5" rx="1.5" fill="#E08A1E"/>' +
+  '</svg>');
 
 function quickPos() {
   return new Promise((res) => {
@@ -77,67 +99,100 @@ function placeholder(el) {
 
 // Render a live tracking map into `el`. `dest` is an address string or {lat,lng}.
 // `onEta({dur,dist,arr})` fires with the route's duration/distance text.
+// Rapido-style: clean map, white-cased route, and a cartoon serviceman on a
+// scooter that glides along the route (and follows real GPS when available).
 export async function liveMap(el, dest, onEta) {
   if (!el) return;
+  if (el._hz && el._hz.anim) { clearInterval(el._hz.anim); }   // reset a previous map
   if (!MAPS_KEY) { placeholder(el); return; }
   try { await loadMapsJs(); } catch (e) { placeholder(el); return; }
   const g = window.google.maps;
-  el.style.height = '230px'; el.style.borderRadius = '14px';
+  el.style.height = '250px'; el.style.borderRadius = '16px';
   el.style.overflow = 'hidden'; el.style.position = 'relative';
   el.innerHTML = '';
 
   const origin = (await quickPos()) || { lat: DEFAULT_LAT, lng: DEFAULT_LNG };
   const map = new g.Map(el, {
-    center: origin, zoom: 14, disableDefaultUI: true, zoomControl: true,
+    center: origin, zoom: 15, disableDefaultUI: true, zoomControl: true,
     gestureHandling: 'greedy', clickableIcons: false, styles: MAP_STYLE,
   });
+  // The serviceman marker (anchored at its base).
   const me = new g.Marker({
     map, position: origin, zIndex: 999,
-    icon: { path: g.SymbolPath.CIRCLE, scale: 8, fillColor: '#1667E8', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
-  });
-  const dr = new g.DirectionsRenderer({
-    map, suppressMarkers: true, preserveViewport: false,
-    polylineOptions: { strokeColor: '#1667E8', strokeWeight: 6, strokeOpacity: 0.95 },
+    icon: { url: RIDER, scaledSize: new g.Size(54, 54), anchor: new g.Point(27, 50) },
   });
   const ds = new g.DirectionsService();
-  let destMarker = null, lastRoute = 0;
+  let destMarker = null, casing = null, line = null, lastRoute = 0, gpsActive = false;
+  el._hz = { anim: null };
 
-  function route(from) {
+  // Smoothly step the rider along the route path (Rapido-style glide).
+  function densify(path) {
+    const sph = g.geometry && g.geometry.spherical; if (!sph) return path;
+    const out = [];
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      const steps = Math.max(1, Math.round(sph.computeDistanceBetween(a, b) / 20));
+      for (let s = 0; s < steps; s++) out.push(sph.interpolate(a, b, s / steps));
+    }
+    out.push(path[path.length - 1]);
+    return out;
+  }
+  function animate(path) {
+    if (gpsActive) return;
+    if (el._hz.anim) clearInterval(el._hz.anim);
+    const pts = densify(path); let i = 0;
+    el._hz.anim = setInterval(() => {
+      if (gpsActive || !el.isConnected) { clearInterval(el._hz.anim); return; }
+      i = (i + 1) % pts.length;
+      me.setPosition(pts[i]);
+    }, 120);
+  }
+
+  function drawRoute(from) {
     ds.route({ origin: from, destination: dest, travelMode: g.TravelMode.DRIVING }, (resu, status) => {
       if (status === 'OK' && resu.routes[0]) {
-        dr.setDirections(resu);
-        const leg = resu.routes[0].legs[0];
-        if (!destMarker) destMarker = new g.Marker({ map, position: leg.end_location, icon: { url: DEST_PIN, scaledSize: new g.Size(36, 36), anchor: new g.Point(18, 36) } });
+        const r = resu.routes[0], leg = r.legs[0], path = r.overview_path;
+        if (casing) casing.setMap(null); if (line) line.setMap(null);
+        casing = new g.Polyline({ map, path, strokeColor: '#ffffff', strokeWeight: 11, strokeOpacity: 1, zIndex: 1 });
+        line = new g.Polyline({ map, path, strokeColor: '#1667E8', strokeWeight: 6, strokeOpacity: 1, zIndex: 2 });
+        if (!destMarker) destMarker = new g.Marker({ map, position: leg.end_location, icon: { url: DEST_PIN, scaledSize: new g.Size(38, 38), anchor: new g.Point(19, 38) } });
         else destMarker.setPosition(leg.end_location);
+        const b = new g.LatLngBounds(); path.forEach((p) => b.extend(p)); map.fitBounds(b, 50);
         if (onEta) onEta({ dur: leg.duration && leg.duration.text, dist: leg.distance && leg.distance.text, arr: new Date(Date.now() + (leg.duration ? leg.duration.value * 1000 : 0)) });
+        animate(path);
       } else {
-        // route failed (e.g. Directions API not enabled) — still show the map + marker
-        map.setCenter(from);
+        map.setCenter(from);   // Directions API off — still show map + rider
       }
     });
   }
-  route(origin);
+  drawRoute(origin);
 
-  // Live follow (needs location permission; silently ignored if denied)
+  // Follow real GPS when the provider is actually moving.
   try {
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition((p) => {
+        gpsActive = true; if (el._hz.anim) clearInterval(el._hz.anim);
         const cur = { lat: p.coords.latitude, lng: p.coords.longitude };
         me.setPosition(cur);
         const now = Date.now();
-        if (now - lastRoute > 8000) { lastRoute = now; route(cur); }
+        if (now - lastRoute > 8000) { lastRoute = now; drawRoute(cur); }
       }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 });
     }
   } catch (e) {}
 
-  // Recenter button
+  // Destination chip (top) + recenter button.
+  const chip = document.createElement('div');
+  chip.textContent = '🛠️ On the way to customer';
+  chip.style.cssText = 'position:absolute;left:10px;top:10px;background:rgba(255,255,255,.94);color:#16202E;font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:5';
+  el.appendChild(chip);
+
   const btn = document.createElement('button');
   btn.textContent = '◎';
   btn.style.cssText = 'position:absolute;right:10px;bottom:10px;width:42px;height:42px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.28);font-size:20px;cursor:pointer;z-index:5;color:#1667E8';
   btn.onclick = () => {
     const b = new g.LatLngBounds(); b.extend(me.getPosition());
     if (destMarker) b.extend(destMarker.getPosition());
-    map.fitBounds(b, 64);
+    map.fitBounds(b, 60);
   };
   el.appendChild(btn);
 }
