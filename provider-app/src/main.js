@@ -177,9 +177,11 @@ function onEnter(id) {
   if (id === 'reg3') renderDocList();
   if (id === 'verify') renderVerifyList();
   if (id === 'jobdetail') renderJobDetail();
+  if (id === 'enroute' || id === 'progress' || id === 'completed') fillJob(currentJob);
   if (id === 'enroute') {
     const m = $('enrouteMap');
-    if (m) liveMap(m, 'A-702, Shaligram Residency, Bodakdev, Ahmedabad', (info) => {
+    const dest = (currentJob && currentJob.addr) || 'Bodakdev, Ahmedabad';
+    if (m) liveMap(m, dest, (info) => {
       if (info.dur && $('etaMin')) $('etaMin').textContent = info.dur;
       if (info.dist && $('etaKm')) $('etaKm').textContent = info.dist;
       if (info.arr && $('etaArr')) $('etaArr').textContent = info.arr.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -187,6 +189,38 @@ function onEnter(id) {
   }
   if (id === 'chat') openChat();
   if (id === 'progress') { startTimer(); initSignature(); } else stopTimer();
+}
+
+/* ---------- current job (drives En Route / Progress / Completed / Chat) ---------- */
+let currentJob = null;
+let jobsView = [];     // array currently shown on the Jobs screen
+let leadsView = [];    // array currently shown on the Leads screen
+function normalizeJob(src) {
+  if (!src) return null;
+  const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
+  if (real) return {
+    cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
+    service: src.service || 'Service', desc: src.note || src.description || '',
+    addr: src.address || 'Ahmedabad',
+    id: src.id ? '#' + String(src.id).replace(/-/g, '').slice(0, 6).toUpperCase() : '#SRV',
+    when: `${src.scheduled_date || ''} ${src.scheduled_time || ''}`.trim(),
+  };
+  return {
+    cust: src.name || 'Customer', phone: src.phone || '',
+    service: src.title || 'Service', desc: src.desc || '',
+    addr: src.area || 'Ahmedabad', id: src.id || '#SRV1234', when: src.when || '',
+  };
+}
+function fillJob(j) {
+  if (!j) return;
+  const set = (cls, txt) => document.querySelectorAll('.' + cls).forEach((e) => { e.textContent = txt; });
+  set('j-cust', j.cust); set('j-service', j.service); set('j-desc', j.desc || '');
+  set('j-sub', `${j.service} • ${j.id}`); set('j-addr', j.addr || '');
+  set('j-initial', (j.cust || 'C')[0].toUpperCase());
+  document.querySelectorAll('.j-phone').forEach((e) => { e.textContent = j.phone || ''; });
+  document.querySelectorAll('.j-call').forEach((e) => { if (j.phone) e.setAttribute('data-call', j.phone); });
+  document.querySelectorAll('.j-maps').forEach((e) => { e.setAttribute('data-maps', j.addr || 'Ahmedabad'); });
+  if ($('chatName') && j.cust) $('chatName').textContent = j.cust;
 }
 
 /* ---------- renderers ---------- */
@@ -253,13 +287,12 @@ function updateJobCounts() {
 function paintJobs() {
   const list = $('jobsList'); if (!list) return;
   if (lastJobsRows === null) {   // demo / not signed in
-    list.innerHTML = jobTab === 'active'
-      ? DEMO_JOBS.map(jobCard).join('')
-      : `<div class="empty">No ${jobTab} jobs.</div>`;
+    jobsView = jobTab === 'active' ? DEMO_JOBS : [];
+    list.innerHTML = jobsView.length ? jobsView.map(jobCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
     return;
   }
-  const rows = lastJobsRows.filter((b) => jobBucket(b.status) === jobTab);
-  list.innerHTML = rows.length ? rows.map(bookingCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
+  jobsView = lastJobsRows.filter((b) => jobBucket(b.status) === jobTab);
+  list.innerHTML = jobsView.length ? jobsView.map(bookingCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
 }
 function leadCard(l) {
   return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
@@ -318,13 +351,12 @@ function updateLeadCounts() {
 function paintLeads() {
   const list = $('leadsList'); if (!list) return;
   if (lastLeadsRows === null) {   // demo
-    list.innerHTML = (leadTab === 'all' || leadTab === 'pending')
-      ? DEMO_LEADS.map(leadCard).join('')
-      : `<div class="empty">No ${leadTab} leads.</div>`;
+    leadsView = (leadTab === 'all' || leadTab === 'pending') ? DEMO_LEADS : [];
+    list.innerHTML = leadsView.length ? leadsView.map(leadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
     return;
   }
-  const rows = leadTab === 'all' ? lastLeadsRows : lastLeadsRows.filter((l) => leadBucket(l.status) === leadTab);
-  list.innerHTML = rows.length ? rows.map(realLeadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
+  leadsView = leadTab === 'all' ? lastLeadsRows : lastLeadsRows.filter((l) => leadBucket(l.status) === leadTab);
+  list.innerHTML = leadsView.length ? leadsView.map(realLeadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
 }
 /* ---------- earnings ---------- */
 const EARN_DATA = {
@@ -628,30 +660,24 @@ function renderVerifyList() {
 /* ---------- job details ---------- */
 function renderJobDetail() {
   const el = $('jobDetailBody'); if (!el) return;
+  const j = currentJob || { cust: 'Customer', phone: '', service: 'Service', desc: '', addr: 'Ahmedabad', when: '' };
+  const addr = j.addr || 'Ahmedabad';
   el.innerHTML = `
     <div class="card">
-      <div style="display:flex;gap:12px"><div class="scirc c-ac">❄️</div>
-        <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h2">AC Repair</div><span class="pill green">New Request</span></div>
-          <div class="sec" style="margin-top:2px">Split AC not cooling</div></div></div>
+      <div style="display:flex;gap:12px"><div class="scirc c-ac">🛠️</div>
+        <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h2">${esc(j.service)}</div><span class="pill green">New Request</span></div>
+          ${j.desc ? `<div class="sec" style="margin-top:2px">${esc(j.desc)}</div>` : ''}</div></div>
       <div class="divide" style="margin:12px 0"></div>
-      <div class="meta"><span class="mi">👤</span>Rahul Sharma</div>
-      <div class="meta"><span class="mi">📞</span><a href="tel:+919876543210" style="color:inherit;text-decoration:none">+91 98765 43210</a> <span style="color:var(--whatsapp)">💬</span></div>
-      <div class="meta"><span class="mi">📍</span>Bodakdev, Ahmedabad</div>
-      <div class="meta"><span class="mi">🕐</span>Today, 5:00 PM</div>
-      <div class="meta"><span class="mi">₹</span><b style="color:var(--tPrimary)">₹300 - ₹500</b> (Estimated)</div>
+      <div class="meta"><span class="mi">👤</span>${esc(j.cust)}</div>
+      ${j.phone ? `<div class="meta"><span class="mi">📞</span><a href="${telHref(j.phone)}" style="color:inherit;text-decoration:none">${esc(j.phone)}</a> <span style="color:var(--whatsapp)">💬</span></div>` : ''}
+      <div class="meta"><span class="mi">📍</span>${esc(addr)}</div>
+      ${j.when ? `<div class="meta"><span class="mi">🕐</span>${esc(j.when)}</div>` : ''}
     </div>
-    <div class="h3" style="margin:18px 0 8px">Service Description</div>
-    <div class="sec">My split AC is not cooling properly. It turns on but gives less cooling. Please bring necessary tools.</div>
-    <div class="grid2" style="margin-top:14px">
-      <div class="infotile"><div class="it1">🏢 Property Type</div><div class="it2">2 BHK Apartment</div></div>
-      <div class="infotile"><div class="it1">🔧 Preferred Brand</div><div class="it2">Voltas</div></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><div class="h3">Customer Photos (2)</div><span class="link">View All ›</span></div>
-    <div class="grid2"><div class="thumb">❄️</div><div class="thumb">🏭</div></div>
+    ${j.desc ? `<div class="h3" style="margin:18px 0 8px">Service Description</div><div class="sec">${esc(j.desc)}</div>` : ''}
     <div class="h3" style="margin:18px 0 8px">Location</div>
     <div id="jobDetailMap"></div>
-    <button class="btn btn-out sm" data-maps="Bodakdev, Ahmedabad" style="margin-top:8px">🧭 Open in Google Maps</button>`;
-  liveMap($('jobDetailMap'), 'Bodakdev, Ahmedabad');
+    <button class="btn btn-out sm" data-maps="${esc(addr)}" style="margin-top:8px">🧭 Open in Google Maps</button>`;
+  liveMap($('jobDetailMap'), addr);
 }
 
 /* ---------- chat ---------- */
@@ -956,7 +982,17 @@ document.addEventListener('click', (e) => {
   const rejTop = e.target.closest('[data-reject]');
   if (rejTop) { rejectLead(rejTop.getAttribute('data-reject'), rejTop.closest('.card')); return; }
   const go = e.target.closest('[data-go]');
-  if (go) { e.stopPropagation(); show(go.getAttribute('data-go')); return; }
+  if (go) {
+    // Opening a job/lead into the flow → remember which job it is.
+    const dest = go.getAttribute('data-go');
+    if (['enroute', 'jobdetail', 'progress', 'completed'].includes(dest)) {
+      const jcard = e.target.closest('#jobsList .card');
+      const lcard = e.target.closest('#leadsList .card');
+      if (jcard) { const i = [...jcard.parentElement.querySelectorAll('.card')].indexOf(jcard); if (jobsView[i]) currentJob = normalizeJob(jobsView[i]); }
+      else if (lcard) { const i = [...lcard.parentElement.querySelectorAll('.card')].indexOf(lcard); if (leadsView[i]) currentJob = normalizeJob(leadsView[i]); }
+    }
+    e.stopPropagation(); show(dest); return;
+  }
   const bk = e.target.closest('[data-back]');
   if (bk) { back(); return; }
   const tab = e.target.closest('[data-tab]');
