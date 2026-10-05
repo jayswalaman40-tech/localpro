@@ -5,6 +5,7 @@
 // =====================================================================
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
+import { nearbyMap, demoProviders } from './maps.js';
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -166,7 +167,40 @@ function onEnter(id) {
   if (id === 'bookings') renderBookings();
   if (id === 'notifications') renderNotif();
   if (id === 'account') renderAccount();
+  if (id === 'map') renderMapScreen();
 }
+
+/* ---------- nearby providers map ---------- */
+let mapCat = null;   // category filter on the map screen
+async function renderMapScreen() {
+  applyProfileCity();
+  // category chips (All + popular)
+  const chips = $('mapChips');
+  if (chips) {
+    chips.innerHTML = `<div class="chip${!mapCat ? ' on' : ''}" data-mapcat="">All</div>`
+      + POPULAR.map((c) => `<div class="chip${mapCat === c.key ? ' on' : ''}" data-mapcat="${c.key}">${esc(c.label)}</div>`).join('');
+  }
+  const el = $('nearbyMap'); if (!el) return;
+  // gather providers (real when signed in, else demo scatter)
+  let provs = null, center = null;
+  if (hasSupabase) {
+    try {
+      const loc = await api.getCurrentLocation(); center = loc;
+      const catId = mapCat ? (catByKey[mapCat] || null) : null;
+      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, categoryId: catId, radiusKm: 50 });
+      provs = (live || []).filter((p) => p.lat != null && p.lng != null).map((p) => ({
+        lat: p.lat, lng: p.lng, name: p.name,
+        etaMin: Math.max(2, Math.round((Number(p.distance_km) || 2) * 3)),
+      }));
+    } catch (e) { provs = null; }
+  }
+  if (!provs || !provs.length) provs = demoProviders(center);   // offline / none nearby
+  const catLabel = mapCat ? (CATS.find((c) => c.key === mapCat)?.label || 'Providers') : 'Providers';
+  setMapText('mapSheetTitle', 'Nearby ' + catLabel);
+  setMapText('mapCount', String(provs.length));
+  await nearbyMap(el, provs);
+}
+function setMapText(id, v) { const e = $(id); if (e) e.textContent = v; }
 
 /* ---------- renderers ---------- */
 function catCell(c) {
@@ -601,6 +635,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
+  const mc = e.target.closest('[data-mapcat]'); if (mc) { mapCat = mc.getAttribute('data-mapcat') || null; renderMapScreen(); return; }
   const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
   const payBtn = e.target.closest('[data-billpay]'); if (payBtn) { approveAndPay(payBtn.getAttribute('data-billpay'), Number(payBtn.getAttribute('data-amt')) || 0); return; }
   const dispBtn = e.target.closest('[data-billdispute]'); if (dispBtn) { disputeBill(dispBtn.getAttribute('data-billdispute')); return; }

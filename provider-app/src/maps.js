@@ -186,13 +186,19 @@ export async function liveMap(el, dest, onEta) {
   chip.style.cssText = 'position:absolute;left:10px;top:10px;background:rgba(255,255,255,.94);color:#16202E;font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:5';
   el.appendChild(chip);
 
-  const btn = document.createElement('button');
-  btn.textContent = '◎';
-  btn.style.cssText = 'position:absolute;right:10px;bottom:10px;width:42px;height:42px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.28);font-size:20px;cursor:pointer;z-index:5;color:#1667E8';
-  btn.onclick = () => {
+  // Right-side control stack: layers · directions · recenter (Rapido/Uber style).
+  const mkBtn = (txt, bottom, fn) => {
+    const b = document.createElement('button');
+    b.textContent = txt;
+    b.style.cssText = `position:absolute;right:12px;bottom:${bottom}px;width:42px;height:42px;border-radius:50%;border:0;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.28);font-size:18px;cursor:pointer;z-index:5;color:#1667E8`;
+    b.onclick = fn; el.appendChild(b);
+  };
+  let sat = false;
+  mkBtn('▦', 110, () => { sat = !sat; map.setMapTypeId(sat ? 'hybrid' : 'roadmap'); });
+  mkBtn('⤴', 62, () => openMaps(dest));
+  mkBtn('◎', 14, () => {
     const b = new g.LatLngBounds(); b.extend(me.getPosition());
     if (destMarker) b.extend(destMarker.getPosition());
     map.fitBounds(b, 60);
-  };
-  el.appendChild(btn);
+  });
 }

@@ -178,6 +178,7 @@
         <div class="meta" style="margin-top:1px;cursor:pointer" data-setcity><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)" class="cityName">Ahmedabad</b> &#9662;</div>
       </div>
       <div class="spacer"></div>
+      <div class="ic-btn" data-go="map" style="margin-right:8px">&#128506;&#65039;</div>
       <div class="ic-btn" data-go="notifications"><span class="dot"></span>&#128276;</div>
     </div>
     <div class="scroll">
@@ -193,6 +194,29 @@
         <div id="homeTop"></div>
       </div>
     </div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- 03a NEARBY PROVIDERS MAP -->
+  <div class="screen" id="s-map">
+    <div class="hdr">
+      <div class="ic-btn" data-go="home">&#8249;</div>
+      <div><p class="h1">Nearby Providers</p><div class="meta">&#128205; <span class="cityName">Ahmedabad</span></div></div>
+    </div>
+    <div class="scroll"><div class="pad">
+      <div class="chips" id="mapChips" style="margin-bottom:10px"></div>
+      <div id="nearbyMap" style="height:56vh;min-height:300px;border-radius:16px;overflow:hidden;background:#E9EFF6;position:relative"></div>
+      <div class="card" style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <div class="avatar" style="width:46px;height:46px;overflow:hidden"><img src="/person.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
+        <div style="flex:1"><div class="h3" id="mapSheetTitle">Nearby Providers</div><div class="sec">Verified professionals near you</div></div>
+        <span class="link" data-allprov>See all</span>
+      </div>
+      <div class="panel" style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <span style="font-size:20px;color:var(--warning,#F5A623)">&#9889;</span>
+        <div><div style="font-weight:800;color:var(--primary)"><span id="mapCount">0</span> providers available</div>
+          <div class="sec" style="font-size:12px">Near your location</div></div>
+      </div>
+    </div></div>
     <div class="tabs" data-tabbar></div>
   </div>
 
