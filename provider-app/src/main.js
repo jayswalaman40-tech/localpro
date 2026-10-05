@@ -373,10 +373,35 @@ function reviewCard(r) {
 async function renderReviews() {
   const list = $('reviewsList'); if (!list) return;
   let rows = DEMO_REVIEWS;
+  let real = false;
   if (hasSupabase && myProvider) {
-    try { const live = await api.getMyReviews(); if (live && live.length) rows = live.map((r) => ({ name: r.reviewer_name || 'Customer', rating: r.rating, body: r.body, ago: '', provider_reply: r.provider_reply, tags: [] })); } catch (e) {}
+    try {
+      const live = await api.getMyReviews();
+      if (live && live.length) {
+        rows = live.map((r) => ({ name: r.reviewer_name || 'Customer', rating: r.rating, body: r.body,
+          ago: r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
+          provider_reply: r.provider_reply, tags: [] }));
+        real = true;
+      }
+    } catch (e) {}
   }
+  if (real) paintReviewSummary(rows);   // real → recompute the summary; demo keeps its static numbers
   list.innerHTML = rows.map(reviewCard).join('');
+}
+
+// Rebuild the average / count / bars / chips from real review rows.
+function paintReviewSummary(rows) {
+  const n = rows.length;
+  const avg = n ? rows.reduce((s, r) => s + (r.rating || 0), 0) / n : 0;
+  const c = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  rows.forEach((r) => { const k = Math.max(1, Math.min(5, Math.round(r.rating || 0))); c[k]++; });
+  setTxt('rvAvg', avg ? avg.toFixed(1) : '0.0');
+  setTxt('rvCount', `${n} review${n === 1 ? '' : 's'}`);
+  const bars = $('rvBars');
+  if (bars) bars.innerHTML = [5, 4, 3, 2, 1].map((k) =>
+    `<div class="rbar"><span>${k}★</span><div class="rtrack"><div class="rfill" style="width:${n ? Math.round(c[k] / n * 100) : 0}%"></div></div><span>${c[k]}</span></div>`).join('');
+  const chips = $('rvChips');
+  if (chips) chips.innerHTML = `<div class="chip on">All (${n})</div>` + [5, 4, 3].map((k) => `<div class="chip">${k}★ (${c[k]})</div>`).join('');
 }
 const NOTIF_ICON = { lead: { cls: 'c-clean', icon: '📅' }, booking: { cls: 'c-plumb', icon: '🧭' }, payment: { cls: 'c-elec', icon: '💳' }, review: { cls: 'c-paint', icon: '★' }, system: { cls: 'c-more', icon: '🔔' } };
 async function renderNotif() {
@@ -495,7 +520,29 @@ function renderSchedList() {
         <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-out sm" data-go="enroute">🧭 Directions</button><button class="btn btn-blue sm" data-go="progress">Start Job</button></div></div>
     </div></div>`).join('');
 }
-function renderProfile() {
+const setTxt = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+const amountOf = (b) => Number(b.amount ?? b.price ?? b.total ?? b.total_amount ?? 0) || 0;
+let myStats = null;
+
+// Compute real stats (jobs done, rating, happy customers, earnings) from the
+// provider's own bookings + reviews. Returns null when not signed in.
+async function loadStats() {
+  if (!(hasSupabase && myProvider)) return null;
+  try {
+    const bookings = (lastJobsRows && lastJobsRows.length) ? lastJobsRows : await api.getMyBookings().catch(() => []);
+    const reviews = await api.getMyReviews().catch(() => []);
+    const done = (bookings || []).filter((b) => String(b.status || '').toLowerCase() === 'completed');
+    const earn = done.reduce((s, b) => s + amountOf(b), 0);
+    const custs = new Set(done.map((b) => b.customer_id).filter(Boolean));
+    const rc = Number(myProvider.rating_count ?? (reviews ? reviews.length : 0)) || 0;
+    const ra = Number(myProvider.rating_avg) || (reviews && reviews.length
+      ? reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length : 0);
+    myStats = { jobs: done.length, rating: ra, ratingCount: rc, happy: custs.size || done.length, earn, reviews: reviews || [] };
+  } catch (e) { myStats = null; }
+  return myStats;
+}
+
+async function renderProfile() {
   if (myProvider) {
     if ($('profName')) $('profName').textContent = myProvider.name || 'Provider';
     if ($('profTrade')) $('profTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
@@ -504,7 +551,33 @@ function renderProfile() {
     const av = myProvider.available !== false;
     $('availToggle')?.classList.toggle('on', av);
     if ($('statusPill')) { $('statusPill').textContent = av ? '● Online' : '● Offline'; $('statusPill').className = 'pill ' + (av ? 'green' : 'grey'); }
+    const s = await loadStats();
+    if (s) {
+      const rt = s.rating ? s.rating.toFixed(1) : '0.0';
+      setTxt('statJobs', s.jobs); setTxt('statRating', rt); setTxt('statHappy', s.happy);
+      setTxt('statEarn', Number(s.earn).toLocaleString('en-IN'));
+      setTxt('profRatingVal', rt); setTxt('profReviews', `(${s.ratingCount} review${s.ratingCount === 1 ? '' : 's'})`);
+    }
   }
+  updateBadges();
+}
+
+// Notification + leads tab badges from real counts (demo keeps its numbers).
+async function updateBadges() {
+  if (!(hasSupabase && session)) return;
+  try {
+    const notifs = await api.getNotifications().catch(() => []);
+    const unread = (notifs || []).filter((n) => n.read === false || n.is_read === false || n.seen === false).length;
+    const nb = $('notifBadge');
+    if (nb) { if (unread > 0) { nb.textContent = unread; nb.style.display = ''; } else { nb.style.display = 'none'; } }
+  } catch (e) {}
+  try {
+    const leads = (lastLeadsRows && lastLeadsRows.length) ? lastLeadsRows : await api.getMyLeads().catch(() => []);
+    const pending = (leads || []).filter((l) => leadBucket(l.status) === 'pending').length;
+    document.querySelectorAll('.tbadge').forEach((b) => {
+      if (pending > 0) { b.textContent = pending; b.style.display = ''; } else { b.style.display = 'none'; }
+    });
+  } catch (e) {}
 }
 
 /* ---------- skills grid (registration) ---------- */

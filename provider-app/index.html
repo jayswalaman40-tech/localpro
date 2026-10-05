@@ -379,7 +379,7 @@
   <!-- 06 ACTIVE JOBS (Jobs tab) -->
   <div class="screen" id="s-jobs">
     <div class="hdr blue"><div class="htxt"><div class="h1">Active Jobs</div><div class="sub">Manage your ongoing jobs</div></div>
-      <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
+      <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span id="notifBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
     <div class="scroll sheet"><div class="pad">
       <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
       <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input id="jobSearch" placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px" data-toast="Filters coming soon">&#9776; Filter</button></div>
@@ -539,15 +539,15 @@
       <div class="card">
         <div style="display:flex;gap:14px;align-items:center"><div class="avatar" id="profAvatar" style="width:64px;height:64px;font-size:24px;position:relative">A<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--success);border:2px solid #fff"></span></div>
           <div style="flex:1"><div class="h2" id="profName">Aman Sharma</div><div class="sec" id="profTrade" style="font-size:13px">Service Professional</div>
-            <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">&#9733;</span> 4.8 <span class="sec">(124 reviews)</span></div></div>
+            <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">&#9733;</span> <span id="profRatingVal">4.8</span> <span class="sec" id="profReviews">(124 reviews)</span></div></div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span class="pill green" id="statusPill">&#9679; Online</span><div class="toggle on" id="availToggle"></div></div></div>
         <div style="display:flex;gap:14px;margin-top:12px"><div class="meta"><span class="mi">&#128205;</span><span id="profArea">Ahmedabad, Gujarat</span></div><div class="meta verif"><span class="mi">&#128737;</span>ID Verified</div></div>
       </div>
       <div class="stats" style="margin-top:14px">
-        <div class="stat" data-go="jobs"><div class="si">&#128188;</div><div class="sv">124</div><div class="sn">Jobs Done</div></div>
-        <div class="stat" data-go="reviews"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
-        <div class="stat" data-toast="96 happy customers served"><div class="si">&#128522;</div><div class="sv">96</div><div class="sn">Happy Cust.</div></div>
-        <div class="stat" data-go="earnings"><div class="si">&#8377;</div><div class="sv" style="font-size:13px">32,450</div><div class="sn">Earnings</div></div>
+        <div class="stat" data-go="jobs"><div class="si">&#128188;</div><div class="sv" id="statJobs">124</div><div class="sn">Jobs Done</div></div>
+        <div class="stat" data-go="reviews"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv" id="statRating">4.8</div><div class="sn">Rating</div></div>
+        <div class="stat" data-go="reviews"><div class="si">&#128522;</div><div class="sv" id="statHappy">96</div><div class="sn">Happy Cust.</div></div>
+        <div class="stat" data-go="earnings"><div class="si">&#8377;</div><div class="sv" id="statEarn" style="font-size:13px">32,450</div><div class="sn">Earnings</div></div>
       </div>
       <div class="card" style="margin-top:14px;padding:4px 16px">
         <div class="mrow" data-editprofile><div class="mi">&#128100;</div><div class="mt"><div class="a">Personal Information</div><div class="b">Name, phone, address, documents</div></div><span class="mc">&#8250;</span></div>
@@ -684,8 +684,8 @@
     <div class="hdr blue"><div class="ic-btn" data-go="profile">&#8249;</div><div class="htxt"><div class="h1">Reviews &amp; Ratings</div><div class="sub">What customers say about you</div></div></div>
     <div class="scroll sheet"><div class="pad">
       <div class="card" style="display:flex;gap:16px">
-        <div style="text-align:center"><div style="font-size:38px;font-weight:800;line-height:1">4.8</div><div style="color:var(--star);font-size:14px">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ter" style="margin-top:4px">124 reviews</div></div>
-        <div style="flex:1">
+        <div style="text-align:center"><div style="font-size:38px;font-weight:800;line-height:1" id="rvAvg">4.8</div><div style="color:var(--star);font-size:14px">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ter" style="margin-top:4px" id="rvCount">124 reviews</div></div>
+        <div style="flex:1" id="rvBars">
           <div class="rbar"><span>5&#9733;</span><div class="rtrack"><div class="rfill" style="width:88%"></div></div><span>96</span></div>
           <div class="rbar"><span>4&#9733;</span><div class="rtrack"><div class="rfill" style="width:30%"></div></div><span>18</span></div>
           <div class="rbar"><span>3&#9733;</span><div class="rtrack"><div class="rfill" style="width:12%"></div></div><span>6</span></div>
@@ -693,7 +693,7 @@
           <div class="rbar"><span>1&#9733;</span><div class="rtrack"><div class="rfill" style="width:2%"></div></div><span>1</span></div>
         </div>
       </div>
-      <div class="chips" style="margin:14px 0"><div class="chip on">All (124)</div><div class="chip">5&#9733; (96)</div><div class="chip">4&#9733; (18)</div><div class="chip">3&#9733; (6)</div></div>
+      <div class="chips" style="margin:14px 0" id="rvChips"><div class="chip on">All (124)</div><div class="chip">5&#9733; (96)</div><div class="chip">4&#9733; (18)</div><div class="chip">3&#9733; (6)</div></div>
       <div id="reviewsList"></div>
       <div class="panel blue" style="display:flex;align-items:center"><span style="font-size:24px">&#127942;</span><div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:14px">You're doing great!</div><div class="sec" style="font-size:12.5px">Keep providing excellent service to grow your business.</div></div></div>
     </div></div>
