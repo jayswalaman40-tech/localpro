@@ -187,6 +187,7 @@ function topCard(p) {
   </div>`;
 }
 async function renderHome() {
+  applyProfileCity();
   const grid = $('catGrid'); if (grid) grid.innerHTML = POPULAR.map(catCell).join('') + catCell(MORE_TILE);
   const top = $('homeTop'); if (!top) return;
   top.innerHTML = topCard(DEMO_PROVIDERS[0]);
@@ -345,8 +346,25 @@ async function renderProfile() {
     rc.innerHTML = reviewRow({ reviewer_name: 'Neha Patel', rating: 5, body: 'Very professional and quick service. Highly recommended!', created_at: '2025-09-12' });
   }
 }
+function setCity(name) { if (name) document.querySelectorAll('.cityName').forEach((e) => { e.textContent = name; }); }
+// City from the signed-in profile (tap the location to change it).
+function applyProfileCity() {
+  const c = myProfile && (myProfile.city || myProfile.area || myProfile.location);
+  if (c) setCity(c);
+}
+async function setCityPrompt() {
+  const cur = (myProfile && (myProfile.city || myProfile.area)) || '';
+  const name = prompt('Your area / city:', cur);
+  if (name == null) return;
+  const clean = name.trim(); if (!clean) return;
+  setCity(clean);
+  if (hasSupabase && session) { try { await api.updateMyProfile({ city: clean }); } catch (e) {} }
+  if (myProfile) myProfile.city = clean; else myProfile = { city: clean };
+}
 function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
+  const addrEl = $('bookAddr');
+  if (addrEl && !addrEl.value) addrEl.value = (myProfile && (myProfile.address || myProfile.city || myProfile.area)) || '';
   const el = $('bookProvider'); if (el) el.innerHTML = `
     <div class="avatar" style="width:48px;height:48px">${initials(p.name)}</div>
     <div><div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
@@ -534,6 +552,7 @@ document.addEventListener('click', (e) => {
   const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
+  if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
   const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; searchQuery = ''; openAllCategories(); return; }
   const allprov = e.target.closest('[data-allprov]'); if (allprov) { selectedCat = null; selectedSub = null; searchQuery = ''; show('list'); return; }
   const sort = e.target.closest('[data-sort]'); if (sort) {
