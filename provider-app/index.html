@@ -461,7 +461,8 @@
       <div class="h3" style="margin:18px 0 8px">Bill — Charges</div>
       <div class="sec" style="font-size:12px;margin:-4px 0 8px">Add parts/labour. Customer approves this bill before payment.</div>
       <div style="display:flex;gap:8px">
-        <input id="billLabel" placeholder="Item (e.g. Gas refill)" style="flex:1;border:1px solid var(--cardBorder);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--cardBg,#fff);color:var(--tPrimary)">
+        <input id="billLabel" list="rateCardList" placeholder="Pick or type item" autocomplete="off" style="flex:1;border:1px solid var(--cardBorder);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--cardBg,#fff);color:var(--tPrimary)">
+        <datalist id="rateCardList"></datalist>
         <input id="billAmt" inputmode="numeric" placeholder="&#8377;" style="width:80px;border:1px solid var(--cardBorder);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--cardBg,#fff);color:var(--tPrimary)">
         <button class="btn btn-out sm" id="billAddBtn" style="width:auto;padding:0 14px">Add</button>
       </div>

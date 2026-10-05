@@ -887,3 +887,35 @@ create trigger trg_bookings_bill after update on public.bookings
   for each row execute function public.bookings_bill_notify();
 
 notify pgrst, 'reload schema';
+
+-- ============ 0015 RATE CARD (admin-maintained item rates + caps) ============
+create table if not exists public.rate_card (
+  id uuid primary key default gen_random_uuid(),
+  category_key text,
+  item text not null,
+  rate int not null default 0,
+  max_cap int,
+  unit text not null default 'job',
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_rate_card_cat on public.rate_card(category_key) where active;
+alter table public.rate_card enable row level security;
+drop policy if exists "rate_card read"        on public.rate_card;
+drop policy if exists "rate_card admin write" on public.rate_card;
+create policy "rate_card read" on public.rate_card for select using (auth.uid() is not null);
+create policy "rate_card admin write" on public.rate_card for all using (public.is_admin()) with check (public.is_admin());
+insert into public.rate_card (category_key, item, rate, max_cap, unit)
+select * from (values
+  ('ac_repair',  'AC Service (Split)',        499, 699,  'job'),
+  ('ac_repair',  'AC Gas Refill (R32)',       1800, 2500, 'job'),
+  ('ac_repair',  'Service Valve Replacement', 350, 500,  'unit'),
+  ('plumber',    'Tap / Mixer Repair',        150, 300,  'job'),
+  ('plumber',    'Pipe Leak Fix',             250, 500,  'job'),
+  ('electrician','Switch / Socket Replace',   120, 250,  'unit'),
+  ('electrician','Fan Installation',          200, 350,  'job'),
+  ('carpenter',  'Door Hinge / Lock Fix',     200, 400,  'job'),
+  (null,         'Visiting Charge',           100, 150,  'job')
+) as v(category_key, item, rate, max_cap, unit)
+where not exists (select 1 from public.rate_card);
+notify pgrst, 'reload schema';

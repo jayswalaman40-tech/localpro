@@ -127,3 +127,26 @@ export async function setReviewStatus(id, status) {
   const { error } = await supabase.from('reviews').update({ status }).eq('id', id);
   if (error) throw error;
 }
+
+// ---------------- RATE CARD ----------------
+export async function getRateCard() {
+  const { data, error } = await supabase.from('rate_card')
+    .select('*').order('category_key', { nullsFirst: true }).order('item');
+  if (error) throw error;
+  return data ?? [];
+}
+export async function upsertRateItem(fields) {
+  const row = { ...fields, updated_at: new Date().toISOString() };
+  if (row.id) {
+    const { error } = await supabase.from('rate_card').update(row).eq('id', row.id);
+    if (error) throw error;
+  } else {
+    delete row.id;
+    const { error } = await supabase.from('rate_card').insert(row);
+    if (error) throw error;
+  }
+}
+export async function deleteRateItem(id) {
+  const { error } = await supabase.from('rate_card').delete().eq('id', id);
+  if (error) throw error;
+}

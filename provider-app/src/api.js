@@ -164,6 +164,14 @@ export async function sendBill(bookingId) {
   if (error) throw error;
   return total;
 }
+// Admin-maintained rate card (items + caps) the provider bills from.
+export async function getRateCard() {
+  const { data, error } = await supabase.from('rate_card')
+    .select('item, rate, max_cap, unit, category_key').eq('active', true).order('item');
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Provider records a cash payment and closes the job.
 export async function recordPayment(bookingId, amount, method = 'cash') {
   await supabase.from('payments').insert({ booking_id: bookingId, amount: Math.round(Number(amount) || 0), method, status: 'paid' });

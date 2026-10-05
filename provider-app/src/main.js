@@ -228,8 +228,20 @@ function fillJob(j) {
 
 /* ---------- bill (job line-items → customer approval → payment) ---------- */
 let billItems = [];   // [{id?, label, amount}]
+let rateCard = [];    // admin rate card [{item, rate, max_cap, unit}]
+async function loadRateCard() {
+  if (!(hasSupabase && session)) { rateCard = []; }
+  else { try { rateCard = await api.getRateCard(); } catch (e) { rateCard = []; } }
+  const dl = $('rateCardList');
+  if (dl) dl.innerHTML = rateCard.map((r) => `<option value="${esc(r.item)}">${inr(r.rate)}${r.max_cap ? ' · max ' + inr(r.max_cap) : ''}</option>`).join('');
+}
+function rateFor(label) {
+  const l = String(label || '').trim().toLowerCase();
+  return rateCard.find((r) => String(r.item).trim().toLowerCase() === l) || null;
+}
 async function initBill() {
   billItems = [];
+  await loadRateCard();
   if (hasSupabase && currentJob && currentJob.rawId) {
     try { billItems = (await api.getJobItems(currentJob.rawId)).map((it) => ({ id: it.id, label: it.label, amount: it.amount })); } catch (e) {}
   }
@@ -248,9 +260,13 @@ function renderBillEditor() {
 }
 async function addBillItem() {
   const label = ($('billLabel').value || '').trim();
-  const amount = Math.round(Number($('billAmt').value) || 0);
+  let amount = Math.round(Number($('billAmt').value) || 0);
   if (!label) { toast('Enter item name'); return; }
   if (!amount) { toast('Enter amount'); return; }
+  // Enforce the admin rate-card cap for known items.
+  const rc = rateFor(label);
+  const cap = rc && (rc.max_cap ?? rc.rate);
+  if (cap && amount > cap) { amount = cap; toast(`Max for "${label}" is ${inr(cap)} — capped`); }
   const item = { label, amount };
   if (hasSupabase && currentJob && currentJob.rawId) {
     try { const row = await api.addJobItem(currentJob.rawId, label, amount); item.id = row.id; } catch (e) { toast(e.message || 'Could not add'); return; }
@@ -1223,6 +1239,10 @@ async function boot() {
   $('availToggle')?.addEventListener('click', toggleAvail);
   $('billAddBtn')?.addEventListener('click', addBillItem);
   $('billAmt')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBillItem(); });
+  $('billLabel')?.addEventListener('input', () => {
+    const rc = rateFor($('billLabel').value);
+    if (rc && $('billAmt') && !$('billAmt').value) $('billAmt').value = rc.rate;
+  });
   $('completeBtn')?.addEventListener('click', completeJob);
   $('certSaveBtn')?.addEventListener('click', saveCertSignature);
   $('logoutRow')?.addEventListener('click', logout);

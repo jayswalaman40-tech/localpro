@@ -65,6 +65,7 @@ async function renderTab(tab) {
     if (tab === 'providers') return renderProviders(c);
     if (tab === 'bookings') return renderBookings(c);
     if (tab === 'leads') return renderLeads(c);
+    if (tab === 'pricing') return renderPricing(c);
   } catch (e) {
     c.innerHTML = `<div class="section"><b class="muted">Error:</b> ${esc(e.message)}</div>`;
   }
@@ -160,6 +161,61 @@ async function renderLeads(c) {
   wireSearch('leads', rows, (r, q) =>
     (r.customer_name || '').toLowerCase().includes(q) || (r.provider?.name || '').toLowerCase().includes(q) || (r.status || '').includes(q),
     (list) => list.map(rowHtml).join(''));
+}
+
+/* ==================== PRICING (rate card) ==================== */
+async function renderPricing(c) {
+  const rows = await api.getRateCard();
+  const rowHtml = r => `<tr data-rc="${r.id}">
+      <td>${esc(r.category_key || 'Any')}</td>
+      <td style="min-width:160px">${esc(r.item)}</td>
+      <td><input class="rc-in" data-f="rate" type="number" value="${r.rate ?? 0}" style="width:80px"></td>
+      <td><input class="rc-in" data-f="max_cap" type="number" value="${r.max_cap ?? ''}" placeholder="—" style="width:80px"></td>
+      <td>${esc(r.unit || 'job')}</td>
+      <td><button class="btn btn-sm" data-rc-save="${r.id}">Save</button>
+          <button class="btn btn-sm" data-rc-del="${r.id}" style="color:#c0392b">Delete</button></td></tr>`;
+  c.innerHTML = `
+    <div class="section">
+      <h3 style="margin-top:0">Add rate</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <label>Category<br><input id="rcCat" placeholder="ac_repair / plumber / blank=any" style="width:200px"></label>
+        <label>Item<br><input id="rcItem" placeholder="AC Gas Refill (R32)" style="width:220px"></label>
+        <label>Rate ₹<br><input id="rcRate" type="number" style="width:90px"></label>
+        <label>Max cap ₹<br><input id="rcCap" type="number" placeholder="optional" style="width:100px"></label>
+        <label>Unit<br><input id="rcUnit" value="job" style="width:80px"></label>
+        <button class="btn" id="rcAdd">+ Add</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0">Providers pick these when billing. They can charge up to the <b>Max cap</b> (blank cap = rate is the max). Update a rate here and it applies to all providers — this is your "live" rate control.</p>
+    </div>
+    ${tableShell('pricing', rows.length,
+      ['Category', 'Item', 'Rate ₹', 'Max cap ₹', 'Unit', ''],
+      rows.map(rowHtml).join(''), 'No rates yet — add one above.')}`;
+
+  $('rcAdd').addEventListener('click', async () => {
+    const item = $('rcItem').value.trim();
+    if (!item) return alert('Enter an item name');
+    try {
+      await api.upsertRateItem({
+        category_key: $('rcCat').value.trim() || null, item,
+        rate: Number($('rcRate').value) || 0,
+        max_cap: $('rcCap').value === '' ? null : Number($('rcCap').value),
+        unit: $('rcUnit').value.trim() || 'job', active: true,
+      });
+      renderTab('pricing');
+    } catch (e) { alert(e.message); }
+  });
+  c.querySelectorAll('[data-rc-save]').forEach(b => b.addEventListener('click', async () => {
+    const tr = b.closest('tr'); const id = b.getAttribute('data-rc-save');
+    const rate = Number(tr.querySelector('[data-f="rate"]').value) || 0;
+    const capv = tr.querySelector('[data-f="max_cap"]').value;
+    try { await api.upsertRateItem({ id, rate, max_cap: capv === '' ? null : Number(capv) }); b.textContent = 'Saved ✓'; setTimeout(() => (b.textContent = 'Save'), 1400); }
+    catch (e) { alert(e.message); }
+  }));
+  c.querySelectorAll('[data-rc-del]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this rate?')) return;
+    try { await api.deleteRateItem(b.getAttribute('data-rc-del')); renderTab('pricing'); }
+    catch (e) { alert(e.message); }
+  }));
 }
 
 /* ==================== PROVIDER DRAWER ==================== */
