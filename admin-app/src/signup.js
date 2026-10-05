@@ -47,13 +47,20 @@ const $ = (id) => document.getElementById(id);
 $('category').insertAdjacentHTML('beforeend', CATS.map((c) => `<option value="${c.key}">${c.label}</option>`).join(''));
 $('areaList').innerHTML = AREAS.map((a) => `<option value="${a}">`).join('');
 
-// Category → subcategory.
-$('category').addEventListener('change', () => {
+// Category → multi-select sub-service chips.
+function renderSubChips() {
   const subs = SUBCATS[$('category').value] || [];
-  $('subcategory').innerHTML = '<option value="" disabled selected>Select a sub-service</option>'
-    + subs.map((s) => `<option value="${s}">${s}</option>`).join('');
-  const hint = document.querySelector('#subcategory').closest('.field').querySelector('.hint');
-  if (hint) hint.textContent = subs.length ? 'Optional — pick the closest match.' : 'No sub-services for this category.';
+  const box = $('subChips');
+  box.innerHTML = subs.length
+    ? subs.map((s) => `<span class="chip" data-sub="${s}">${s}</span>`).join('')
+    : '<div class="muted-note">No sub-services for this category.</div>';
+}
+function selectedSubs() {
+  return [...document.querySelectorAll('#subChips .chip.on')].map((c) => c.getAttribute('data-sub'));
+}
+$('category').addEventListener('change', renderSubChips);
+$('subChips').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip'); if (chip) chip.classList.toggle('on');
 });
 
 $('mobile').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
@@ -66,7 +73,8 @@ $('regForm').addEventListener('submit', async (e) => {
   const name = $('name').value.trim();
   const mobile = $('mobile').value.trim();
   const category = $('category').value;
-  const subcategory = $('subcategory').value || null;
+  const subs = selectedSubs();
+  const subcategory = subs.length ? subs.join(', ') : null;
   const area = $('area').value.trim();
 
   let ok = true;
@@ -96,7 +104,7 @@ $('regForm').addEventListener('submit', async (e) => {
 
 $('again').addEventListener('click', () => {
   $('regForm').reset();
-  $('subcategory').innerHTML = '<option value="" disabled selected>Select a sub-service</option>';
+  $('subChips').innerHTML = '<div class="muted-note">Choose a category first.</div>';
   $('regForm').style.display = 'block';
   $('done').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
