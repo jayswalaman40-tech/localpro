@@ -66,6 +66,7 @@ async function renderTab(tab) {
     if (tab === 'bookings') return renderBookings(c);
     if (tab === 'leads') return renderLeads(c);
     if (tab === 'pricing') return renderPricing(c);
+    if (tab === 'signups') return renderSignups(c);
   } catch (e) {
     c.innerHTML = `<div class="section"><b class="muted">Error:</b> ${esc(e.message)}</div>`;
   }
@@ -214,6 +215,50 @@ async function renderPricing(c) {
   c.querySelectorAll('[data-rc-del]').forEach(b => b.addEventListener('click', async () => {
     if (!confirm('Delete this rate?')) return;
     try { await api.deleteRateItem(b.getAttribute('data-rc-del')); renderTab('pricing'); }
+    catch (e) { alert(e.message); }
+  }));
+}
+
+/* ==================== PROVIDER SIGN-UPS (public form) ==================== */
+async function renderSignups(c) {
+  const rows = await api.getSignups();
+  const suPill = (s) => {
+    const m = { new: 'pending', contacted: 'blue', onboarded: 'ok', rejected: 'no' }[s] || 'grey';
+    return pill((s || 'new'), m);
+  };
+  const link = location.origin + '/signup.html';
+  const rowHtml = r => `<tr data-su="${r.id}">
+      <td>${esc(r.name || '—')}</td>
+      <td>${esc(r.mobile || '—')}</td>
+      <td>${esc(r.category || '—')}${r.subcategory ? ' · ' + esc(r.subcategory) : ''}</td>
+      <td>${esc(r.area || '—')}</td>
+      <td>${suPill(r.status)}</td>
+      <td>${fmtDate(r.created_at)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" data-su-set="contacted" data-id="${r.id}">Contacted</button>
+        <button class="btn btn-sm" data-su-set="onboarded" data-id="${r.id}">Onboarded</button>
+        <button class="btn btn-sm" data-su-set="rejected" data-id="${r.id}" style="color:#c0392b">Reject</button>
+      </td></tr>`;
+  c.innerHTML = `
+    <div class="section">
+      <h3 style="margin-top:0">Provider registration form</h3>
+      <p class="muted" style="font-size:13px;margin:0 0 10px">Share this link with providers to register. Submissions appear below.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="suLink" readonly value="${link}" style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px">
+        <button class="btn" id="suCopy">Copy link</button>
+        <a class="btn" href="${link}" target="_blank" rel="noopener">Open form ↗</a>
+      </div>
+    </div>
+    ${tableShell('signups', rows.length,
+      ['Name', 'Mobile', 'Category', 'Area', 'Status', 'Date', 'Actions'],
+      rows.map(rowHtml).join(''), 'No sign-ups yet — share the form link above.')}`;
+
+  $('suCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(link); $('suCopy').textContent = 'Copied ✓'; setTimeout(() => ($('suCopy').textContent = 'Copy link'), 1400); }
+    catch (e) { $('suLink').select(); }
+  });
+  c.querySelectorAll('[data-su-set]').forEach(b => b.addEventListener('click', async () => {
+    try { await api.setSignupStatus(b.getAttribute('data-id'), b.getAttribute('data-su-set')); renderTab('signups'); }
     catch (e) { alert(e.message); }
   }));
 }

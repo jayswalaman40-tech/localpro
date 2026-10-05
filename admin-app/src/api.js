@@ -150,3 +150,15 @@ export async function deleteRateItem(id) {
   const { error } = await supabase.from('rate_card').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ---------------- PROVIDER SIGN-UPS (public form) ----------------
+export async function getSignups() {
+  const { data, error } = await supabase.from('provider_signups')
+    .select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function setSignupStatus(id, status) {
+  const { error } = await supabase.from('provider_signups').update({ status }).eq('id', id);
+  if (error) throw error;
+}
