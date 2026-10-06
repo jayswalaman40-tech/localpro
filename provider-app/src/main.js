@@ -41,6 +41,21 @@ const CATS = [
 ];
 const catCls = (key) => (CATS.find((c) => c.key === key) || CATS[7]).cls;
 const catIcon = (key) => (CATS.find((c) => c.key === key) || CATS[7]).icon;
+// Map a free-text service label (e.g. "Plumbing", "Electrical") to a category key.
+function catKeyFromLabel(label) {
+  const l = String(label || '').trim().toLowerCase();
+  if (!l) return 'other';
+  const hit = CATS.find((c) => l.includes(c.key.replace('_', ' ')) || l.includes(c.label.toLowerCase()));
+  if (hit) return hit.key;
+  if (l.includes('plumb')) return 'plumber';
+  if (l.includes('electric')) return 'electrician';
+  if (l.includes('ac ') || l.includes('a/c') || l.includes('air con')) return 'ac_repair';
+  if (l.includes('carp') || l.includes('furnitur')) return 'carpenter';
+  if (l.includes('paint')) return 'painter';
+  if (l.includes('clean')) return 'cleaning';
+  if (l.includes('home') || l.includes('repair')) return 'home_repair';
+  return 'other';
+}
 
 /* ---------- KYC documents ----------
    Aadhaar needs BOTH sides, so it has two upload slots (front + back).      */
@@ -77,7 +92,7 @@ const DEMO_JOBS = [
   { cat:'electrician', title:'Electrician', area:'Thaltej, Ahmedabad', when:'Today, 6:30 PM', name:'Neha Patel', phone:'+91 91234 56789', status:'In Progress', pill:'blue', a:'View Details', b:'Mark Complete', ga:'jobdetail', gb:'completed' },
   { cat:'carpenter', title:'Carpenter', area:'Vastrapur, Ahmedabad', when:'Tomorrow, 10:00 AM', name:'Kunal Mehta', phone:'+91 99887 66554', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
   { cat:'cleaning', title:'Cleaning', area:'Satellite, Ahmedabad', when:'Tomorrow, 2:00 PM', name:'Priya Desai', phone:'+91 87654 32109', status:'Scheduled', pill:'purple', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
-  { cat:'plumber', title:'Plumbing', area:'Maninagar, Ahmedabad', when:'May 21, 11:00 AM', name:'Amit Shah', phone:'+91 90909 12345', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
+  { cat:'plumber', title:'Plumbing', area:'Maninagar, Ahmedabad', when:'In 2 days, 11:00 AM', name:'Amit Shah', phone:'+91 90909 12345', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
 ];
 const DEMO_LEADS = [
   { cat:'ac_repair', title:'AC Repair', area:'Ahmedabad - Satellite', dist:'2.1 km • Today, 5:00 PM', price:'₹300 - ₹500' },
@@ -86,11 +101,18 @@ const DEMO_LEADS = [
   { cat:'carpenter', title:'Carpenter', area:'Ahmedabad - Nikol', dist:'1.8 km • Tomorrow, 10:00 AM', price:'₹400 - ₹800' },
 ];
 const DEMO_TXN = [
-  { cat:'ac_repair', t:'AC Repair - Rahul Sharma', d:'May 20, 2024', amt:450 },
-  { cat:'plumber', t:'Plumbing - Amit Shah', d:'May 19, 2024', amt:300 },
-  { cat:'electrician', t:'Electrical - Neha Patel', d:'May 18, 2024', amt:400 },
-  { cat:'carpenter', t:'Carpenter - Kunal Mehta', d:'May 17, 2024', amt:600 },
+  { cat:'ac_repair', t:'AC Repair - Rahul Sharma', daysAgo:0, amt:450 },
+  { cat:'plumber', t:'Plumbing - Amit Shah', daysAgo:1, amt:300 },
+  { cat:'electrician', t:'Electrical - Neha Patel', daysAgo:2, amt:400 },
+  { cat:'carpenter', t:'Carpenter - Kunal Mehta', daysAgo:4, amt:600 },
 ];
+// Human date for a demo transaction, relative to today (keeps the list fresh).
+function txnDate(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - (daysAgo || 0));
+  if (daysAgo === 0) return 'Today';
+  if (daysAgo === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 const DEMO_REVIEWS = [
   { name:'Rahul Sharma', rating:5, ago:'2 days ago', body:'Great service! Very professional and on time. My AC is working perfectly now. Highly recommended!', tags:['On Time','Professional','Good Communication'] },
   { name:'Neha Patel', rating:5, ago:'1 week ago', body:'Very polite and skilled. Fixed the plumbing issue quickly. Will definitely call again.', tags:['Quick Service','Knowledgeable','Polite'] },
@@ -98,7 +120,7 @@ const DEMO_REVIEWS = [
 ];
 const DEMO_NOTIF = [
   { icon:'📅', cls:'c-clean', title:'New Job Assigned', body:'New job request for AC Repair in Bodakdev, Ahmedabad.', ago:'2 min', unread:true },
-  { icon:'🧭', cls:'c-plumb', title:'Customer Reached Location', body:'Rahul Sharma has reached the location. Please start the service.', ago:'15 min', unread:true },
+  { icon:'🧭', cls:'c-plumb', title:'Job Starting Soon', body:'Your AC Repair with Rahul Sharma in Bodakdev starts at 5:00 PM.', ago:'15 min', unread:true },
   { icon:'💳', cls:'c-elec', title:'Payment Received', body:'You received ₹1,400 from Rahul Sharma via UPI.', ago:'1 hr', unread:true },
   { icon:'★', cls:'c-paint', title:'New Review', body:'Rahul Sharma gave you a 5-star rating. "Great service!"', ago:'2 hr', unread:false },
   { icon:'✓', cls:'c-clean', title:'Job Completed', body:'Your Electrical job at Thaltej has been marked completed.', ago:'1 day', unread:false },
@@ -201,6 +223,7 @@ function normalizeJob(src) {
   const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
   if (real) return {
     rawId: src.id || null, bill_status: src.bill_status || 'none', paid: !!src.paid,
+    cat: src.category || catKeyFromLabel(src.service),
     cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
     service: src.service || 'Service', desc: src.note || src.description || '',
     addr: src.address || 'Ahmedabad',
@@ -209,6 +232,7 @@ function normalizeJob(src) {
   };
   return {
     rawId: null, bill_status: 'none', paid: false,
+    cat: src.cat || catKeyFromLabel(src.title),
     cust: src.name || 'Customer', phone: src.phone || '',
     service: src.title || 'Service', desc: src.desc || '',
     addr: src.area || 'Ahmedabad', id: src.id || '#SRV1234', when: src.when || '',
@@ -220,6 +244,8 @@ function fillJob(j) {
   set('j-cust', j.cust); set('j-service', j.service); set('j-desc', j.desc || '');
   set('j-sub', `${j.service} • ${j.id}`); set('j-addr', j.addr || '');
   set('j-initial', (j.cust || 'C')[0].toUpperCase());
+  const cat = j.cat || catKeyFromLabel(j.service);
+  document.querySelectorAll('.j-icon').forEach((e) => { e.className = 'scirc ' + catCls(cat) + ' j-icon'; e.textContent = catIcon(cat); });
   document.querySelectorAll('.j-phone').forEach((e) => { e.textContent = j.phone || ''; });
   document.querySelectorAll('.j-call').forEach((e) => { if (j.phone) e.setAttribute('data-call', j.phone); });
   document.querySelectorAll('.j-maps').forEach((e) => { e.setAttribute('data-maps', j.addr || 'Ahmedabad'); });
@@ -481,7 +507,7 @@ function renderTxns() {
   el.innerHTML = rows.map((x, i) => `
     <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < rows.length - 1 ? 'border-bottom:1px solid var(--cardBorder)' : ''}">
       <div class="scirc ${catCls(x.cat)}" style="width:40px;height:40px;font-size:17px">${catIcon(x.cat)}</div>
-      <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(x.t)}</div><div class="ter">${esc(x.d)}</div></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(x.t)}</div><div class="ter">${esc(x.d || txnDate(x.daysAgo))}</div></div>
       <div style="text-align:right"><div class="green-t">+ ${inr(x.amt)}</div><div class="ter">Completed</div></div>
     </div>`).join('');
 }
@@ -760,7 +786,7 @@ function renderJobDetail() {
   const addr = j.addr || 'Ahmedabad';
   el.innerHTML = `
     <div class="card">
-      <div style="display:flex;gap:12px"><div class="scirc c-ac">🛠️</div>
+      <div style="display:flex;gap:12px"><div class="scirc ${catCls(j.cat || catKeyFromLabel(j.service))}">${catIcon(j.cat || catKeyFromLabel(j.service))}</div>
         <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h2">${esc(j.service)}</div><span class="pill green">New Request</span></div>
           ${j.desc ? `<div class="sec" style="margin-top:2px">${esc(j.desc)}</div>` : ''}</div></div>
       <div class="divide" style="margin:12px 0"></div>
@@ -780,7 +806,7 @@ function renderJobDetail() {
 function bubble(m) {
   const cls = m.me ? 'out' : '';
   const b = m.me ? 'bout' : 'bin';
-  const av = m.me ? '' : `<div class="avatar" style="width:28px;height:28px;font-size:12px">${esc((chatCustomer?.name || 'C')[0])}</div>`;
+  const av = m.me ? '' : `<div class="avatar" style="width:28px;height:28px;font-size:12px">${esc(((chatCustomer?.name || currentJob?.cust || 'Rahul Sharma'))[0])}</div>`;
   const tick = m.me ? ' ✓✓' : '';
   return `<div class="brow ${cls}">${av}<div><div class="bubl ${b}">${esc(m.body)}</div><div class="btime"${m.me ? ' style="text-align:right"' : ''}>${esc(m.time || '')}${tick}</div></div></div>`;
 }
