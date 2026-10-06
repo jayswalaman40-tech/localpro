@@ -435,7 +435,8 @@ function renderBook() {
     const days = [];
     for (let i = 0; i < 3; i++) { const d = new Date(); d.setDate(d.getDate() + i); days.push(d); }
     const labels = ['Today', 'Tomorrow', days[2].toLocaleDateString('en-IN', { weekday: 'short' })];
-    dr.innerHTML = days.map((d, i) => `<div class="datecard${i === 0 ? ' on' : ''}" data-date><div class="d1">${labels[i]}</div><div class="d2">${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}</div></div>`).join('');
+    const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    dr.innerHTML = days.map((d, i) => `<div class="datecard${i === 0 ? ' on' : ''}" data-date data-iso="${isoLocal(d)}"><div class="d1">${labels[i]}</div><div class="d2">${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}</div></div>`).join('');
   }
 }
 // Buckets a raw status into one of the three filter chips.
@@ -609,11 +610,12 @@ async function confirmBooking() {
     const dateCard = document.querySelector('#dateRow .datecard.on');
     const dayNum = dateCard?.querySelector('.d2')?.textContent || '';
     const dayMon = dateCard?.querySelector('.d1')?.textContent || '';
+    const dateIso = dateCard?.getAttribute('data-iso') || '';
     const time = document.querySelector('#slotRow .slot.on')?.textContent || '';
     const addr = $('bookAddr')?.value || '';
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     if (!isDemo) {
-      await api.createBooking(p.id, { service: p.trade, date: dayNum, time, address: addr, note: $('bookNote')?.value || '' });
+      await api.createBooking(p.id, { service: p.trade, date: dateIso || null, time, address: addr, note: $('bookNote')?.value || '' });
     }
     // Show the new booking immediately at the top of My Bookings.
     localBookings.unshift({
