@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Download HelpZo App</title>
+<meta name="description" content="Download the HelpZo app — Customer & Partner. Your Problem · Our Priority." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#1667E8; --blue-dark:#0B3E9E; --green:#22B24C; --green-dark:#178a3a;
+    --ink:#0F2547; --muted:#5A6477; --line:#E4E9F0; --bg:#EEF3FA; --card:#FFFFFF;
+    --radius:16px; --shadow:0 10px 30px rgba(15,37,71,.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    min-height:100vh;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);}
+  .wrap{max-width:480px;margin:0 auto;padding:22px 16px 48px;}
+  .hero{background:linear-gradient(160deg,var(--blue-dark),var(--blue));border-radius:22px;
+    padding:26px 22px;color:#fff;box-shadow:var(--shadow);text-align:center;}
+  .logo-badge{display:inline-flex;background:#fff;border-radius:16px;padding:12px 18px;
+    box-shadow:0 4px 16px rgba(0,0,0,.20);margin-bottom:14px;}
+  .logo-badge img{height:48px;width:auto;display:block;}
+  .hero h1{margin:0;font-size:24px;font-weight:800;}
+  .hero p{margin:8px 0 0;font-size:14px;opacity:.92;}
+  .cards{margin-top:18px;display:flex;flex-direction:column;gap:14px;}
+  .appcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 16px;box-shadow:var(--shadow);}
+  .top{display:flex;align-items:center;gap:14px;}
+  .ic{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:28px;flex-shrink:0;color:#fff;}
+  .ic.cust{background:linear-gradient(145deg,#1667E8,#0B3E9E);}
+  .ic.prov{background:linear-gradient(145deg,#22B24C,#178a3a);}
+  .appcard h2{margin:0;font-size:18px;font-weight:800;}
+  .appcard .sub{margin:3px 0 0;font-size:13px;color:var(--muted);}
+  .btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;color:#fff;
+    text-decoration:none;font-weight:700;font-size:16px;padding:15px;margin-top:16px;transition:background .15s;}
+  .btn.cust{background:var(--blue);} .btn.cust:hover{background:var(--blue-dark);}
+  .btn.prov{background:var(--green);} .btn.prov:hover{background:var(--green-dark);}
+  .meta{margin-top:8px;font-size:11.5px;color:var(--muted);text-align:center;}
+  .note{background:#FFF8E6;border:1px solid #F3E2A8;border-radius:14px;padding:14px 16px;margin-top:18px;
+    font-size:13px;color:#7A5B00;line-height:1.6;}
+  .note b{color:#5A4400;}
+  .steps{margin:8px 0 0;padding-left:18px;}
+  .steps li{margin:2px 0;}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:22px;line-height:1.7;}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0D1117;--card:#161C26;--ink:#E9EEF5;--muted:#99A4B4;--line:#252D39;}
+    .note{background:#211B06;border-color:#3A3010;color:#E7CF86;} .note b{color:#F2DE9A;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <span class="logo-badge"><img src="/helpzo-logo.png" alt="HelpZo"></span>
+      <h1>Download HelpZo</h1>
+      <p>Your Problem · Our Priority</p>
+    </div>
+
+    <div class="cards">
+      <div class="appcard">
+        <div class="top">
+          <div class="ic cust">🙋</div>
+          <div><h2>HelpZo — Customer</h2><div class="sub">Book trusted local service providers near you.</div></div>
+        </div>
+        <a class="btn cust" href="/downloads/HelpZo-Customer.apk" download>⬇ Download Customer App</a>
+        <div class="meta">Android APK · ~6.5 MB</div>
+      </div>
+
+      <div class="appcard">
+        <div class="top">
+          <div class="ic prov">🧰</div>
+          <div><h2>HelpZo — Partner</h2><div class="sub">For service providers — get jobs &amp; earn.</div></div>
+        </div>
+        <a class="btn prov" href="/downloads/HelpZo-Provider.apk" download>⬇ Download Partner App</a>
+        <div class="meta">Android APK · ~6.5 MB</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Installing on Android:</b>
+      <ol class="steps">
+        <li>Tap the download button above.</li>
+        <li>Open the downloaded <b>.apk</b> file.</li>
+        <li>If asked, allow <b>“Install from unknown sources”</b> for your browser.</li>
+        <li>Tap <b>Install</b> → <b>Open</b>.</li>
+      </ol>
+      This is a debug build for testing. iPhone is not supported yet.
+    </div>
+
+    <div class="foot">HelpZo · Ahmedabad<br>Having trouble? Contact the HelpZo team.</div>
+  </div>
+</body>
+</html>
