@@ -161,9 +161,31 @@ export async function liveMap(el, dest, onEta) {
         if (onEta) onEta({ dur: leg.duration && leg.duration.text, dist: leg.distance && leg.distance.text, arr: new Date(Date.now() + (leg.duration ? leg.duration.value * 1000 : 0)) });
         animate(path);
       } else {
-        map.setCenter(from);   // Directions API off — still show map + rider
+        straightFallback(from);   // Directions API off — fall back to a straight line
       }
     });
+  }
+  // When Directions isn't available, geocode the address and draw a straight
+  // (dashed) line so the rider + route + pin still appear.
+  function straightFallback(from) {
+    const place = (dl) => {
+      const path = [new g.LatLng(from.lat, from.lng), dl];
+      if (casing) casing.setMap(null); if (line) line.setMap(null);
+      casing = new g.Polyline({ map, path, strokeColor: '#ffffff', strokeWeight: 10, strokeOpacity: 1, zIndex: 1 });
+      line = new g.Polyline({ map, path, strokeColor: '#1667E8', strokeWeight: 5, strokeOpacity: 0.95, zIndex: 2,
+        icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '14px' }] });
+      if (!destMarker) destMarker = new g.Marker({ map, position: dl, icon: { url: DEST_PIN, scaledSize: new g.Size(38, 38), anchor: new g.Point(19, 38) } });
+      else destMarker.setPosition(dl);
+      const b = new g.LatLngBounds(); b.extend(path[0]); b.extend(dl); map.fitBounds(b, 60);
+      animate(path);
+    };
+    if (dest && typeof dest === 'object' && dest.lat != null) { place(new g.LatLng(dest.lat, dest.lng)); return; }
+    try {
+      new g.Geocoder().geocode({ address: String(dest) }, (res, st) => {
+        if (st === 'OK' && res[0]) place(res[0].geometry.location);
+        else { map.setCenter(from); map.setZoom(15); }   // last resort: rider only
+      });
+    } catch (e) { map.setCenter(from); map.setZoom(15); }
   }
   drawRoute(origin);
 

@@ -95,21 +95,42 @@ const SUBCATS = {
 
 /* ---------- demo data (keeps screens populated) ---------- */
 const DEMO_PROVIDERS = [
-  { id:'d1', name:'Ramesh Singh', cat:'plumber', trade:'Plumber', rating:4.8, reviews:124, dist:2.1, price:200, exp:'5+ years exp' },
-  { id:'d2', name:'Jayesh Patel', cat:'electrician', trade:'Electrician', rating:4.6, reviews:98, dist:3.5, price:250, exp:'4 years exp' },
-  { id:'d3', name:'Imran Khan', cat:'ac_repair', trade:'AC Repair', rating:4.5, reviews:76, dist:4.8, price:220, exp:'6 years exp' },
-  { id:'d4', name:'Mukesh Yadav', cat:'carpenter', trade:'Carpenter', rating:4.3, reviews:54, dist:5.2, price:180, exp:'3 years exp' },
-  { id:'d5', name:'Sanjay Mehta', cat:'painter', trade:'Painter', rating:4.7, reviews:88, dist:3.0, price:300, exp:'7 years exp' },
-  { id:'d6', name:'Pooja Shah', cat:'cleaning', trade:'Cleaning', rating:4.9, reviews:142, dist:1.8, price:150, exp:'4 years exp' },
-  { id:'d7', name:'Rakesh Verma', cat:'home_repair', trade:'Home Repair', rating:4.4, reviews:61, dist:4.1, price:200, exp:'5 years exp' },
-  { id:'d8', name:'Amit Chauhan', cat:'appliance', trade:'Appliance Repair', rating:4.5, reviews:73, dist:3.9, price:250, exp:'6 years exp' },
-  { id:'d9', name:'HealthyHome Pest', cat:'pest_control', trade:'Pest Control', rating:4.6, reviews:52, dist:5.0, price:500, exp:'8 years exp' },
-  { id:'d10', name:'Glow Salon at Home', cat:'salon', trade:'Salon at Home', rating:4.8, reviews:110, dist:2.6, price:400, exp:'5 years exp' },
-  { id:'d11', name:'SecureView CCTV', cat:'cctv', trade:'CCTV & Security', rating:4.4, reviews:39, dist:6.2, price:800, exp:'7 years exp' },
-  { id:'d12', name:'Nitin Prajapati', cat:'geyser', trade:'Geyser Repair', rating:4.5, reviews:47, dist:3.3, price:250, exp:'4 years exp' },
-  { id:'d13', name:'AquaCare RO', cat:'ro', trade:'RO / Water Purifier', rating:4.7, reviews:64, dist:2.9, price:350, exp:'5 years exp' },
-  { id:'d14', name:'GreenThumb Garden', cat:'gardening', trade:'Gardening', rating:4.6, reviews:33, dist:4.7, price:400, exp:'6 years exp' },
-  { id:'d15', name:'QuickShift Movers', cat:'movers', trade:'Packers & Movers', rating:4.5, reviews:81, dist:5.5, price:1500, exp:'9 years exp' },
+  // Plumber (multiple so lists never look empty)
+  { id:'d1', name:'Ramesh Singh', cat:'plumber', trade:'Plumber', rating:4.8, reviews:124, dist:2.1, price:200, exp:'5+ years exp', verified:true },
+  { id:'d1b', name:'Dinesh Patel', cat:'plumber', trade:'Plumber', rating:4.6, reviews:86, dist:3.4, price:180, exp:'4 years exp', verified:true },
+  { id:'d1c', name:'Kiran Solanki', cat:'plumber', trade:'Plumber', rating:4.5, reviews:52, dist:4.0, price:220, exp:'6 years exp', verified:true },
+  // Electrician
+  { id:'d2', name:'Jayesh Patel', cat:'electrician', trade:'Electrician', rating:4.6, reviews:98, dist:3.5, price:250, exp:'4 years exp', verified:true },
+  { id:'d2b', name:'Arjun Mehta', cat:'electrician', trade:'Electrician', rating:4.9, reviews:133, dist:1.9, price:280, exp:'7 years exp', verified:true },
+  { id:'d2c', name:'Sohel Shaikh', cat:'electrician', trade:'Electrician', rating:4.4, reviews:61, dist:4.6, price:230, exp:'3 years exp', verified:true },
+  // AC Repair
+  { id:'d3', name:'Imran Khan', cat:'ac_repair', trade:'AC Repair', rating:4.5, reviews:76, dist:4.8, price:220, exp:'6 years exp', verified:true },
+  { id:'d3b', name:'Cooltech Services', cat:'ac_repair', trade:'AC Repair', rating:4.7, reviews:104, dist:2.5, price:299, exp:'8 years exp', verified:true },
+  { id:'d3c', name:'Vipul Rana', cat:'ac_repair', trade:'AC Repair', rating:4.3, reviews:40, dist:5.1, price:250, exp:'4 years exp', verified:true },
+  // Carpenter
+  { id:'d4', name:'Mukesh Yadav', cat:'carpenter', trade:'Carpenter', rating:4.3, reviews:54, dist:5.2, price:180, exp:'3 years exp', verified:true },
+  { id:'d4b', name:'Harish Vishwakarma', cat:'carpenter', trade:'Carpenter', rating:4.8, reviews:97, dist:2.8, price:250, exp:'9 years exp', verified:true },
+  // Painter
+  { id:'d5', name:'Sanjay Mehta', cat:'painter', trade:'Painter', rating:4.7, reviews:88, dist:3.0, price:300, exp:'7 years exp', verified:true },
+  { id:'d5b', name:'ColorHome Painters', cat:'painter', trade:'Painter', rating:4.6, reviews:72, dist:4.2, price:280, exp:'6 years exp', verified:true },
+  // Cleaning
+  { id:'d6', name:'Pooja Shah', cat:'cleaning', trade:'Cleaning', rating:4.9, reviews:142, dist:1.8, price:150, exp:'4 years exp', verified:true },
+  { id:'d6b', name:'SparkleClean Pros', cat:'cleaning', trade:'Cleaning', rating:4.7, reviews:111, dist:3.1, price:199, exp:'5 years exp', verified:true },
+  // Home repair
+  { id:'d7', name:'Rakesh Verma', cat:'home_repair', trade:'Home Repair', rating:4.4, reviews:61, dist:4.1, price:200, exp:'5 years exp', verified:true },
+  { id:'d7b', name:'FixIt Handyman', cat:'home_repair', trade:'Home Repair', rating:4.6, reviews:83, dist:2.4, price:180, exp:'6 years exp', verified:true },
+  // Long-tail (2 each)
+  { id:'d8', name:'Amit Chauhan', cat:'appliance', trade:'Appliance Repair', rating:4.5, reviews:73, dist:3.9, price:250, exp:'6 years exp', verified:true },
+  { id:'d8b', name:'HomeCare Appliances', cat:'appliance', trade:'Appliance Repair', rating:4.7, reviews:59, dist:2.7, price:299, exp:'7 years exp', verified:true },
+  { id:'d9', name:'HealthyHome Pest', cat:'pest_control', trade:'Pest Control', rating:4.6, reviews:52, dist:5.0, price:500, exp:'8 years exp', verified:true },
+  { id:'d9b', name:'SafeGuard Pest', cat:'pest_control', trade:'Pest Control', rating:4.4, reviews:34, dist:4.3, price:450, exp:'5 years exp', verified:true },
+  { id:'d10', name:'Glow Salon at Home', cat:'salon', trade:'Salon at Home', rating:4.8, reviews:110, dist:2.6, price:400, exp:'5 years exp', verified:true },
+  { id:'d10b', name:'Blush Beauty', cat:'salon', trade:'Salon at Home', rating:4.7, reviews:88, dist:3.3, price:450, exp:'4 years exp', verified:true },
+  { id:'d11', name:'SecureView CCTV', cat:'cctv', trade:'CCTV & Security', rating:4.4, reviews:39, dist:6.2, price:800, exp:'7 years exp', verified:true },
+  { id:'d12', name:'Nitin Prajapati', cat:'geyser', trade:'Geyser Repair', rating:4.5, reviews:47, dist:3.3, price:250, exp:'4 years exp', verified:true },
+  { id:'d13', name:'AquaCare RO', cat:'ro', trade:'RO / Water Purifier', rating:4.7, reviews:64, dist:2.9, price:350, exp:'5 years exp', verified:true },
+  { id:'d14', name:'GreenThumb Garden', cat:'gardening', trade:'Gardening', rating:4.6, reviews:33, dist:4.7, price:400, exp:'6 years exp', verified:true },
+  { id:'d15', name:'QuickShift Movers', cat:'movers', trade:'Packers & Movers', rating:4.5, reviews:81, dist:5.5, price:1500, exp:'9 years exp', verified:true },
 ];
 const DEMO_BOOKINGS = [
   { service:'AC Repair', provider:'Suresh Kumar', when:'12 Sep 2025 • 5:00 PM', addr:'Bopal, Ahmedabad', pill:'green', status:'Confirmed' },
@@ -224,12 +245,17 @@ async function renderHome() {
   applyProfileCity();
   const grid = $('catGrid'); if (grid) grid.innerHTML = POPULAR.map(catCell).join('') + catCell(MORE_TILE);
   const top = $('homeTop'); if (!top) return;
-  top.innerHTML = topCard(DEMO_PROVIDERS[0]);
+  // Show the top 3 providers (by rating) so the section never looks empty.
+  const demoTop = DEMO_PROVIDERS.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
+  top.innerHTML = demoTop.map(topCard).join('');
   if (hasSupabase) {
     try {
       const loc = await api.getCurrentLocation();
       const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
-      if (live && live.length) { const p = provFromRow(live[0]); providerCache[p.id] = p; top.innerHTML = topCard(p); }
+      if (live && live.length) {
+        const rows = live.slice(0, 3).map((r) => { const p = provFromRow(r); providerCache[p.id] = p; return p; });
+        top.innerHTML = rows.map(topCard).join('');
+      }
     } catch (e) {}
   }
 }
@@ -539,13 +565,11 @@ async function renderNotif() {
     </div>`).join('');
 }
 function renderAccount() {
-  if (myProfile) {
-    if ($('accName')) $('accName').textContent = myProfile.full_name || 'HelpZo User';
-    if ($('accPhone')) $('accPhone').textContent = myProfile.phone || (session?.user?.phone ? '+' + session.user.phone : '');
-    if ($('accAvatar')) $('accAvatar').textContent = initials(myProfile.full_name || 'U');
-  } else if (session?.user?.phone) {
-    if ($('accPhone')) $('accPhone').textContent = '+' + session.user.phone;
-  }
+  const name = (myProfile && myProfile.full_name) || 'Guest User';
+  const phone = (myProfile && myProfile.phone) || (session?.user?.phone ? '+' + session.user.phone : '');
+  if ($('accName')) $('accName').textContent = name;
+  if ($('accAvatar')) $('accAvatar').textContent = initials(name);   // keep avatar in sync with the name
+  if ($('accPhone')) $('accPhone').textContent = phone || '+91 —';
 }
 
 /* ---------- auth ---------- */
