@@ -74,7 +74,7 @@ jobs:
 
       - name: Generate app icon & splash (Helpzo)
         working-directory: ${{ matrix.app }}
-        run: npx --yes @capacitor/assets generate --android --iconBackgroundColor '#0B2554' --iconBackgroundColorDark '#0B2554' --splashBackgroundColor '#0B2554' --splashBackgroundColorDark '#0B2554'
+        run: npx --yes @capacitor/assets generate --android --splashBackgroundColor '#0B2554' --splashBackgroundColorDark '#0B2554'
 
       - name: Sync Capacitor
         working-directory: ${{ matrix.app }}
