@@ -293,6 +293,7 @@ function onEnter(id) {
   if (id === 'editprofile') renderEditProfile();
   if (id === 'lang') renderLangScreen();
   if (id === 'city') renderCityScreen();
+  if (id === 'booked') renderBooked();
   if (id === 'map') renderMapScreen();
 }
 
@@ -606,14 +607,50 @@ function renderBook() {
     <div><div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
     <div class="rating" style="font-size:12.5px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
     <div class="sec" style="font-size:12.5px">${esc(p.trade)} • ${inr(p.price)} onwards</div></div>`;
-  const dr = $('dateRow');
-  if (dr) {
-    const days = [];
-    for (let i = 0; i < 3; i++) { const d = new Date(); d.setDate(d.getDate() + i); days.push(d); }
-    const labels = ['Today', 'Tomorrow', days[2].toLocaleDateString('en-IN', { weekday: 'short' })];
-    const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    dr.innerHTML = days.map((d, i) => `<div class="datecard${i === 0 ? ' on' : ''}" data-date data-iso="${isoLocal(d)}"><div class="d1">${labels[i]}</div><div class="d2">${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}</div></div>`).join('');
+  // default date = today; default time already 10:00 (chip "Afternoon 3" is .on → keep input in sync)
+  const today = new Date();
+  bookDateIso = isoLocalDate(today);
+  calMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  renderCalendar();
+}
+/* ---------- booking calendar (any date) + time (24/7) ---------- */
+let calMonth = null;      // first day of the month being shown
+let bookDateIso = null;   // selected date (YYYY-MM-DD)
+function isoLocalDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function renderCalendar() {
+  const grid = $('calGrid'); if (!grid || !calMonth) return;
+  const title = $('calTitle'); if (title) title.textContent = calMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), d);
+    const iso = isoLocalDate(date);
+    const past = date < today;
+    const sel = iso === bookDateIso;
+    const style = `aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13.5px;` +
+      (past ? 'color:var(--tTertiary);opacity:.4;pointer-events:none;' :
+        sel ? 'background:var(--primary);color:#fff;font-weight:700;' : 'cursor:pointer;color:var(--tPrimary);');
+    cells += `<div data-day="${iso}" style="${style}">${d}</div>`;
   }
+  grid.innerHTML = cells;
+  // Disable "prev" when already at current month
+  const prev = $('calPrev');
+  if (prev) prev.style.visibility = (calMonth.getFullYear() === today.getFullYear() && calMonth.getMonth() === today.getMonth()) ? 'hidden' : 'visible';
+}
+function calShift(delta) {
+  if (!calMonth) return;
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + delta, 1);
+  renderCalendar();
+}
+// Human 12-hour label from a 24h "HH:MM" value.
+function timeLabel(hhmm) {
+  const [h, m] = (hhmm || '10:00').split(':').map(Number);
+  const ap = h < 12 ? 'AM' : 'PM'; const h12 = ((h + 11) % 12) + 1;
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
 }
 // Buckets a raw status into one of the three filter chips.
 function bookBucket(st) {
@@ -783,35 +820,42 @@ async function doVerify() {
 }
 
 /* ---------- booking ---------- */
+let lastBooking = null;   // for the success screen (Call Provider)
 async function confirmBooking() {
   // Service address is required — a provider can't come without one.
   const addr = ($('bookAddr')?.value || '').trim();
   if (!addr) { toast('Please enter your service address'); $('bookAddr')?.focus(); return; }
-  const dateCard = document.querySelector('#dateRow .datecard.on');
-  if (!dateCard) { toast('Please select a date'); return; }
-  if (!document.querySelector('#slotRow .slot.on')) { toast('Please select a time slot'); return; }
+  if (!bookDateIso) { toast('Please select a date'); return; }
+  const timeVal = $('bookTime')?.value || '';
+  if (!timeVal) { toast('Please select a time'); return; }
   const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
   try {
     const p = selectedProvider || DEMO_PROVIDERS[0];
-    const dayNum = dateCard?.querySelector('.d2')?.textContent || '';
-    const dayMon = dateCard?.querySelector('.d1')?.textContent || '';
-    const dateIso = dateCard?.getAttribute('data-iso') || '';
-    const time = document.querySelector('#slotRow .slot.on')?.textContent || '';
+    const time = timeLabel(timeVal);
+    const dateNice = new Date(bookDateIso + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     if (!isDemo) {
-      await api.createBooking(p.id, { service: p.trade, date: dateIso || null, time, address: addr, note: $('bookNote')?.value || '' });
+      await api.createBooking(p.id, { service: p.trade, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '' });
     }
-    // Show the new booking immediately at the top of My Bookings.
     localBookings.unshift({
-      service: selectedSub || p.trade || 'Service',
-      provider: p.name || 'Provider',
-      when: `${dayMon} ${dayNum}`.trim() + (time ? ' • ' + time : ''),
-      addr, status: 'Pending', _demo: isDemo,
+      service: selectedSub || p.trade || 'Service', provider: p.name || 'Provider',
+      when: `${dateNice} • ${time}`, addr, status: 'Pending', _demo: isDemo,
     });
-    toast('Booking confirmed!');
-    setTimeout(() => show('bookings'), 500);
+    lastBooking = { name: p.name || 'Provider', trade: p.trade || 'Service', phone: p.phone || '+91 90000 00000', when: `${dateNice} • ${time}`, addr, verified: p.verified };
+    show('booked');
   } catch (e) { toast(e.message || 'Could not book'); }
   finally { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
+}
+function renderBooked() {
+  const b = lastBooking; if (!b) return;
+  if ($('bookedInfo')) $('bookedInfo').textContent = `${b.trade} • ${b.when}`;
+  if ($('bookedProv')) $('bookedProv').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="avatar" style="width:46px;height:46px">${initials(b.name)}</div>
+      <div style="flex:1"><div><span class="h3">${esc(b.name)}</span> ${b.verified === true ? '<span class="verif">✔</span>' : ''}</div>
+        <div class="sec" style="font-size:12.5px">📍 ${esc(b.addr)}</div></div>
+    </div>`;
+  const cb = $('bookedCallBtn'); if (cb) cb.setAttribute('data-call', b.phone);
 }
 
 /* ---------- open a provider ---------- */
@@ -840,8 +884,14 @@ document.addEventListener('click', (e) => {
     show('list'); return;
   }
   const open = e.target.closest('[data-open]'); if (open) { openProvider(open.getAttribute('data-open')); return; }
-  const dc = e.target.closest('[data-date]'); if (dc) { document.querySelectorAll('#dateRow .datecard').forEach((x) => x.classList.remove('on')); dc.classList.add('on'); return; }
-  const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
+  const day = e.target.closest('[data-day]'); if (day) { bookDateIso = day.getAttribute('data-day'); renderCalendar(); return; }
+  if (e.target.closest('#calPrev')) { calShift(-1); return; }
+  if (e.target.closest('#calNext')) { calShift(1); return; }
+  const sl = e.target.closest('#slotRow .slot'); if (sl) {
+    document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on');
+    const t = sl.getAttribute('data-time'); if (t && $('bookTime')) $('bookTime').value = t; return;
+  }
+  const callEl = e.target.closest('[data-call]'); if (callEl) { const ph = callEl.getAttribute('data-call'); if (ph) window.location.href = telHref(ph); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }

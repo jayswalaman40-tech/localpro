@@ -262,12 +262,25 @@
     <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1">Book Service</p></div>
     <div class="scroll" style="padding-bottom:96px"><div class="pad">
       <div class="card" id="bookProvider" style="display:flex;gap:12px;align-items:center"></div>
-      <p class="h2" style="margin:20px 0 12px">Select Date &amp; Time</p>
-      <div style="display:flex;gap:10px" id="dateRow"></div>
-      <div class="slots" style="margin-top:14px" id="slotRow">
-        <div class="slot">9:00 AM</div><div class="slot">11:00 AM</div><div class="slot on">2:00 PM</div>
-        <div class="slot">5:00 PM</div><div class="slot">7:00 PM</div>
+      <p class="h2" style="margin:20px 0 10px">Select Date</p>
+      <div class="card" id="calWrap" style="padding:12px 12px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="ic-btn" id="calPrev" style="width:34px;height:34px">&#8249;</div>
+          <b id="calTitle">—</b>
+          <div class="ic-btn" id="calNext" style="width:34px;height:34px">&#8250;</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;color:var(--tSecondary);font-weight:600;margin-bottom:4px">
+          <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+        </div>
+        <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center"></div>
       </div>
+      <p class="h2" style="margin:20px 0 10px">Select Time</p>
+      <div class="field" style="align-items:center"><span>&#128336;</span><input type="time" id="bookTime" value="10:00" style="border:0;outline:0;background:transparent;font:inherit;color:var(--tPrimary);width:100%;padding:13px 0;font-size:15px"></div>
+      <div class="slots" style="margin-top:10px" id="slotRow">
+        <div class="slot" data-time="09:00">Morning 9</div><div class="slot" data-time="12:00">Noon 12</div>
+        <div class="slot on" data-time="15:00">Afternoon 3</div><div class="slot" data-time="18:00">Evening 6</div><div class="slot" data-time="21:00">Night 9</div>
+      </div>
+      <div class="sec" style="font-size:12px;margin-top:8px">&#9201;&#65039; Book any date &amp; time — HelpZo providers are available <b>24/7</b>.</div>
       <p class="h2" style="margin:22px 0 10px">Service Address</p>
       <div class="field"><span>&#128205;</span><input id="bookAddr" placeholder="Enter your service address"></div>
       <p class="h2" style="margin:22px 0 10px">Additional Note (Optional)</p>
@@ -339,6 +352,19 @@
       <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
     </div></div>
     <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- booking success -->
+  <div class="screen" id="s-booked">
+    <div class="scroll"><div class="pad" style="text-align:center;padding-top:calc(48px + env(safe-area-inset-top,0))">
+      <div style="width:92px;height:92px;border-radius:50%;background:#E4F7EA;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:46px">&#9989;</div>
+      <p class="h1" style="margin-top:16px">Booking Confirmed!</p>
+      <p class="sec" id="bookedInfo" style="margin-top:6px"></p>
+      <div class="card" style="text-align:left;margin-top:20px" id="bookedProv"></div>
+      <button class="btn btn-green" id="bookedCallBtn" style="margin-top:20px">&#128222; Call Provider Now</button>
+      <button class="btn btn-out" data-go="bookings" style="margin-top:10px">View My Bookings</button>
+      <div class="link" data-go="home" style="margin-top:16px;display:inline-block">Back to Home</div>
+    </div></div>
   </div>
 
   <!-- city / area picker -->
