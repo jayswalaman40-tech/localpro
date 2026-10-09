@@ -292,6 +292,7 @@ function onEnter(id) {
   if (id === 'account') renderAccount();
   if (id === 'editprofile') renderEditProfile();
   if (id === 'lang') renderLangScreen();
+  if (id === 'city') renderCityScreen();
   if (id === 'map') renderMapScreen();
 }
 
@@ -511,6 +512,32 @@ async function renderProfile() {
   }
 }
 function setCity(name) { if (name) document.querySelectorAll('.cityName').forEach((e) => { e.textContent = name; }); }
+
+/* ---------- city / area picker (only Ahmedabad live; rest "Coming soon") ---------- */
+const LIVE_CITIES = ['Ahmedabad'];
+const GUJ_CITIES = ['Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Junagadh', 'Anand', 'Nadiad', 'Mehsana', 'Bharuch', 'Navsari', 'Morbi', 'Surendranagar', 'Gandhidham', 'Vapi', 'Valsad', 'Porbandar', 'Botad', 'Palanpur', 'Patan', 'Dahod', 'Godhra', 'Veraval', 'Amreli', 'Bhuj', 'Himatnagar', 'Modasa', 'Deesa', 'Jetpur', 'Gondal', 'Dhoraji', 'Kalol', 'Bardoli', 'Ankleshwar', 'Vallabh Vidyanagar', 'Mandvi', 'Kadi', 'Visnagar', 'Unjha', 'Sidhpur', 'Mahuva', 'Wadhwan', 'Dholka', 'Bavla', 'Sanand', 'Kheda', 'Petlad', 'Khambhat', 'Chhota Udaipur', 'Rajpipla', 'Dhrangadhra', 'Jafrabad', 'Keshod', 'Una', 'Talaja', 'Savarkundla', 'Vyara', 'Halol', 'Lunawada', 'Santrampur'];
+function cityRow(name, live) {
+  return live
+    ? `<div class="mrow" data-city="${esc(name)}"><span class="mi">&#128205;</span><span class="ml">${esc(name)}</span><span class="pill green" style="font-size:11px">Available</span></div>`
+    : `<div class="mrow" data-city="${esc(name)}" style="opacity:.7"><span class="mi">&#128205;</span><span class="ml">${esc(name)}</span><span class="pill grey" style="font-size:11px">Coming soon</span></div>`;
+}
+function renderCityScreen() {
+  const q = ($('citySearch')?.value || '').trim().toLowerCase();
+  const live = LIVE_CITIES.filter((c) => c.toLowerCase().includes(q));
+  const soon = GUJ_CITIES.filter((c) => c.toLowerCase().includes(q));
+  if ($('cityLive')) $('cityLive').innerHTML = live.length ? live.map((c) => cityRow(c, true)).join('<div class="divide"></div>') : `<div class="empty" style="font-size:13px">No match</div>`;
+  if ($('citySoon')) $('citySoon').innerHTML = soon.length ? soon.map((c) => cityRow(c, false)).join('<div class="divide"></div>') : `<div class="empty" style="font-size:13px">No match</div>`;
+}
+function pickCity(name) {
+  if (LIVE_CITIES.includes(name)) {
+    setCity(name);
+    if (myProfile) myProfile.city = name; else myProfile = { city: name };
+    if (hasSupabase && session) { try { api.updateMyProfile({ home_area: name }); } catch (e) {} }
+    toast(name + ' selected'); back();
+  } else {
+    toast(name + ' — Coming soon! We\'re launching here shortly.');
+  }
+}
 // City from the signed-in profile (tap the location to change it).
 function applyProfileCity() {
   const c = myProfile && (myProfile.city || myProfile.area || myProfile.location);
@@ -775,6 +802,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }
   const gch = e.target.closest('#epGender [data-gender]'); if (gch) { document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.remove('on')); gch.classList.add('on'); return; }
   const lng = e.target.closest('[data-lang]'); if (lng) { setLang(lng.getAttribute('data-lang')); return; }
+  const cty = e.target.closest('[data-city]'); if (cty) { pickCity(cty.getAttribute('data-city')); return; }
   if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
   const mc = e.target.closest('[data-mapcat]'); if (mc) { mapCat = mc.getAttribute('data-mapcat') || null; renderMapScreen(); return; }
   const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
@@ -987,6 +1015,7 @@ async function boot() {
   $('logoutBtn')?.addEventListener('click', logout);
   $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
   $('homeSearchGo')?.addEventListener('click', doSearch);
+  $('citySearch')?.addEventListener('input', renderCityScreen);
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).

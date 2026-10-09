@@ -175,7 +175,7 @@
     <div class="hdr">
       <div>
         <div class="wm" style="font-size:22px"><span class="h">Help</span><span class="z">Zo</span></div>
-        <div class="meta" style="margin-top:1px;cursor:pointer" data-setcity><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)" class="cityName">Ahmedabad</b> &#9662;</div>
+        <div class="meta" style="margin-top:1px;cursor:pointer" data-go="city"><span style="color:var(--success)">&#128205;</span> <b style="color:var(--tPrimary)" class="cityName">Ahmedabad</b> &#9662;</div>
       </div>
       <div class="spacer"></div>
       <div class="ic-btn" data-go="map" style="margin-right:8px">&#128506;&#65039;</div>
@@ -234,7 +234,7 @@
   <div class="screen" id="s-list">
     <div class="hdr">
       <div class="ic-btn" data-back>&#8249;</div>
-      <div><p class="h1" id="listTitle">Providers</p><div class="meta">&#128205; <span class="cityName">Ahmedabad</span> &#9662;</div></div>
+      <div><p class="h1" id="listTitle">Providers</p><div class="meta" style="cursor:pointer" data-go="city">&#128205; <span class="cityName">Ahmedabad</span> &#9662;</div></div>
     </div>
     <div class="pad" style="padding-bottom:8px"><div class="chips">
       <div class="chip on" data-sort="all">All</div><div class="chip" data-sort="rating">Top Rated</div><div class="chip" data-sort="dist">Nearest</div><div class="chip" data-sort="price">Price Low</div>
@@ -339,6 +339,18 @@
       <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
     </div></div>
     <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- city / area picker -->
+  <div class="screen" id="s-city">
+    <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1">Select City</p></div>
+    <div class="scroll"><div class="pad">
+      <div class="field" style="margin-top:4px"><span>&#128269;</span><input id="citySearch" placeholder="Search city…"></div>
+      <div class="sec" style="margin:14px 0 6px 2px;font-weight:600">Available now</div>
+      <div class="card" style="padding:4px 16px" id="cityLive"></div>
+      <div class="sec" style="margin:18px 0 6px 2px;font-weight:600">More cities (Gujarat)</div>
+      <div class="card" style="padding:4px 16px" id="citySoon"></div>
+    </div></div>
   </div>
 
   <!-- language -->
