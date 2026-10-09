@@ -604,15 +604,19 @@ async function doVerify() {
 
 /* ---------- booking ---------- */
 async function confirmBooking() {
+  // Service address is required — a provider can't come without one.
+  const addr = ($('bookAddr')?.value || '').trim();
+  if (!addr) { toast('Please enter your service address'); $('bookAddr')?.focus(); return; }
+  const dateCard = document.querySelector('#dateRow .datecard.on');
+  if (!dateCard) { toast('Please select a date'); return; }
+  if (!document.querySelector('#slotRow .slot.on')) { toast('Please select a time slot'); return; }
   const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
   try {
     const p = selectedProvider || DEMO_PROVIDERS[0];
-    const dateCard = document.querySelector('#dateRow .datecard.on');
     const dayNum = dateCard?.querySelector('.d2')?.textContent || '';
     const dayMon = dateCard?.querySelector('.d1')?.textContent || '';
     const dateIso = dateCard?.getAttribute('data-iso') || '';
     const time = document.querySelector('#slotRow .slot.on')?.textContent || '';
-    const addr = $('bookAddr')?.value || '';
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     if (!isDemo) {
       await api.createBooking(p.id, { service: p.trade, date: dateIso || null, time, address: addr, note: $('bookNote')?.value || '' });
