@@ -161,6 +161,7 @@ function show(id, push = true) {
   const sc = el.querySelector('.scroll'); if (sc) sc.scrollTop = 0;
   if (push && stack[stack.length - 1] !== id) stack.push(id);
   onEnter(id);
+  applyLang(curLang, el);   // translate this screen (incl. freshly-rendered content)
 }
 function back() { if (stack.length > 1) { stack.pop(); show(stack[stack.length - 1], false); } else show('home', false); }
 window.show = show;
@@ -172,6 +173,99 @@ window.back = back;
     App.addListener('backButton', () => { if (stack.length > 1) back(); else App.exitApp(); });
   } catch (e) { /* web preview — no native back button */ }
 })();
+
+/* ---------- i18n (English / हिन्दी / ગુજરાતી) ---------- */
+let curLang = 'en';
+const LANGS = { en: 'English', hi: 'हिन्दी', gu: 'ગુજરાતી' };
+const I18N = {
+  hi: {
+    'Home': 'होम', 'Bookings': 'बुकिंग', 'Profile': 'प्रोफ़ाइल', 'Account': 'खाता',
+    'Popular Services': 'लोकप्रिय सेवाएँ', 'See All': 'सभी देखें', 'See all': 'सभी देखें',
+    'Top Providers Near You': 'आपके पास टॉप प्रोवाइडर', 'Nearby Providers': 'आस-पास के प्रोवाइडर',
+    'Verified professionals near you': 'आपके पास सत्यापित पेशेवर', 'Near your location': 'आपके स्थान के पास',
+    'Login to Your Account': 'अपने खाते में लॉगिन करें', 'Get OTP': 'OTP पाएं',
+    'Verify & Continue': 'सत्यापित करें और जारी रखें', 'Verify OTP': 'OTP सत्यापित करें',
+    'Enter Mobile Number': 'मोबाइल नंबर दर्ज करें', 'Change': 'बदलें', 'Resend OTP': 'OTP फिर भेजें',
+    'Book Service': 'सेवा बुक करें', 'Book Now': 'अभी बुक करें', 'Confirm Booking': 'बुकिंग पक्की करें',
+    'Select Date & Time': 'तारीख़ और समय चुनें', 'Service Address': 'सेवा का पता',
+    'Enter your service address': 'अपनी सेवा का पता दर्ज करें', 'Additional Note (Optional)': 'अतिरिक्त नोट (वैकल्पिक)',
+    'Today': 'आज', 'Tomorrow': 'कल', 'My Bookings': 'मेरी बुकिंग',
+    'Upcoming': 'आगामी', 'Completed': 'पूर्ण', 'Cancelled': 'रद्द',
+    'Edit Profile': 'प्रोफ़ाइल संपादित करें', 'Personal Details': 'व्यक्तिगत विवरण',
+    'Full Name': 'पूरा नाम', 'Mobile Number': 'मोबाइल नंबर', 'Email Address': 'ईमेल पता',
+    'Gender': 'लिंग', 'Male': 'पुरुष', 'Female': 'महिला', 'Other': 'अन्य',
+    'Address': 'पता', 'Full Address': 'पूरा पता', 'Save Profile': 'प्रोफ़ाइल सहेजें',
+    'Complete Profile': 'प्रोफ़ाइल पूरा करें', 'Logout': 'लॉग आउट', 'Guest User': 'अतिथि उपयोगकर्ता',
+    'Support': 'सहायता', 'Legal': 'कानूनी', 'Help & Support': 'मदद और सहायता',
+    'Terms & Conditions': 'नियम और शर्तें', 'Privacy Policy': 'गोपनीयता नीति',
+    'Refund & Cancellation': 'रिफंड और रद्दीकरण', 'About HelpZo': 'HelpZo के बारे में',
+    'Trust, Safety & Verification': 'विश्वास, सुरक्षा और सत्यापन', 'Notifications': 'सूचनाएं',
+    'Approve & Pay': 'स्वीकृत करें और भुगतान करें', 'Dispute': 'विवाद', 'Total': 'कुल', 'Done': 'पूर्ण',
+    'Reviews': 'समीक्षाएं', 'Language': 'भाषा', 'Choose your language': 'अपनी भाषा चुनें',
+    'Need a Service?': 'सेवा चाहिए?', "We're here to help!": 'हम मदद के लिए हैं!', 'View Profile': 'प्रोफ़ाइल देखें',
+    'Plumber': 'प्लंबर', 'Electrician': 'इलेक्ट्रीशियन', 'AC Repair': 'AC रिपेयर', 'Carpenter': 'बढ़ई',
+    'Painter': 'पेंटर', 'Cleaning': 'सफ़ाई', 'Home Repair': 'घर मरम्मत', 'More': 'और',
+    'Call': 'कॉल करें', 'Message': 'संदेश', 'Reschedule': 'पुनर्निर्धारित करें', 'View Details': 'विवरण देखें',
+  },
+  gu: {
+    'Home': 'હોમ', 'Bookings': 'બુકિંગ', 'Profile': 'પ્રોફાઇલ', 'Account': 'એકાઉન્ટ',
+    'Popular Services': 'લોકપ્રિય સેવાઓ', 'See All': 'બધું જુઓ', 'See all': 'બધું જુઓ',
+    'Top Providers Near You': 'તમારી નજીક ટોપ પ્રોવાઇડર', 'Nearby Providers': 'નજીકના પ્રોવાઇડર',
+    'Verified professionals near you': 'તમારી નજીક ચકાસાયેલ વ્યાવસાયિકો', 'Near your location': 'તમારા સ્થાન પાસે',
+    'Login to Your Account': 'તમારા એકાઉન્ટમાં લૉગિન કરો', 'Get OTP': 'OTP મેળવો',
+    'Verify & Continue': 'ચકાસો અને આગળ વધો', 'Verify OTP': 'OTP ચકાસો',
+    'Enter Mobile Number': 'મોબાઇલ નંબર દાખલ કરો', 'Change': 'બદલો', 'Resend OTP': 'OTP ફરી મોકલો',
+    'Book Service': 'સેવા બુક કરો', 'Book Now': 'હમણાં બુક કરો', 'Confirm Booking': 'બુકિંગ કન્ફર્મ કરો',
+    'Select Date & Time': 'તારીખ અને સમય પસંદ કરો', 'Service Address': 'સેવાનું સરનામું',
+    'Enter your service address': 'તમારી સેવાનું સરનામું દાખલ કરો', 'Additional Note (Optional)': 'વધારાની નોંધ (વૈકલ્પિક)',
+    'Today': 'આજે', 'Tomorrow': 'આવતીકાલે', 'My Bookings': 'મારી બુકિંગ',
+    'Upcoming': 'આગામી', 'Completed': 'પૂર્ણ', 'Cancelled': 'રદ',
+    'Edit Profile': 'પ્રોફાઇલ સંપાદિત કરો', 'Personal Details': 'વ્યક્તિગત વિગતો',
+    'Full Name': 'પૂરું નામ', 'Mobile Number': 'મોબાઇલ નંબર', 'Email Address': 'ઇમેઇલ સરનામું',
+    'Gender': 'લિંગ', 'Male': 'પુરુષ', 'Female': 'સ્ત્રી', 'Other': 'અન્ય',
+    'Address': 'સરનામું', 'Full Address': 'પૂરું સરનામું', 'Save Profile': 'પ્રોફાઇલ સાચવો',
+    'Complete Profile': 'પ્રોફાઇલ પૂર્ણ કરો', 'Logout': 'લૉગ આઉટ', 'Guest User': 'અતિથિ વપરાશકર્તા',
+    'Support': 'સપોર્ટ', 'Legal': 'કાનૂની', 'Help & Support': 'મદદ અને સપોર્ટ',
+    'Terms & Conditions': 'નિયમો અને શરતો', 'Privacy Policy': 'ગોપનીયતા નીતિ',
+    'Refund & Cancellation': 'રિફંડ અને રદ્દીકરણ', 'About HelpZo': 'HelpZo વિશે',
+    'Trust, Safety & Verification': 'વિશ્વાસ, સલામતી અને ચકાસણી', 'Notifications': 'સૂચનાઓ',
+    'Approve & Pay': 'મંજૂર કરો અને ચૂકવો', 'Dispute': 'વિવાદ', 'Total': 'કુલ', 'Done': 'થઈ ગયું',
+    'Reviews': 'સમીક્ષાઓ', 'Language': 'ભાષા', 'Choose your language': 'તમારી ભાષા પસંદ કરો',
+    'Need a Service?': 'સેવા જોઈએ છે?', "We're here to help!": 'અમે મદદ માટે છીએ!', 'View Profile': 'પ્રોફાઇલ જુઓ',
+    'Plumber': 'પ્લમ્બર', 'Electrician': 'ઇલેક્ટ્રિશિયન', 'AC Repair': 'AC રિપેર', 'Carpenter': 'સુથાર',
+    'Painter': 'પેઇન્ટર', 'Cleaning': 'સફાઈ', 'Home Repair': 'ઘર સમારકામ', 'More': 'વધુ',
+    'Call': 'કૉલ કરો', 'Message': 'સંદેશ', 'Reschedule': 'ફરી શેડ્યૂલ કરો', 'View Details': 'વિગતો જુઓ',
+  },
+};
+const _origText = new WeakMap();
+function applyLang(code, root) {
+  const scope = root || document.body;
+  // revert cached originals (back to English) within scope
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => { if (_origText.has(n)) { n.nodeValue = _origText.get(n); } });
+  if (code && code !== 'en') {
+    const dict = I18N[code] || {};
+    nodes.forEach((n) => {
+      const key = (n.nodeValue || '').trim();
+      if (!key || !dict[key]) return;
+      if (!_origText.has(n)) _origText.set(n, n.nodeValue);
+      n.nodeValue = n.nodeValue.replace(key, dict[key]);
+    });
+  }
+}
+function setLang(code) {
+  curLang = code;
+  try { localStorage.setItem('helpzo_lang', code); } catch (e) {}
+  if (hasSupabase && session) { try { api.updateMyProfile({ preferred_lang: code }); } catch (e) {} }
+  applyLang(code, document.body);
+  renderLangScreen();
+}
+function renderLangScreen() {
+  const el = $('langList'); if (!el) return;
+  el.innerHTML = Object.entries(LANGS).map(([code, name]) =>
+    `<div class="mrow" data-lang="${code}"><span class="ml">${name}</span><span class="mc">${code === curLang ? '✓' : '›'}</span></div>`).join('<div class="divide"></div>');
+}
 
 /* ---------- tab bar ---------- */
 const TABS = [
@@ -197,6 +291,7 @@ function onEnter(id) {
   if (id === 'notifications') renderNotif();
   if (id === 'account') renderAccount();
   if (id === 'editprofile') renderEditProfile();
+  if (id === 'lang') renderLangScreen();
   if (id === 'map') renderMapScreen();
 }
 
@@ -583,6 +678,7 @@ function renderAccount() {
   const pct = profileCompletion();
   if ($('completePct')) $('completePct').textContent = pct + '%';
   if ($('completeBar')) $('completeBar').style.width = pct + '%';
+  if ($('langCurrent')) $('langCurrent').textContent = LANGS[curLang] + ' ›';
 }
 
 /* ---------- auth ---------- */
@@ -678,6 +774,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }
   const gch = e.target.closest('#epGender [data-gender]'); if (gch) { document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.remove('on')); gch.classList.add('on'); return; }
+  const lng = e.target.closest('[data-lang]'); if (lng) { setLang(lng.getAttribute('data-lang')); return; }
   if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
   const mc = e.target.closest('[data-mapcat]'); if (mc) { mapCat = mc.getAttribute('data-mapcat') || null; renderMapScreen(); return; }
   const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
@@ -879,6 +976,7 @@ async function logout() {
 async function boot() {
   buildTabBars();
   loadLocalProfile();   // restore any locally-saved profile fields
+  try { const l = localStorage.getItem('helpzo_lang'); if (l && LANGS[l]) curLang = l; } catch (e) {}
   wireOtpInputs();
   $('getOtpBtn')?.addEventListener('click', doGetOtp);
   $('verifyOtpBtn')?.addEventListener('click', doVerify);
