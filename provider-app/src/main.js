@@ -158,6 +158,7 @@ function show(id, push = true) {
   const sc = el.querySelector('.scroll'); if (sc) sc.scrollTop = 0;
   if (push && stack[stack.length - 1] !== id) stack.push(id);
   onEnter(id);
+  applyLang(curLang, el);   // translate this screen (incl. freshly-rendered content)
 }
 function back() {
   if (stack.length > 1) { stack.pop(); show(stack[stack.length - 1], false); }
@@ -172,6 +173,83 @@ window.back = back;
     App.addListener('backButton', () => { if (stack.length > 1) back(); else App.exitApp(); });
   } catch (e) { /* web preview — no native back button */ }
 })();
+
+/* ---------- i18n (English / हिन्दी / ગુજરાતી) ---------- */
+let curLang = 'en';
+const LANGS = { en: 'English', hi: 'हिन्दी', gu: 'ગુજરાતી' };
+const I18N = {
+  hi: {
+    'Jobs': 'काम', 'Leads': 'लीड', 'Schedule': 'शेड्यूल', 'Earnings': 'कमाई', 'Profile': 'प्रोफ़ाइल',
+    'My Jobs': 'मेरे काम', 'New Requests (Leads)': 'नई रिक्वेस्ट (लीड)', 'My Schedule': 'मेरा शेड्यूल',
+    'Active': 'सक्रिय', 'Completed': 'पूर्ण', 'Cancelled': 'रद्द', 'All': 'सभी', 'Pending': 'लंबित', 'Accepted': 'स्वीकृत',
+    'Accept': 'स्वीकारें', 'Reject': 'अस्वीकारें', 'Get Directions': 'दिशा पाएं', 'Directions': 'दिशा',
+    'Update Status': 'स्थिति अपडेट करें', 'View Details': 'विवरण देखें', 'Mark Complete': 'पूर्ण करें',
+    'Start Job': 'काम शुरू करें', 'Reschedule': 'पुनर्निर्धारित करें', 'Call': 'कॉल करें',
+    'En Route to Job': 'काम की ओर', 'Job In Progress': 'काम जारी है', 'Job Completed': 'काम पूर्ण',
+    'Job Details': 'काम का विवरण', 'Accept Job': 'काम स्वीकारें', 'Arrived': 'पहुंच गए', 'Report': 'रिपोर्ट',
+    'Work Update': 'काम अपडेट', 'Add Photos': 'फोटो जोड़ें', 'Add Notes': 'नोट्स जोड़ें',
+    'Bill — Charges': 'बिल — शुल्क', 'Add': 'जोड़ें', 'Total': 'कुल', 'Customer Signature': 'ग्राहक हस्ताक्षर',
+    'Send Bill & Complete': 'बिल भेजें और पूर्ण करें', 'Issue': 'समस्या', 'Next Job': 'अगला काम', 'Home': 'होम',
+    'Earnings': 'कमाई', 'Total Earnings': 'कुल कमाई', 'Available Balance': 'उपलब्ध शेष', 'Withdraw': 'निकालें',
+    'Jobs Done': 'पूर्ण काम', 'Rating': 'रेटिंग', 'Recent Transactions': 'हाल के लेनदेन', 'View All': 'सभी देखें',
+    'My Profile': 'मेरी प्रोफ़ाइल', 'Online': 'ऑनलाइन', 'Personal Information': 'व्यक्तिगत जानकारी',
+    'Service Categories': 'सेवा श्रेणियां', 'My Documents': 'मेरे दस्तावेज़', 'Reviews & Ratings': 'समीक्षा और रेटिंग',
+    'Help & Support': 'मदद और सहायता', 'Privacy & Settings': 'गोपनीयता और सेटिंग्स', 'Settings': 'सेटिंग्स',
+    'Account Settings': 'खाता सेटिंग्स', 'Edit Profile': 'प्रोफ़ाइल संपादित करें', 'App Preferences': 'ऐप प्राथमिकताएं',
+    'Notifications': 'सूचनाएं', 'Language': 'भाषा', 'Dark Mode': 'डार्क मोड', 'Legal': 'कानूनी', 'Logout': 'लॉग आउट',
+    'Save Changes': 'बदलाव सहेजें', 'Next': 'अगला', 'Choose your language': 'अपनी भाषा चुनें',
+  },
+  gu: {
+    'Jobs': 'કામ', 'Leads': 'લીડ', 'Schedule': 'શેડ્યૂલ', 'Earnings': 'કમાણી', 'Profile': 'પ્રોફાઇલ',
+    'My Jobs': 'મારા કામ', 'New Requests (Leads)': 'નવી વિનંતીઓ (લીડ)', 'My Schedule': 'મારું શેડ્યૂલ',
+    'Active': 'સક્રિય', 'Completed': 'પૂર્ણ', 'Cancelled': 'રદ', 'All': 'બધા', 'Pending': 'બાકી', 'Accepted': 'સ્વીકૃત',
+    'Accept': 'સ્વીકારો', 'Reject': 'નકારો', 'Get Directions': 'દિશા મેળવો', 'Directions': 'દિશા',
+    'Update Status': 'સ્થિતિ અપડેટ કરો', 'View Details': 'વિગતો જુઓ', 'Mark Complete': 'પૂર્ણ કરો',
+    'Start Job': 'કામ શરૂ કરો', 'Reschedule': 'ફરી શેડ્યૂલ કરો', 'Call': 'કૉલ કરો',
+    'En Route to Job': 'કામ તરફ', 'Job In Progress': 'કામ ચાલુ છે', 'Job Completed': 'કામ પૂર્ણ',
+    'Job Details': 'કામની વિગતો', 'Accept Job': 'કામ સ્વીકારો', 'Arrived': 'પહોંચી ગયા', 'Report': 'રિપોર્ટ',
+    'Work Update': 'કામ અપડેટ', 'Add Photos': 'ફોટા ઉમેરો', 'Add Notes': 'નોંધ ઉમેરો',
+    'Bill — Charges': 'બિલ — શુલ્ક', 'Add': 'ઉમેરો', 'Total': 'કુલ', 'Customer Signature': 'ગ્રાહક સહી',
+    'Send Bill & Complete': 'બિલ મોકલો અને પૂર્ણ કરો', 'Issue': 'સમસ્યા', 'Next Job': 'આગળનું કામ', 'Home': 'હોમ',
+    'Earnings': 'કમાણી', 'Total Earnings': 'કુલ કમાણી', 'Available Balance': 'ઉપલબ્ધ બેલેન્સ', 'Withdraw': 'ઉપાડો',
+    'Jobs Done': 'પૂર્ણ કામ', 'Rating': 'રેટિંગ', 'Recent Transactions': 'તાજેતરના વ્યવહારો', 'View All': 'બધું જુઓ',
+    'My Profile': 'મારી પ્રોફાઇલ', 'Online': 'ઓનલાઇન', 'Personal Information': 'વ્યક્તિગત માહિતી',
+    'Service Categories': 'સેવા શ્રેણીઓ', 'My Documents': 'મારા દસ્તાવેજો', 'Reviews & Ratings': 'સમીક્ષા અને રેટિંગ',
+    'Help & Support': 'મદદ અને સપોર્ટ', 'Privacy & Settings': 'ગોપનીયતા અને સેટિંગ્સ', 'Settings': 'સેટિંગ્સ',
+    'Account Settings': 'એકાઉન્ટ સેટિંગ્સ', 'Edit Profile': 'પ્રોફાઇલ સંપાદિત કરો', 'App Preferences': 'એપ પસંદગીઓ',
+    'Notifications': 'સૂચનાઓ', 'Language': 'ભાષા', 'Dark Mode': 'ડાર્ક મોડ', 'Legal': 'કાનૂની', 'Logout': 'લૉગ આઉટ',
+    'Save Changes': 'ફેરફારો સાચવો', 'Next': 'આગળ', 'Choose your language': 'તમારી ભાષા પસંદ કરો',
+  },
+};
+const _origText = new WeakMap();
+function applyLang(code, root) {
+  const scope = root || document.body;
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => { if (_origText.has(n)) n.nodeValue = _origText.get(n); });
+  if (code && code !== 'en') {
+    const dict = I18N[code] || {};
+    nodes.forEach((n) => {
+      const key = (n.nodeValue || '').trim();
+      if (!key || !dict[key]) return;
+      if (!_origText.has(n)) _origText.set(n, n.nodeValue);
+      n.nodeValue = n.nodeValue.replace(key, dict[key]);
+    });
+  }
+}
+function setLang(code) {
+  curLang = code;
+  try { localStorage.setItem('helpzo_lang', code); } catch (e) {}
+  if (hasSupabase && session && typeof api.updateMyProfile === 'function') { try { api.updateMyProfile({ preferred_lang: code }); } catch (e) {} }
+  applyLang(code, document.body);
+  const lc = $('langCurrent'); if (lc) lc.textContent = LANGS[code] + ' ›';
+  renderLangScreen();
+}
+function renderLangScreen() {
+  const el = $('langList'); if (!el) return;
+  el.innerHTML = Object.entries(LANGS).map(([code, name]) =>
+    `<div class="mrow" data-lang="${code}"><div class="mt"><div class="a">${name}</div></div><span class="mc">${code === curLang ? '✓' : '›'}</span></div>`).join('<div class="divide"></div>');
+}
 
 /* ---------- bottom tab bar ---------- */
 const TABS = [
@@ -201,6 +279,7 @@ function onEnter(id) {
   if (id === 'notif') renderNotif();
   if (id === 'schedule') renderSchedule();
   if (id === 'profile') renderProfile();
+  if (id === 'lang') renderLangScreen();
   if (id === 'reg2') applyReg2Mode();
   if (id === 'certificate') renderCertificate();
   if (id === 'skills') renderSkillGrid();
@@ -1225,6 +1304,8 @@ document.addEventListener('click', (e) => {
   }
   const bk = e.target.closest('[data-back]');
   if (bk) { back(); return; }
+  const lng = e.target.closest('[data-lang]');
+  if (lng) { setLang(lng.getAttribute('data-lang')); return; }
   const doc = e.target.closest('[data-doc]');
   if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
   const tab = e.target.closest('[data-tab]');
@@ -1354,6 +1435,7 @@ function wireOtpInputs() {
 /* ---------- boot ---------- */
 async function boot() {
   buildTabBars();
+  try { const l = localStorage.getItem('helpzo_lang'); if (l && LANGS[l]) curLang = l; } catch (e) {}
   wireOtpInputs();
   // datalist: Ahmedabad service areas (dedupe)
   const dl = $('ahmAreas');

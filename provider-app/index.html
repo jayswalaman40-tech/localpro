@@ -726,7 +726,7 @@
       <div class="h2" style="margin:18px 0 10px">App Preferences</div>
       <div class="card" style="padding:4px 16px">
         <div class="mrow"><div class="mi">&#128276;</div><div class="mt"><div class="a">Notifications</div><div class="b">Manage preferences</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><div class="mi">&#127760;</div><div class="mt"><div class="a">Language</div><div class="b">Choose language</div></div><span class="sec">English &#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-go="lang"><div class="mi">&#127760;</div><div class="mt"><div class="a">Language</div><div class="b">Choose language</div></div><span class="sec" id="langCurrent">English &#8250;</span></div><div class="divide"></div>
         <div class="mrow"><div class="mi">&#127769;</div><div class="mt"><div class="a">Dark Mode</div><div class="b">Light / dark theme</div></div><div class="toggle"></div></div>
       </div>
       <div class="h2" style="margin:18px 0 10px">Earnings &amp; Trust</div>
@@ -760,6 +760,14 @@
   <div class="screen" id="s-doc">
     <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="htxt"><div class="h1" id="docTitle">Document</div></div></div>
     <div class="scroll sheet"><div class="pad" id="docBody" style="padding-bottom:40px"></div></div>
+  </div>
+
+  <!-- language -->
+  <div class="screen" id="s-lang">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="htxt"><div class="h1">Language</div><div class="sub">Choose your language</div></div></div>
+    <div class="scroll sheet"><div class="pad">
+      <div class="card" style="padding:4px 16px" id="langList"></div>
+    </div></div>
   </div>
 
   <div class="toast" id="toast"></div>
