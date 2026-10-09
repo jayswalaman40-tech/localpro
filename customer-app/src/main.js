@@ -196,6 +196,7 @@ function onEnter(id) {
   if (id === 'bookings') renderBookings();
   if (id === 'notifications') renderNotif();
   if (id === 'account') renderAccount();
+  if (id === 'editprofile') renderEditProfile();
   if (id === 'map') renderMapScreen();
 }
 
@@ -579,6 +580,9 @@ function renderAccount() {
   if ($('accName')) $('accName').textContent = name;
   if ($('accAvatar')) $('accAvatar').textContent = initials(name);   // keep avatar in sync with the name
   if ($('accPhone')) $('accPhone').textContent = phone || '+91 —';
+  const pct = profileCompletion();
+  if ($('completePct')) $('completePct').textContent = pct + '%';
+  if ($('completeBar')) $('completeBar').style.width = pct + '%';
 }
 
 /* ---------- auth ---------- */
@@ -672,6 +676,8 @@ document.addEventListener('click', (e) => {
   const sl = e.target.closest('#slotRow .slot'); if (sl) { document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on'); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
+  if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }
+  const gch = e.target.closest('#epGender [data-gender]'); if (gch) { document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.remove('on')); gch.classList.add('on'); return; }
   if (e.target.closest('[data-setcity]')) { setCityPrompt(); return; }
   const mc = e.target.closest('[data-mapcat]'); if (mc) { mapCat = mc.getAttribute('data-mapcat') || null; renderMapScreen(); return; }
   const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
@@ -803,14 +809,51 @@ async function dialProvider() {
 }
 
 /* ---------- edit profile (name) ---------- */
-async function editProfile() {
-  const cur = myProfile?.full_name || '';
-  const name = prompt('Your name:', cur);
-  if (name == null) return;
-  const clean = name.trim(); if (!clean) return;
-  if (hasSupabase && session) { try { await api.updateMyProfile({ full_name: clean }); } catch (e) {} }
-  if (myProfile) myProfile.full_name = clean; else myProfile = { full_name: clean };
-  renderAccount(); toast('Profile updated');
+function editProfile() { show('editprofile'); }
+
+/* ---------- profile: fields, completion, local persistence ---------- */
+const PROFILE_KEY = 'helpzo_customer_profile';
+const AHM_AREAS = ['Satellite','Bodakdev','Vastrapur','Thaltej','Bopal','South Bopal','Prahlad Nagar','Jodhpur','Ambawadi','Navrangpura','Naranpura','Memnagar','Vejalpur','Gota','Chandkheda','Motera','Sola','Science City','Maninagar','Isanpur','Ghatlodia','Nikol','Naroda','Vastral','Chandlodia','Paldi','Vasna','Shahibaug','SG Highway','Ellis Bridge'];
+function loadLocalProfile() {
+  try { const j = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); if (j) myProfile = { ...(myProfile || {}), ...j }; } catch (e) {}
+}
+function saveLocalProfile() {
+  try {
+    const p = myProfile || {};
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({ full_name: p.full_name, email: p.email, gender: p.gender, area: p.area, home_area: p.home_area, address: p.address }));
+  } catch (e) {}
+}
+function profileCompletion() {
+  const p = myProfile || {};
+  const vals = [p.full_name, p.email, p.gender, (p.area || p.home_area), p.address];
+  return Math.round(vals.filter((v) => v && String(v).trim()).length / vals.length * 100);
+}
+function renderEditProfile() {
+  const p = myProfile || {};
+  const name = p.full_name || '';
+  if ($('epName')) $('epName').value = name;
+  if ($('epEmail')) $('epEmail').value = p.email || '';
+  if ($('epArea')) $('epArea').value = p.area || p.home_area || '';
+  if ($('epAddr')) $('epAddr').value = p.address || '';
+  if ($('epPhone')) $('epPhone').value = p.phone || (session?.user?.phone ? '+' + session.user.phone : '') || '';
+  if ($('epAvatar')) $('epAvatar').textContent = initials(name || 'Guest User');
+  document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-gender') === p.gender));
+  const dl = $('epAreaList'); if (dl && !dl.children.length) dl.innerHTML = AHM_AREAS.map((a) => `<option value="${a}">`).join('');
+}
+async function saveProfile() {
+  const name = ($('epName').value || '').trim();
+  if (!name) { toast('Please enter your name'); $('epName').focus(); return; }
+  const email = ($('epEmail').value || '').trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Enter a valid email'); $('epEmail').focus(); return; }
+  const gender = document.querySelector('#epGender [data-gender].on')?.getAttribute('data-gender') || '';
+  const area = ($('epArea').value || '').trim();
+  const address = ($('epAddr').value || '').trim();
+  myProfile = { ...(myProfile || {}), full_name: name, email, gender, area, home_area: area, address };
+  saveLocalProfile();
+  if (hasSupabase && session) { try { await api.updateMyProfile({ full_name: name, home_area: area }); } catch (e) {} }
+  renderAccount();
+  toast('Profile saved');
+  show('account');
 }
 
 /* ---------- OTP input UX ---------- */
@@ -835,6 +878,7 @@ async function logout() {
 /* ---------- boot ---------- */
 async function boot() {
   buildTabBars();
+  loadLocalProfile();   // restore any locally-saved profile fields
   wireOtpInputs();
   $('getOtpBtn')?.addEventListener('click', doGetOtp);
   $('verifyOtpBtn')?.addEventListener('click', doVerify);
@@ -861,6 +905,7 @@ async function boot() {
     try { session = await api.getSession(); } catch (e) {}
     if (session) {
       myProfile = await api.getMyProfile().catch(() => null);
+      loadLocalProfile();   // overlay locally-saved extras (email, gender, address)
     }
   })();
 

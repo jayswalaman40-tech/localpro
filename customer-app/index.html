@@ -313,9 +313,9 @@
         <div style="flex:1"><div class="h2" id="accName">Guest User</div><div class="sec" id="accPhone">+91 -----</div></div>
         <div class="ic-btn" id="editProfileBtn">&#9998;</div>
       </div>
-      <div class="card" style="margin-top:18px">
-        <div style="display:flex;align-items:center"><span style="color:var(--success)">&#9673;</span>&nbsp;<b style="color:var(--tPrimary)">Complete Profile</b><div class="spacer"></div><b>80%</b></div>
-        <div class="prog"><span style="width:80%"></span></div>
+      <div class="card" style="margin-top:18px" data-go="editprofile">
+        <div style="display:flex;align-items:center"><span style="color:var(--success)">&#9673;</span>&nbsp;<b style="color:var(--tPrimary)">Complete Profile</b><div class="spacer"></div><b id="completePct">0%</b><span class="mc" style="margin-left:8px">&#8250;</span></div>
+        <div class="prog"><span id="completeBar" style="width:0%"></span></div>
       </div>
       <div class="card" style="margin-top:16px;padding:4px 16px">
         <div class="mrow" data-go="bookings"><span class="mi">&#128197;</span><span class="ml">My Bookings</span><span class="mc">&#8250;</span></div><div class="divide"></div>
@@ -335,6 +335,32 @@
       <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
     </div></div>
     <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- edit profile -->
+  <div class="screen" id="s-editprofile">
+    <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1">Edit Profile</p></div>
+    <div class="scroll" style="padding-bottom:96px"><div class="pad">
+      <div style="text-align:center;margin-top:4px"><div class="avatar" id="epAvatar" style="width:84px;height:84px;margin:0 auto;font-size:30px">GU</div></div>
+      <p class="h2" style="margin:20px 0 10px">Personal Details</p>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Full Name <span style="color:var(--danger)">*</span></label>
+      <div class="field"><span>&#128100;</span><input id="epName" placeholder="Enter your full name"></div>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Mobile Number</label>
+      <div class="field" style="opacity:.7"><span>&#128241;</span><input id="epPhone" placeholder="+91 -----" readonly></div>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Email Address</label>
+      <div class="field"><span>&#9993;</span><input id="epEmail" type="email" inputmode="email" placeholder="you@example.com"></div>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Gender</label>
+      <div class="chips" id="epGender" style="display:flex;gap:8px">
+        <div class="chip" data-gender="Male">Male</div><div class="chip" data-gender="Female">Female</div><div class="chip" data-gender="Other">Other</div>
+      </div>
+      <p class="h2" style="margin:22px 0 10px">Address</p>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Area (Ahmedabad)</label>
+      <div class="field"><span>&#128205;</span><input id="epArea" list="epAreaList" placeholder="e.g. Satellite"></div>
+      <datalist id="epAreaList"></datalist>
+      <label style="display:block;font-size:12.5px;font-weight:600;color:var(--tSecondary);margin:14px 0 6px 2px">Full Address</label>
+      <textarea class="ta" id="epAddr" placeholder="House / flat, building, street, landmark"></textarea>
+    </div></div>
+    <div class="sticky"><button class="btn btn-green" id="epSaveBtn">Save Profile</button></div>
   </div>
 
   <!-- generic content page (Terms, Privacy, Refund, Safety, About, Contact) -->
