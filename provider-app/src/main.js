@@ -95,10 +95,10 @@ const DEMO_JOBS = [
   { cat:'plumber', title:'Plumbing', area:'Maninagar, Ahmedabad', when:'In 2 days, 11:00 AM', name:'Amit Shah', phone:'+91 90909 12345', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
 ];
 const DEMO_LEADS = [
-  { cat:'ac_repair', title:'AC Repair', area:'Ahmedabad - Satellite', dist:'2.1 km • Today, 5:00 PM', price:'₹300 - ₹500' },
-  { cat:'plumber', title:'Plumbing', area:'Ahmedabad - Bodakdev', dist:'3.4 km • Today, 4:30 PM', price:'₹200 - ₹400' },
-  { cat:'electrician', title:'Electrician', area:'Ahmedabad - Thaltej', dist:'4.2 km • Today, 6:00 PM', price:'₹250 - ₹450' },
-  { cat:'carpenter', title:'Carpenter', area:'Ahmedabad - Nikol', dist:'1.8 km • Tomorrow, 10:00 AM', price:'₹400 - ₹800' },
+  { cat:'ac_repair', title:'AC Repair', name:'Rohit Mehta', phone:'+91 98240 11223', area:'Ahmedabad - Satellite', desc:'AC not cooling, needs service', dist:'2.1 km • Today, 5:00 PM', price:'₹300 - ₹500' },
+  { cat:'plumber', title:'Plumbing', name:'Sneha Joshi', phone:'+91 99250 44556', area:'Ahmedabad - Bodakdev', desc:'Tap leaking in bathroom', dist:'3.4 km • Today, 4:30 PM', price:'₹200 - ₹400' },
+  { cat:'electrician', title:'Electrician', name:'Vijay Rana', phone:'+91 97370 77889', area:'Ahmedabad - Thaltej', desc:'Fan and switch repair', dist:'4.2 km • Today, 6:00 PM', price:'₹250 - ₹450' },
+  { cat:'carpenter', title:'Carpenter', name:'Anita Shah', phone:'+91 90999 33221', area:'Ahmedabad - Nikol', desc:'Door alignment and lock fix', dist:'1.8 km • Tomorrow, 10:00 AM', price:'₹400 - ₹800' },
 ];
 const DEMO_TXN = [
   { cat:'ac_repair', t:'AC Repair - Rahul Sharma', daysAgo:0, amt:450 },
@@ -127,11 +127,11 @@ const DEMO_NOTIF = [
   { icon:'🔔', cls:'c-more', title:'System Update', body:'New features have been added to improve your experience.', ago:'2 days', unread:false },
 ];
 const DEMO_SCHED = [
-  { day:0, t1:'10:00 AM', t2:'11:00 AM', cat:'ac_repair', title:'AC Repair', name:'Rahul Sharma', area:'Bodakdev', desc:'Split AC not cooling properly', pill:'Upcoming', p:'blue' },
-  { day:0, t1:'1:00 PM', t2:'2:00 PM', cat:'plumber', title:'Plumbing', name:'Neha Patel', area:'Vastrapur', desc:'Water leakage in kitchen', pill:'Upcoming', p:'blue' },
-  { day:1, t1:'11:00 AM', t2:'12:00 PM', cat:'electrician', title:'Electrical', name:'Kishan Makwana', area:'Maninagar', desc:'Switch board not working', pill:'Upcoming', p:'blue' },
-  { day:1, t1:'3:00 PM', t2:'4:00 PM', cat:'carpenter', title:'Carpenter', name:'Priya Desai', area:'Satellite', desc:'Fix wardrobe hinges & drawer', pill:'Upcoming', p:'blue' },
-  { day:2, t1:'9:30 AM', t2:'10:30 AM', cat:'cleaning', title:'Deep Cleaning', name:'Amit Shah', area:'Thaltej', desc:'Full home deep cleaning', pill:'Upcoming', p:'blue' },
+  { day:0, t1:'10:00 AM', t2:'11:00 AM', cat:'ac_repair', title:'AC Repair', name:'Rahul Sharma', phone:'+91 98765 43210', area:'Bodakdev', desc:'Split AC not cooling properly', pill:'Upcoming', p:'blue' },
+  { day:0, t1:'1:00 PM', t2:'2:00 PM', cat:'plumber', title:'Plumbing', name:'Neha Patel', phone:'+91 91234 56789', area:'Vastrapur', desc:'Water leakage in kitchen', pill:'Upcoming', p:'blue' },
+  { day:1, t1:'11:00 AM', t2:'12:00 PM', cat:'electrician', title:'Electrical', name:'Kishan Makwana', phone:'+91 99887 66554', area:'Maninagar', desc:'Switch board not working', pill:'Upcoming', p:'blue' },
+  { day:1, t1:'3:00 PM', t2:'4:00 PM', cat:'carpenter', title:'Carpenter', name:'Priya Desai', phone:'+91 87654 32109', area:'Satellite', desc:'Fix wardrobe hinges & drawer', pill:'Upcoming', p:'blue' },
+  { day:2, t1:'9:30 AM', t2:'10:30 AM', cat:'cleaning', title:'Deep Cleaning', name:'Amit Shah', phone:'+91 90909 12345', area:'Thaltej', desc:'Full home deep cleaning', pill:'Upcoming', p:'blue' },
 ];
 const DEMO_CHAT = [
   { me:false, body:"Hi, I'm Rahul. My AC is not cooling properly. Can you check today?", time:'9:12 AM' },
@@ -218,6 +218,7 @@ function onEnter(id) {
 let currentJob = null;
 let jobsView = [];     // array currently shown on the Jobs screen
 let leadsView = [];    // array currently shown on the Leads screen
+let schedView = [];    // rows currently shown on the Schedule screen
 function normalizeJob(src) {
   if (!src) return null;
   const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
@@ -662,6 +663,7 @@ function renderSchedList() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const offset = Math.round((new Date(schedSel.getFullYear(), schedSel.getMonth(), schedSel.getDate()) - today) / 86400000);
   const rows = DEMO_SCHED.filter((s) => s.day === offset);
+  schedView = rows;   // remember so Start Job / Directions can load the right job
   if ($('schedCount')) $('schedCount').textContent = rows.length + (rows.length === 1 ? ' Job Scheduled' : ' Jobs Scheduled');
   if (!rows.length) { list.innerHTML = `<div class="empty">No jobs scheduled for this day.</div>`; return; }
   list.innerHTML = rows.map((s) => `
@@ -1206,8 +1208,10 @@ document.addEventListener('click', (e) => {
     if (['enroute', 'jobdetail', 'progress', 'completed'].includes(dest)) {
       const jcard = e.target.closest('#jobsList .card');
       const lcard = e.target.closest('#leadsList .card');
+      const scard = e.target.closest('#schedList .card');
       if (jcard) { const i = [...jcard.parentElement.querySelectorAll('.card')].indexOf(jcard); if (jobsView[i]) currentJob = normalizeJob(jobsView[i]); }
       else if (lcard) { const i = [...lcard.parentElement.querySelectorAll('.card')].indexOf(lcard); if (leadsView[i]) currentJob = normalizeJob(leadsView[i]); }
+      else if (scard) { const i = [...scard.parentElement.querySelectorAll('.card')].indexOf(scard); if (schedView[i]) currentJob = normalizeJob(schedView[i]); }
     }
     e.stopPropagation(); show(dest); return;
   }
