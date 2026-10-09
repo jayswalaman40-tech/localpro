@@ -12,6 +12,7 @@
     "cap:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.3",
     "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {

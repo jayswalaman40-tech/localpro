@@ -164,6 +164,14 @@ function back() {
   else show('jobs', false);
 }
 window.show = show;
+window.back = back;
+// Android hardware back button → go back one screen (exit app only at a root).
+(async () => {
+  try {
+    const { App } = await import('@capacitor/app');
+    App.addListener('backButton', () => { if (stack.length > 1) back(); else App.exitApp(); });
+  } catch (e) { /* web preview — no native back button */ }
+})();
 
 /* ---------- bottom tab bar ---------- */
 const TABS = [
