@@ -1096,6 +1096,102 @@ async function toggleAvail() {
 }
 
 /* ---------- global click handling (event delegation) ---------- */
+/* ---------- legal / info pages ---------- */
+function openDoc(key) {
+  const d = INFO_PAGES[key]; if (!d) return;
+  if ($('docTitle')) $('docTitle').textContent = d.title;
+  if ($('docBody')) $('docBody').innerHTML = d.body;
+  show('doc');
+}
+const DOC_UPDATED = 'Last updated: 9 October 2026';
+const DH = (t) => `<h3 style="margin:18px 0 7px;font-size:15px;color:var(--tPrimary)">${t}</h3>`;
+const DP = (t) => `<p style="margin:0 0 10px;font-size:13.5px;line-height:1.75;color:var(--tSecondary)">${t}</p>`;
+const DUL = (arr) => `<ul style="margin:0 0 10px;padding-left:18px;font-size:13.5px;line-height:1.75;color:var(--tSecondary)">${arr.map((i) => `<li style="margin-bottom:4px">${i}</li>`).join('')}</ul>`;
+const DMETA = (t) => `<p style="margin:0 0 14px;font-size:12px;color:var(--tTertiary)">${t}</p>`;
+const INFO_PAGES = {
+  terms: { title: 'Partner Terms & Conditions', body:
+    DMETA(DOC_UPDATED) +
+    DP('These Terms govern your use of the HelpZo Partner app as an independent service professional ("Partner"). By using the app you agree to them.') +
+    DH('1. Independent Partner') +
+    DP('You are an independent professional, not an employee of HelpZo. You decide which jobs to accept and how to perform your work, in line with these Terms and the law.') +
+    DH('2. Onboarding & verification') +
+    DUL(['You must complete KYC (Aadhaar, PAN, selfie, bank details) before taking jobs.', 'Information you provide must be true and current.', 'Only a verified account can receive the “Verified” badge and leads.']) +
+    DH('3. Jobs & bills') +
+    DUL(['Set fair prices using your price-list and the HelpZo rate card (capped per item).', 'Add parts/labour as line-items and send the bill for the customer to approve before payment.', 'Do not overcharge or add charges the customer did not agree to.']) +
+    DH('4. Conduct') +
+    DUL(['Arrive on time, be professional and courteous.', 'Carry valid ID; respect the customer’s home and privacy.', 'No harassment, no work outside your verified skills.']) +
+    DH('5. Ratings & removal') +
+    DP('Customers rate every job. Consistently low ratings, fraud, or safety violations can lead to suspension or removal from HelpZo.') +
+    DH('6. Payouts') +
+    DP('Approved earnings are paid to your registered bank account per the Earnings & Payouts policy.') +
+    DH('7. Governing law') +
+    DP('These Terms are governed by the laws of India, with jurisdiction in Ahmedabad, Gujarat. Questions: <b>partners@helpzo.app</b>.') },
+
+  privacy: { title: 'Privacy Policy', body:
+    DMETA(DOC_UPDATED) +
+    DP('This policy explains what HelpZo collects from Partners and why.') +
+    DH('What we collect') +
+    DUL(['<b>Identity & KYC:</b> name, mobile, Aadhaar, PAN, selfie, bank details.', '<b>Work:</b> service category, area, experience, jobs and earnings.', '<b>Location:</b> to match you with nearby jobs and show customers your ETA.']) +
+    DH('How we use it') +
+    DUL(['To verify you and keep the platform trustworthy.', 'To send you relevant leads and job updates.', 'To process payouts and prevent fraud.']) +
+    DH('Protection') +
+    DP('KYC documents are stored in a private, secure bucket, visible only to you and authorised HelpZo staff. We never sell your data.') +
+    DH('Your rights') +
+    DP('You can view/update your profile, or request account deletion by emailing <b>privacy@helpzo.app</b>.') },
+
+  payouts: { title: 'Earnings & Payouts', body:
+    DMETA(DOC_UPDATED) +
+    DH('How you earn') +
+    DUL(['You earn the approved bill amount for each completed job.', 'Prices follow your price-list and the HelpZo rate card (max caps protect customers).']) +
+    DH('Payouts') +
+    DUL(['Earnings are credited to your available balance after the customer approves and pays.', 'Withdraw to your registered bank account from the Earnings screen.', 'Payouts are typically processed within 24–48 hours of a withdrawal request.']) +
+    DH('Fees') +
+    DP('HelpZo may deduct a small platform fee per job; the exact amount is shown transparently in your earnings breakdown.') +
+    DH('Disputes') +
+    DP('If a customer disputes a bill, the payout for that job is held until our team resolves it fairly based on job details and photos.') +
+    DH('Help') +
+    DP('Payout questions? Email <b>payments@helpzo.app</b>.') },
+
+  verification: { title: 'Verification & Badge', body:
+    DMETA(DOC_UPDATED) +
+    DP('The green <b>✔ Verified</b> badge builds customer trust and gets you more jobs. Here is how to earn it.') +
+    DH('Documents required') +
+    DUL(['<b>Aadhaar</b> — front and back.', '<b>PAN card.</b>', '<b>Live selfie</b> — matched to your ID.', '<b>Bank details</b> — for payouts.']) +
+    DH('Review') +
+    DP('Our team reviews your documents, usually within 24–48 hours. You’ll get a notification once you’re verified, and a verification certificate appears in your profile.') +
+    DH('Keep it active') +
+    DP('Keep your documents valid and your profile accurate. Expired or mismatched documents may pause your verified status.') +
+    DH('Help') +
+    DP('Verification questions? Email <b>partners@helpzo.app</b>.') },
+
+  conduct: { title: 'Code of Conduct & Safety', body:
+    DMETA(DOC_UPDATED) +
+    DH('Our promise to customers') +
+    DUL(['Be punctual, polite and professional on every job.', 'Quote fairly and never add hidden charges.', 'Only take jobs within your verified skills.']) +
+    DH('Safety') +
+    DUL(['Carry valid ID and wear appropriate safety gear.', 'Follow safe practices for electrical, plumbing and other work.', 'Respect the customer’s home, family and privacy.']) +
+    DH('Zero tolerance') +
+    DP('Harassment, fraud, misrepresentation or unsafe behaviour leads to immediate removal from HelpZo and may be reported to authorities.') +
+    DH('Report an issue') +
+    DP('Facing a problem on a job? Contact <b>safety@helpzo.app</b> right away.') },
+
+  about: { title: 'About HelpZo Partner', body:
+    DMETA('HelpZo Partner · Version 1.0') +
+    DP('<b>HelpZo — Your Problem · Our Priority.</b>') +
+    DP('HelpZo Partner is the app for service professionals to get more work in their area — receive leads, manage jobs, bill customers and get paid, all in one place.') +
+    DH('Why partner with HelpZo') +
+    DUL(['<b>More work</b> — verified leads from nearby customers.', '<b>Fair pricing</b> — your rates, protected by rate-card caps.', '<b>Fast payouts</b> — withdraw earnings to your bank.', '<b>Trust</b> — a Verified badge that wins more bookings.']) +
+    DH('Reach us') +
+    DP('Ahmedabad, Gujarat, India<br>Email: <b>partners@helpzo.app</b>') },
+
+  contact: { title: 'Partner Support', body:
+    DMETA('We’re here to help, 7 days a week') +
+    DH('Partner support') + DP('Email: <b>partners@helpzo.app</b>') +
+    DH('Payout queries') + DP('Email: <b>payments@helpzo.app</b>') +
+    DH('Safety concerns') + DP('Email: <b>safety@helpzo.app</b>') +
+    DH('Office') + DP('HelpZo, Ahmedabad, Gujarat, India') }
+};
+
 document.addEventListener('click', (e) => {
   // Action buttons must win over a surrounding card's data-go navigation,
   // otherwise tapping Accept/Reject on a lead card just opens the card.
@@ -1117,6 +1213,8 @@ document.addEventListener('click', (e) => {
   }
   const bk = e.target.closest('[data-back]');
   if (bk) { back(); return; }
+  const doc = e.target.closest('[data-doc]');
+  if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
   const tab = e.target.closest('[data-tab]');
   if (tab) { stack = [tab.getAttribute('data-tab')]; show(tab.getAttribute('data-tab'), false); return; }
 

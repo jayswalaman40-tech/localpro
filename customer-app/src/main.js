@@ -679,8 +679,109 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.remove('on'));
     bf.classList.add('on'); bookFilter = bf.getAttribute('data-bfilter'); paintBookings(); return;
   }
+  const doc = e.target.closest('[data-doc]'); if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
+  if (e.target.closest('[data-back]')) { back(); return; }
   const tst = e.target.closest('[data-toast]'); if (tst) { toast(tst.getAttribute('data-toast')); return; }
 });
+
+/* ---------- legal / info pages ---------- */
+function openDoc(key) {
+  const d = DOCS[key]; if (!d) return;
+  if ($('docTitle')) $('docTitle').textContent = d.title;
+  if ($('docBody')) $('docBody').innerHTML = d.body;
+  show('doc');
+}
+const DOC_UPDATED = 'Last updated: 9 October 2026';
+const H = (t) => `<h3 style="margin:18px 0 7px;font-size:15px;color:var(--tPrimary)">${t}</h3>`;
+const P = (t) => `<p style="margin:0 0 10px;font-size:13.5px;line-height:1.75;color:var(--tSecondary)">${t}</p>`;
+const UL = (arr) => `<ul style="margin:0 0 10px;padding-left:18px;font-size:13.5px;line-height:1.75;color:var(--tSecondary)">${arr.map((i) => `<li style="margin-bottom:4px">${i}</li>`).join('')}</ul>`;
+const META = (t) => `<p style="margin:0 0 14px;font-size:12px;color:var(--tTertiary)">${t}</p>`;
+const DOCS = {
+  terms: { title: 'Terms & Conditions', body:
+    META(DOC_UPDATED) +
+    P('Welcome to HelpZo. These Terms govern your use of the HelpZo app and services that connect customers with local service professionals ("Providers") in Ahmedabad and other serviceable areas. By using HelpZo you agree to these Terms.') +
+    H('1. About HelpZo') +
+    P('HelpZo is a technology platform that helps you discover, contact and book independent service Providers (plumbers, electricians, AC technicians, carpenters and more). HelpZo is a marketplace — the service itself is performed by the Provider, not by HelpZo.') +
+    H('2. Eligibility & account') +
+    UL(['You must be 18 years or older and provide a valid mobile number.', 'You are responsible for keeping your account and OTP secure.', 'Information you provide (name, address, phone) must be accurate.']) +
+    H('3. Bookings & pricing') +
+    UL(['Base prices shown are set by each Provider and are indicative ("onwards").', 'Final charges may include parts and labour, shown to you as a bill inside the app for your approval before payment.', 'You can approve or dispute a bill from the app before paying.']) +
+    H('4. Payments') +
+    P('You pay for the service after the work is completed and the bill is approved, through the methods offered in the app or directly to the Provider as agreed. HelpZo may charge a platform or convenience fee, which will be shown transparently.') +
+    H('5. Your responsibilities') +
+    UL(['Provide safe access to the service location and accurate address.', 'Treat Providers with respect; harassment is not tolerated.', 'Do not misuse the platform for unlawful purposes.']) +
+    H('6. Cancellations') +
+    P('You may cancel a booking before the Provider starts work. Repeated last-minute cancellations may lead to a cancellation fee or account limits. See our Refund & Cancellation Policy.') +
+    H('7. Limitation of liability') +
+    P('HelpZo connects you with independent Providers and does not directly perform the service. To the extent permitted by law, HelpZo is not liable for the acts or omissions of Providers, but we actively verify Providers and help resolve disputes.') +
+    H('8. Changes & governing law') +
+    P('We may update these Terms from time to time; continued use means acceptance. These Terms are governed by the laws of India, with jurisdiction in Ahmedabad, Gujarat.') +
+    H('9. Contact') +
+    P('Questions? Email <b>support@helpzo.app</b>.') },
+
+  privacy: { title: 'Privacy Policy', body:
+    META(DOC_UPDATED) +
+    P('Your privacy matters to us. This policy explains what HelpZo collects, why, and your choices.') +
+    H('Information we collect') +
+    UL(['<b>Account:</b> name, mobile number, and (optional) email.', '<b>Service:</b> your address and booking details so a Provider can reach you.', '<b>Location:</b> approximate location (with your permission) to show nearby Providers and ETAs.', '<b>Usage:</b> app activity and device info to keep the service secure and improve it.']) +
+    H('How we use it') +
+    UL(['To create your account and verify you via OTP.', 'To connect you with Providers and complete bookings and payments.', 'To send booking updates and important notifications.', 'To prevent fraud and keep the platform safe.']) +
+    H('Sharing') +
+    P('We share only what is needed to deliver the service — for example, your name, address and phone are shared with the Provider you book. We do not sell your personal data.') +
+    H('Data security') +
+    P('We use industry-standard safeguards (encryption in transit, access controls). KYC documents are stored privately and visible only to you and authorised HelpZo staff.') +
+    H('Your rights') +
+    UL(['Access or correct your profile from the app.', 'Request deletion of your account by emailing us.', 'Control location permission from your phone settings.']) +
+    H('Contact') +
+    P('For privacy requests, email <b>privacy@helpzo.app</b>.') },
+
+  refund: { title: 'Refund & Cancellation', body:
+    META(DOC_UPDATED) +
+    H('Cancellations') +
+    UL(['<b>Free cancellation</b> before the Provider starts travelling or begins work.', 'If the Provider has already reached your location, a small visiting charge may apply.', 'Providers may also cancel in genuine cases (unsafe site, wrong details); you are not charged in that case.']) +
+    H('Refunds') +
+    UL(['If you paid in the app and the service was not delivered, you are eligible for a full refund.', 'If the work was partially done, a fair amount for completed work may be retained.', 'Approved refunds are processed to the original payment method, usually within 5–7 business days.']) +
+    H('Disputes') +
+    P('If a bill looks wrong, tap <b>Dispute</b> on the bill screen. Our team reviews the job details and photos and helps reach a fair resolution before any payment is finalised.') +
+    H('How to request') +
+    P('Open the booking in <b>My Bookings</b> and use Dispute, or email <b>support@helpzo.app</b> with your booking details.') },
+
+  safety: { title: 'Trust, Safety & Verification', body:
+    META(DOC_UPDATED) +
+    P('Every HelpZo Partner goes through verification before they can take jobs — so you can book with confidence.') +
+    H('How we verify Providers') +
+    UL(['<b>Aadhaar (KYC):</b> government ID, front and back.', '<b>PAN card:</b> identity and tax verification.', '<b>Live selfie:</b> matched against the ID to confirm the real person.', '<b>Bank details:</b> for secure, traceable payouts.', '<b>Skill & experience:</b> trade and years of experience are reviewed.']) +
+    H('The “Verified” badge') +
+    P('A green <b>✔ Verified</b> badge means the Provider has cleared HelpZo’s KYC checks and holds a verification certificate. Providers still under review are marked accordingly.') +
+    H('Safety while booking') +
+    UL(['See ratings and real customer reviews before you book.', 'Share your live booking status with family.', 'In-app chat and call — no need to share your personal number publicly.', 'Rate every job; low-rated Providers are reviewed and can be removed.']) +
+    H('Report a concern') +
+    P('If anything feels wrong, contact us immediately at <b>safety@helpzo.app</b>. We take every report seriously.') },
+
+  about: { title: 'About HelpZo', body:
+    META('HelpZo · Version 1.0') +
+    P('<b>HelpZo — Your Problem · Our Priority.</b>') +
+    P('HelpZo is a hyperlocal services marketplace that connects you with trusted, verified local professionals — plumbers, electricians, AC technicians, carpenters, painters and more — right in your neighbourhood.') +
+    H('Why HelpZo') +
+    UL(['<b>Verified professionals</b> near you, with ratings and reviews.', '<b>Transparent pricing</b> — approve the bill before you pay.', '<b>Fast & local</b> — book in minutes, get help the same day.', '<b>Secure</b> — your data and payments are protected.']) +
+    H('Our mission') +
+    P('To make everyday home services simple, trustworthy and fair — for customers and for the skilled workers who serve them.') +
+    H('Reach us') +
+    P('Ahmedabad, Gujarat, India<br>Email: <b>hello@helpzo.app</b>') },
+
+  contact: { title: 'Contact & Support', body:
+    META('We’re here to help, 7 days a week') +
+    H('Customer support') +
+    P('Email: <b>support@helpzo.app</b>') +
+    H('Safety concerns') +
+    P('Email: <b>safety@helpzo.app</b>') +
+    H('Privacy requests') +
+    P('Email: <b>privacy@helpzo.app</b>') +
+    H('Become a Partner') +
+    P('Are you a service professional? Join HelpZo and get more work in your area — ask our team for the Partner app.') +
+    H('Office') +
+    P('HelpZo, Ahmedabad, Gujarat, India') }
+};
 
 /* ---------- call the selected provider (creates a lead, then dials) ---------- */
 async function dialProvider() {

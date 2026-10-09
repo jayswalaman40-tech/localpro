@@ -729,10 +729,18 @@
         <div class="mrow"><div class="mi">&#127760;</div><div class="mt"><div class="a">Language</div><div class="b">Choose language</div></div><span class="sec">English &#8250;</span></div><div class="divide"></div>
         <div class="mrow"><div class="mi">&#127769;</div><div class="mt"><div class="a">Dark Mode</div><div class="b">Light / dark theme</div></div><div class="toggle"></div></div>
       </div>
-      <div class="h2" style="margin:18px 0 10px">About</div>
+      <div class="h2" style="margin:18px 0 10px">Earnings &amp; Trust</div>
       <div class="card" style="padding:4px 16px">
-        <div class="mrow"><div class="mi">&#8505;</div><div class="mt"><div class="a">About App</div><div class="b">Version 1.0.0</div></div></div><div class="divide"></div>
-        <div class="mrow"><div class="mi">&#128196;</div><div class="mt"><div class="a">Terms &amp; Conditions</div></div><span class="mc">&#8250;</span></div>
+        <div class="mrow" data-doc="verification"><div class="mi">&#9989;</div><div class="mt"><div class="a">Verification &amp; Badge</div><div class="b">How to get verified</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="payouts"><div class="mi">&#128176;</div><div class="mt"><div class="a">Earnings &amp; Payouts</div><div class="b">How you get paid</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="conduct"><div class="mi">&#128737;</div><div class="mt"><div class="a">Code of Conduct &amp; Safety</div></div><span class="mc">&#8250;</span></div>
+      </div>
+      <div class="h2" style="margin:18px 0 10px">Legal</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow" data-doc="terms"><div class="mi">&#128196;</div><div class="mt"><div class="a">Partner Terms &amp; Conditions</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="privacy"><div class="mi">&#128274;</div><div class="mt"><div class="a">Privacy Policy</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="contact"><div class="mi">&#10068;</div><div class="mt"><div class="a">Partner Support</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="about"><div class="mi">&#8505;</div><div class="mt"><div class="a">About App</div><div class="b">Version 1.0.0</div></div><span class="mc">&#8250;</span></div>
       </div>
       <button class="btn btn-out-danger" style="margin-top:16px" id="logoutBtn2">&#9099; Logout</button>
     </div></div>
@@ -746,6 +754,12 @@
       <div id="notifList"></div>
     </div></div>
     <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- generic content page (Terms, Privacy, Payouts, Verification, Conduct, About, Support) -->
+  <div class="screen" id="s-doc">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="htxt"><div class="h1" id="docTitle">Document</div></div></div>
+    <div class="scroll sheet"><div class="pad" id="docBody" style="padding-bottom:40px"></div></div>
   </div>
 
   <div class="toast" id="toast"></div>

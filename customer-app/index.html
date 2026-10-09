@@ -319,14 +319,28 @@
       </div>
       <div class="card" style="margin-top:16px;padding:4px 16px">
         <div class="mrow" data-go="bookings"><span class="mi">&#128197;</span><span class="ml">My Bookings</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <a class="mrow" href="mailto:support@helpzo.app" style="text-decoration:none;color:inherit"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></a><div class="divide"></div>
-        <div class="mrow" data-toast="Terms &amp; Conditions"><span class="mi">&#128196;</span><span class="ml">Terms &amp; Conditions</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow" data-toast="Privacy Policy"><span class="mi">&#128274;</span><span class="ml">Privacy Policy</span><span class="mc">&#8250;</span></div><div class="divide"></div>
-        <div class="mrow" data-toast="HelpZo v1.0 — Your Problem · Our Priority"><span class="mi">&#8505;</span><span class="ml">About HelpZo</span><span class="mc">&#8250;</span></div>
+        <div class="mrow" data-doc="safety"><span class="mi">&#128737;</span><span class="ml">Trust, Safety &amp; Verification</span><span class="mc">&#8250;</span></div>
+      </div>
+      <div class="sec" style="margin:18px 0 8px 4px;font-weight:600">Support</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow" data-doc="contact"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></div>
+      </div>
+      <div class="sec" style="margin:18px 0 8px 4px;font-weight:600">Legal</div>
+      <div class="card" style="padding:4px 16px">
+        <div class="mrow" data-doc="terms"><span class="mi">&#128196;</span><span class="ml">Terms &amp; Conditions</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="privacy"><span class="mi">&#128274;</span><span class="ml">Privacy Policy</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="refund"><span class="mi">&#128176;</span><span class="ml">Refund &amp; Cancellation</span><span class="mc">&#8250;</span></div><div class="divide"></div>
+        <div class="mrow" data-doc="about"><span class="mi">&#8505;</span><span class="ml">About HelpZo</span><span class="mc">&#8250;</span></div>
       </div>
       <button class="btn btn-out-danger" style="margin-top:18px" id="logoutBtn">&#9099; Logout</button>
     </div></div>
     <div class="tabs" data-tabbar></div>
+  </div>
+
+  <!-- generic content page (Terms, Privacy, Refund, Safety, About, Contact) -->
+  <div class="screen" id="s-doc">
+    <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1" id="docTitle">Document</p></div>
+    <div class="scroll"><div class="pad" id="docBody" style="padding-bottom:40px"></div></div>
   </div>
 
   <div class="toast" id="toast"></div>
