@@ -1103,6 +1103,7 @@ async function doGetOtp() {
     $('loginPhoneStep').hidden = true;
     $('loginOtpStep').hidden = false;
     document.querySelectorAll('[data-otp]')[0]?.focus();
+    startOtpAutofill();
   } catch (e) {
     toast(e.message || 'Could not send OTP');
   } finally { btn.disabled = false; btn.textContent = 'Get OTP'; }
@@ -1520,15 +1521,45 @@ async function replyReview(name) {
 }
 
 /* ---------- OTP input UX ---------- */
+// Spread a full code across the 6 boxes (autofill / paste / Web OTP) and
+// auto-verify once all digits are present.
+function fillOtp(code) {
+  const inputs = Array.from(document.querySelectorAll('[data-otp]'));
+  const digits = String(code).replace(/\D/g, '').slice(0, inputs.length).split('');
+  if (!digits.length) return;
+  inputs.forEach((inp, i) => { inp.value = digits[i] || ''; });
+  (inputs[Math.min(digits.length, inputs.length - 1)] || inputs[0]).focus();
+  if (digits.length >= inputs.length) setTimeout(() => doVerify(), 180);
+}
+function otpAllFilled() { return Array.from(document.querySelectorAll('[data-otp]')).every((i) => i.value); }
 function wireOtpInputs() {
   const inputs = Array.from(document.querySelectorAll('[data-otp]'));
   inputs.forEach((inp, i) => {
     inp.addEventListener('input', () => {
-      inp.value = inp.value.replace(/\D/g, '').slice(0, 1);
+      const v = inp.value.replace(/\D/g, '');
+      if (v.length > 1) { fillOtp(v); return; }          // SMS autofill / paste of the whole code
+      inp.value = v.slice(0, 1);
       if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+      else if (inp.value && otpAllFilled()) setTimeout(() => doVerify(), 180);
     });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus(); });
+    inp.addEventListener('paste', (e) => {
+      const t = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+      if (/\d{2,}/.test(t)) { e.preventDefault(); fillOtp(t); }
+    });
   });
+}
+// Web OTP API — on supported browsers the SMS code is read and filled with no typing.
+let otpAbort = null;
+function startOtpAutofill() {
+  try { otpAbort?.abort(); } catch (e) {}
+  if (!('OTPCredential' in window) || !navigator.credentials) return;
+  try {
+    otpAbort = new AbortController();
+    navigator.credentials.get({ otp: { transport: ['sms'] }, signal: otpAbort.signal })
+      .then((c) => { if (c && c.code) fillOtp(c.code); })
+      .catch(() => {});
+  } catch (e) {}
 }
 
 /* ---------- boot ---------- */
