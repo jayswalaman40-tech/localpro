@@ -67,6 +67,7 @@ async function renderTab(tab) {
     if (tab === 'leads') return renderLeads(c);
     if (tab === 'pricing') return renderPricing(c);
     if (tab === 'signups') return renderSignups(c);
+    if (tab === 'feedback') return renderFeedback(c);
   } catch (e) {
     c.innerHTML = `<div class="section"><b class="muted">Error:</b> ${esc(e.message)}</div>`;
   }
@@ -259,6 +260,43 @@ async function renderSignups(c) {
   });
   c.querySelectorAll('[data-su-set]').forEach(b => b.addEventListener('click', async () => {
     try { await api.setSignupStatus(b.getAttribute('data-id'), b.getAttribute('data-su-set')); renderTab('signups'); }
+    catch (e) { alert(e.message); }
+  }));
+}
+
+/* ==================== FEEDBACK (customer → admin chat) ==================== */
+async function renderFeedback(c) {
+  const rows = await api.getFeedback();
+  // Group messages into per-customer threads (newest thread first).
+  const threads = new Map();
+  rows.forEach(r => {
+    const key = r.customer_id || 'anon-' + r.id;
+    if (!threads.has(key)) threads.set(key, { id: key, name: r.customer_name, phone: r.customer_phone, msgs: [], last: r.created_at });
+    const t = threads.get(key);
+    t.msgs.push(r);
+    if (!t.name && r.customer_name) t.name = r.customer_name;
+    if (!t.phone && r.customer_phone) t.phone = r.customer_phone;
+    if (r.created_at > t.last) t.last = r.created_at;
+  });
+  const list = [...threads.values()].sort((a, b) => (b.last || '').localeCompare(a.last || ''));
+  const bubble = (m) => `<div style="display:flex;${m.sender_role === 'admin' ? 'justify-content:flex-end' : ''};margin:4px 0">
+      <div style="max-width:72%;padding:8px 11px;border-radius:12px;font-size:13px;${m.sender_role === 'admin' ? 'background:#1667E8;color:#fff' : 'background:#eef2f7;color:#16202E'}">${esc(m.body)}<div style="font-size:10px;opacity:.7;margin-top:3px">${fmtDate(m.created_at)}</div></div></div>`;
+  const card = (t) => `<div class="section" data-fb="${esc(t.id)}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <b>${esc(t.name || 'Customer')}</b>
+        <span class="muted" style="font-size:12px">${esc(t.phone || '')}</span>
+      </div>
+      <div style="max-height:260px;overflow:auto;padding:4px 2px">${t.msgs.slice().sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')).map(bubble).join('')}</div>
+      ${t.id.startsWith('anon-') ? '' : `<div style="display:flex;gap:8px;margin-top:10px">
+        <input class="fb-reply" placeholder="Reply to ${esc(t.name || 'customer')}…" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px">
+        <button class="btn" data-fb-send="${esc(t.id)}">Send</button></div>`}
+    </div>`;
+  c.innerHTML = `<p class="count">${list.length} conversation${list.length === 1 ? '' : 's'}</p>`
+    + (list.length ? list.map(card).join('') : `<div class="section"><p class="muted" style="margin:0">No feedback yet.</p></div>`);
+  c.querySelectorAll('[data-fb-send]').forEach(b => b.addEventListener('click', async () => {
+    const wrap = b.closest('[data-fb]'); const inp = wrap.querySelector('.fb-reply');
+    const body = (inp.value || '').trim(); if (!body) return;
+    try { await api.replyFeedback(b.getAttribute('data-fb-send'), body); renderTab('feedback'); }
     catch (e) { alert(e.message); }
   }));
 }

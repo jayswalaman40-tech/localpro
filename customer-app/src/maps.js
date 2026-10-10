@@ -49,12 +49,22 @@ function injectStyles() {
   document.head.appendChild(st);
 }
 
-function quickPos() {
+async function quickPos() {
+  // Native plugin first (handles the Android permission prompt), then browser.
+  try {
+    const mod = await import('@capacitor/geolocation');
+    const Geolocation = mod.Geolocation || mod.default;
+    if (Geolocation) {
+      try { await Geolocation.requestPermissions(); } catch (e) {}
+      const p = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 7000 });
+      if (p && p.coords) return { lat: p.coords.latitude, lng: p.coords.longitude };
+    }
+  } catch (e) { /* web — fall through */ }
   return new Promise((res) => {
     if (!navigator.geolocation) return res(null);
     navigator.geolocation.getCurrentPosition(
       (p) => res({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => res(null), { timeout: 6000, maximumAge: 30000 });
+      () => res(null), { timeout: 7000, maximumAge: 30000 });
   });
 }
 

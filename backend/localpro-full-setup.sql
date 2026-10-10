@@ -940,3 +940,31 @@ create policy "signups insert" on public.provider_signups for insert to anon, au
 create policy "signups admin read"   on public.provider_signups for select using (public.is_admin());
 create policy "signups admin update" on public.provider_signups for update using (public.is_admin()) with check (public.is_admin());
 notify pgrst, 'reload schema';
+
+-- ============ 0017 FEEDBACK (customer → admin chat) ============
+-- Customers send problems/suggestions straight to the HelpZo admin. Admin
+-- replies land in the same thread (sender_role = 'admin'). Realtime so a
+-- customer sees the reply live.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid references public.profiles(id) on delete set null,
+  sender_role text not null default 'customer' check (sender_role in ('customer','admin')),
+  body text not null,
+  customer_name text, customer_phone text,
+  status text not null default 'open',
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_feedback_customer on public.feedback(customer_id, created_at);
+create index if not exists idx_feedback_created on public.feedback(created_at desc);
+alter table public.feedback enable row level security;
+drop policy if exists "feedback customer insert" on public.feedback;
+drop policy if exists "feedback customer read"   on public.feedback;
+drop policy if exists "feedback admin all"       on public.feedback;
+create policy "feedback customer insert" on public.feedback for insert
+  with check (customer_id = auth.uid() and sender_role = 'customer');
+create policy "feedback customer read" on public.feedback for select
+  using (customer_id = auth.uid() or public.is_admin());
+create policy "feedback admin all" on public.feedback for all
+  using (public.is_admin()) with check (public.is_admin());
+do $$ begin alter publication supabase_realtime add table public.feedback; exception when others then null; end $$;
+notify pgrst, 'reload schema';

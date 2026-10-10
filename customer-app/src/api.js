@@ -302,15 +302,52 @@ export async function getNotifications() {
   return data ?? [];
 }
 
+// ---------------- FEEDBACK (customer → admin) ----------------
+export async function sendFeedback(body) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  let me = null; try { me = await getMyProfile(); } catch (e) {}
+  const { data, error } = await supabase.from('feedback').insert({
+    customer_id: u.user.id, sender_role: 'customer', body,
+    customer_name: me?.full_name || null, customer_phone: me?.phone || u.user.phone || null,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function getFeedback() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return [];
+  const { data, error } = await supabase.from('feedback').select('*').eq('customer_id', u.user.id).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ---------------- LOCATION ----------------
 
-export function getCurrentLocation() {
+// Resolve the device location. Tries the native Capacitor Geolocation plugin
+// first (it handles the Android runtime permission prompt), then the browser
+// geolocation API, and finally falls back to the city default.
+export async function resolveLocation() {
+  try {
+    const mod = await import('@capacitor/geolocation');
+    const Geolocation = mod.Geolocation || mod.default;
+    if (Geolocation) {
+      try { await Geolocation.requestPermissions(); } catch (e) {}
+      const p = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 });
+      if (p && p.coords) return { lat: p.coords.latitude, lng: p.coords.longitude };
+    }
+  } catch (e) { /* plugin not available (web) — fall through */ }
   return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+    if (!navigator.geolocation) return resolve(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve({ lat: DEFAULT_LAT, lng: DEFAULT_LNG }),
+      () => resolve(null),
       { timeout: 8000, maximumAge: 60000 }
     );
   });
+}
+
+export async function getCurrentLocation() {
+  const pos = await resolveLocation();
+  return pos || { lat: DEFAULT_LAT, lng: DEFAULT_LNG };
 }

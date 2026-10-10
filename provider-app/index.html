@@ -15,6 +15,30 @@
     --tPrimary:#0F2547; --tSecondary:#6B7280; --tTertiary:#9AA3B2;
     --star:#F6B01E; --whatsapp:#25D366; --verified:#1D9BF0;
   }
+  :root[data-theme="dark"]{
+    --bg:#0E1420; --bgMuted:#161F2E; --card:#1A2433; --cardBorder:#2A3547;
+    --tPrimary:#EAF0F7; --tSecondary:#9FB0C3; --tTertiary:#6E7F93;
+  }
+  :root[data-theme="dark"] body, :root[data-theme="dark"] #app{background:var(--bg);}
+  :root[data-theme="dark"] .ic-btn,
+  :root[data-theme="dark"] .hpill,
+  :root[data-theme="dark"] .btn-out,
+  :root[data-theme="dark"] .btn-out-green,
+  :root[data-theme="dark"] .btn-out-danger,
+  :root[data-theme="dark"] .chip,
+  :root[data-theme="dark"] .tabs,
+  :root[data-theme="dark"] .field,
+  :root[data-theme="dark"] .sticky,
+  :root[data-theme="dark"] .sheet,
+  :root[data-theme="dark"] .sc,
+  :root[data-theme="dark"] .jpc,
+  :root[data-theme="dark"] .bout,
+  :root[data-theme="dark"] .inputbar,
+  :root[data-theme="dark"] .cbox,
+  :root[data-theme="dark"] .cal{background:var(--card);}
+  :root[data-theme="dark"] .field input,
+  :root[data-theme="dark"] input,
+  :root[data-theme="dark"] textarea{color:var(--tPrimary);}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;}
   body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tPrimary);}
@@ -727,7 +751,7 @@
       <div class="card" style="padding:4px 16px">
         <div class="mrow"><div class="mi">&#128276;</div><div class="mt"><div class="a">Notifications</div><div class="b">Manage preferences</div></div><span class="mc">&#8250;</span></div><div class="divide"></div>
         <div class="mrow" data-go="lang"><div class="mi">&#127760;</div><div class="mt"><div class="a">Language</div><div class="b">Choose language</div></div><span class="sec" id="langCurrent">English &#8250;</span></div><div class="divide"></div>
-        <div class="mrow"><div class="mi">&#127769;</div><div class="mt"><div class="a">Dark Mode</div><div class="b">Light / dark theme</div></div><div class="toggle"></div></div>
+        <div class="mrow" id="themeRow"><div class="mi">&#127769;</div><div class="mt"><div class="a">Dark Mode</div><div class="b">Light / dark theme</div></div><div class="toggle" id="themeToggle"></div></div>
       </div>
       <div class="h2" style="margin:18px 0 10px">Earnings &amp; Trust</div>
       <div class="card" style="padding:4px 16px">

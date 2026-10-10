@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@capacitor/app": "^6.0.3",
+    "@capacitor/geolocation": "^6.1.1",
     "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {

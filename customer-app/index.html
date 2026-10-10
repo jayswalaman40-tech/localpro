@@ -13,8 +13,33 @@
     --success:#22B24C; --successDark:#1B9E3E; --danger:#E53935; --warning:#F5A623;
     --bg:#FFFFFF; --bgMuted:#F5F7FA; --card:#FFFFFF; --cardBorder:#EDEFF3;
     --tPrimary:#0F2547; --tSecondary:#6B7280; --tTertiary:#9AA3B2;
-    --star:#F6B01E; --whatsapp:#25D366; --verified:#1D9BF0;
+    --star:#F6B01E; --whatsapp:#25D366; --verified:#1D9BF0; --surface:#FFFFFF;
   }
+  /* ----- Dark mode ----- */
+  :root[data-theme="dark"]{
+    --bg:#0E1420; --bgMuted:#161F2E; --card:#1A2433; --surface:#1A2433; --cardBorder:#2A3547;
+    --tPrimary:#EAF0F7; --tSecondary:#9FB0C3; --tTertiary:#6E7F93;
+  }
+  :root[data-theme="dark"] .ic-btn,
+  :root[data-theme="dark"] .btn-out,
+  :root[data-theme="dark"] .btn-out-green,
+  :root[data-theme="dark"] .btn-out-danger,
+  :root[data-theme="dark"] .chip,
+  :root[data-theme="dark"] .tabs,
+  :root[data-theme="dark"] .field,
+  :root[data-theme="dark"] .ta,
+  :root[data-theme="dark"] .sheet,
+  :root[data-theme="dark"] .sticky,
+  :root[data-theme="dark"] .slot{background:var(--card);}
+  :root[data-theme="dark"] .field input,
+  :root[data-theme="dark"] .ta,
+  :root[data-theme="dark"] input{color:var(--tPrimary);}
+  :root[data-theme="dark"] .avatar{background:#223049;}
+  /* toggle switch */
+  .toggle{width:44px;height:26px;border-radius:999px;background:#CBD5E1;position:relative;cursor:pointer;flex-shrink:0;transition:.2s;}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .toggle.on{background:var(--primary);}
+  .toggle.on::after{left:21px;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;}
   body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tPrimary);}
@@ -150,7 +175,7 @@
       <div class="waves"></div>
       <div class="pad">
         <div style="text-align:center;margin-top:40px">
-          <img src="/logo.png" alt="HelpZo" style="width:170px;max-width:58%;height:auto">
+          <img src="/logomark.png" alt="HelpZo" style="width:210px;max-width:62%;height:auto">
         </div>
         <div id="loginPhoneStep">
           <p class="h2" style="text-align:center;margin:28px 0 20px">Login to Continue</p>
@@ -320,6 +345,23 @@
     <div class="sticky" id="billActions"></div>
   </div>
 
+  <!-- 08c BOOKING DETAILS -->
+  <div class="screen" id="s-bookingdetail">
+    <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1">Booking Details</p></div>
+    <div class="scroll" style="padding-bottom:110px"><div class="pad" id="bookDetailBody"></div></div>
+    <div class="sticky" id="bookDetailActions"></div>
+  </div>
+
+  <!-- 08d FEEDBACK / CONTACT ADMIN -->
+  <div class="screen" id="s-feedback">
+    <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><div><p class="h1">Send Feedback</p><div class="meta">Chat directly with the HelpZo team</div></div></div>
+    <div class="scroll" id="fbScroll" style="background:var(--bgMuted)"><div class="pad" id="fbMsgs" style="padding-bottom:12px"></div></div>
+    <div class="sticky" style="gap:8px">
+      <input id="fbInput" placeholder="Describe your problem or suggestion…" style="flex:1;border:1px solid var(--cardBorder);border-radius:999px;padding:11px 16px;font:inherit;font-size:14px;background:var(--bg);color:var(--tPrimary)">
+      <button class="btn btn-green" style="flex:0 0 auto;width:54px" id="fbSendBtn">&#10148;</button>
+    </div>
+  </div>
+
   <!-- 09 NOTIFICATIONS -->
   <div class="screen" id="s-notifications">
     <div class="hdr"><div class="ic-btn" data-back>&#8249;</div><p class="h1">Notifications</p></div>
@@ -345,10 +387,12 @@
       </div>
       <div class="sec" style="margin:18px 0 8px 4px;font-weight:600">Preferences</div>
       <div class="card" style="padding:4px 16px">
-        <div class="mrow" data-go="lang"><span class="mi">&#127760;</span><span class="ml">Language</span><span class="mc" id="langCurrent">English &#8250;</span></div>
+        <div class="mrow" data-go="lang"><span class="mi">&#127760;</span><span class="ml">Language</span><span class="mc" id="langCurrent">English &#8250;</span></div><div class="divide"></div>
+        <div class="mrow" id="themeRow"><span class="mi">&#127769;</span><span class="ml">Dark Mode</span><div class="spacer"></div><div class="toggle" id="themeToggle"></div></div>
       </div>
       <div class="sec" style="margin:18px 0 8px 4px;font-weight:600">Support</div>
       <div class="card" style="padding:4px 16px">
+        <div class="mrow" data-go="feedback"><span class="mi">&#128172;</span><span class="ml">Send Feedback to HelpZo</span><span class="mc">&#8250;</span></div><div class="divide"></div>
         <div class="mrow" data-doc="contact"><span class="mi">&#10068;</span><span class="ml">Help &amp; Support</span><span class="mc">&#8250;</span></div>
       </div>
       <div class="sec" style="margin:18px 0 8px 4px;font-weight:600">Legal</div>

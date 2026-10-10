@@ -302,6 +302,16 @@ function renderLangScreen() {
     `<div class="mrow" data-lang="${code}"><span class="ml">${name}</span><span class="mc">${code === curLang ? '✓' : '›'}</span></div>`).join('<div class="divide"></div>');
 }
 
+/* ---------- theme (light / dark) ---------- */
+let curTheme = 'light';
+function applyTheme(t) {
+  curTheme = (t === 'dark') ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', curTheme);
+  try { localStorage.setItem('helpzo_theme', curTheme); } catch (e) {}
+  $('themeToggle')?.classList.toggle('on', curTheme === 'dark');
+}
+function toggleTheme() { applyTheme(curTheme === 'dark' ? 'light' : 'dark'); }
+
 /* ---------- tab bar ---------- */
 const TABS = [
   { id:'home', ic:'🏠', lb:'Home' },
@@ -330,6 +340,7 @@ function onEnter(id) {
   if (id === 'city') renderCityScreen();
   if (id === 'booked') renderBooked();
   if (id === 'chat') renderChat();
+  if (id === 'feedback') renderFeedback();
   if (id === 'map') renderMapScreen();
 }
 
@@ -821,21 +832,75 @@ function renderBookings() {
     }).catch(() => {});
   }
 }
+let shownBookings = [];     // the bookings currently rendered (for tap → details)
 function paintBookings() {
   const el = $('bookRows'); if (!el) return;
   const rows = lastBookings.filter((b) => bookBucket(b.status) === bookFilter);
+  shownBookings = rows;
   if (!rows.length) { el.innerHTML = `<div class="empty">No ${esc(bookFilter)} bookings.</div>`; return; }
   el.innerHTML = rows.map((b, i) => {
     const s = String(b.status).toLowerCase();
     const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : s.startsWith('cancel') ? 'grey' : 'orange';
-    return `<div class="row" style="${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+    return `<div class="row" style="cursor:pointer;${i ? 'border-top:1px solid var(--cardBorder)' : ''}" data-bookdetail="${i}">
       <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
       <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
         <div class="meta">📅 ${esc(b.when)}</div><div class="meta">📍 ${esc(b.addr)}</div>
         ${billLine(b)}</div>
-      <span class="pill ${pill}">${esc(b.status)}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span class="pill ${pill}">${esc(b.status)}</span><span class="mc" style="color:var(--tTertiary)">›</span></div>
     </div>`;
   }).join('');
+}
+
+/* ---------- booking details (tap a booking) ---------- */
+let detailBooking = null;
+function openBookingDetail(b) {
+  if (!b) return;
+  detailBooking = b;
+  // best-effort provider object for Call / Chat
+  b._prov = providerCache[b.providerId] || DEMO_PROVIDERS.find((p) => p.name === b.provider) || { id: b.providerId || 'd1', name: b.provider, phone: b.phone };
+  const s = String(b.status || '').toLowerCase();
+  const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : s.startsWith('cancel') ? 'grey' : 'orange';
+  const field = (ic, lbl, val) => `<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--cardBorder)">
+    <div style="font-size:18px">${ic}</div><div style="flex:1"><div class="ter">${lbl}</div><div style="font-weight:600;color:var(--tPrimary);margin-top:2px">${esc(val || '—')}</div></div></div>`;
+  const body = $('bookDetailBody');
+  if (body) body.innerHTML = `
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="avatar" style="width:56px;height:56px">${initials(b.provider)}</div>
+        <div style="flex:1"><div class="h2">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div></div>
+        <span class="pill ${pill}">${esc(b.status)}</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px;padding:4px 16px">
+      ${field('📅', 'Date & Time', b.when)}
+      ${field('📍', 'Service Address', b.addr)}
+      ${b.note ? field('📝', 'Note', b.note) : ''}
+      ${b.total ? field('💰', 'Amount', inr(b.total) + (b.paid ? ' • Paid' : '')) : ''}
+      <div style="padding:12px 0"><div class="ter">Booking status</div><div style="font-weight:600;color:var(--tPrimary);margin-top:2px">${esc(b.status)}</div></div>
+    </div>
+    ${billLine(b) ? `<div style="margin-top:14px">${billLine(b)}</div>` : ''}`;
+  const act = $('bookDetailActions');
+  const canChange = !(s.startsWith('cancel') || s.startsWith('complet'));
+  if (act) act.innerHTML = `
+    <button class="btn btn-out-green" style="flex:1" data-call="${esc((b._prov && b._prov.phone) || '')}">📞 Call</button>
+    <button class="btn btn-out" style="flex:1" id="bdChatBtn">💬 Chat</button>
+    ${canChange ? `<button class="btn btn-green" style="flex:1" id="bdReschedBtn">Reschedule</button>` : ''}
+    ${canChange ? `<button class="btn btn-out-danger" style="flex:1" id="bdCancelBtn">Cancel</button>` : ''}`;
+  show('bookingdetail');
+}
+async function cancelBookingDetail() {
+  const b = detailBooking; if (!b) return;
+  if (b.id && hasSupabase && session) { try { await api.cancelBooking(b.id); } catch (e) {} }
+  b.status = 'Cancelled';
+  const idx = localBookings.findIndex((x) => x === b);
+  toast('Booking cancelled');
+  renderBookings(); show('bookings');
+}
+function rescheduleBookingDetail() {
+  const b = detailBooking; if (!b) return;
+  selectedProvider = b._prov || selectedProvider;
+  toast('Pick a new date & time');
+  show('book');
 }
 // Bill call-to-action under a booking row.
 function billLine(b) {
@@ -920,6 +985,7 @@ function renderAccount() {
   if ($('completePct')) $('completePct').textContent = pct + '%';
   if ($('completeBar')) $('completeBar').style.width = pct + '%';
   if ($('langCurrent')) $('langCurrent').textContent = LANGS[curLang] + ' ›';
+  $('themeToggle')?.classList.toggle('on', curTheme === 'dark');
 }
 
 /* ---------- auth ---------- */
@@ -1021,6 +1087,44 @@ async function sendChat() {
   const real = hasSupabase && session && p?.id && !String(p.id).startsWith('d');
   if (real) { try { await api.sendMessage(p.id, body); } catch (e) { toast('Message not sent'); } }
 }
+/* ---------- feedback to admin (chat) ---------- */
+const FB_KEY = 'helpzo_feedback_thread';
+let fbThread = [];
+function loadFbThread() {
+  try { fbThread = JSON.parse(localStorage.getItem(FB_KEY) || 'null') || []; } catch (e) { fbThread = []; }
+}
+function saveFbThread() { try { localStorage.setItem(FB_KEY, JSON.stringify(fbThread.slice(-50))); } catch (e) {} }
+async function renderFeedback() {
+  loadFbThread();
+  const box = $('fbMsgs'); if (!box) return;
+  // Pull any admin replies from the server when signed in.
+  if (hasSupabase && session) {
+    try {
+      const rows = await api.getFeedback();
+      if (rows && rows.length) fbThread = rows.map((r) => ({ me: r.sender_role !== 'admin', body: r.body, time: chatTime(r.created_at) }));
+    } catch (e) {}
+  }
+  const intro = { me: false, body: 'Hi! This is the HelpZo team. Tell us any problem or suggestion — we read every message.', time: '' };
+  const msgs = [intro].concat(fbThread);
+  box.innerHTML = msgs.map(chatBubble).join('');
+  const sc = $('fbScroll'); if (sc) sc.scrollTop = sc.scrollHeight;
+}
+async function sendFeedback() {
+  const inp = $('fbInput'); if (!inp) return;
+  const body = (inp.value || '').trim(); if (!body) return;
+  inp.value = '';
+  const msg = { me: true, body, time: chatTime(new Date()) };
+  fbThread.push(msg); saveFbThread();
+  const box = $('fbMsgs'); if (box) { box.insertAdjacentHTML('beforeend', chatBubble(msg)); const sc = $('fbScroll'); if (sc) sc.scrollTop = sc.scrollHeight; }
+  let sent = false;
+  if (hasSupabase && session) { try { await api.sendFeedback(body); sent = true; } catch (e) {} }
+  setTimeout(() => {
+    const ack = { me: false, body: sent ? 'Thanks! Your message reached our team — we’ll get back to you shortly.' : 'Thanks! We’ve noted your feedback and our team will review it.', time: chatTime(new Date()) };
+    fbThread.push(ack); saveFbThread();
+    const box2 = $('fbMsgs'); if (box2) { box2.insertAdjacentHTML('beforeend', chatBubble(ack)); const sc = $('fbScroll'); if (sc) sc.scrollTop = sc.scrollHeight; }
+  }, 500);
+}
+
 function renderBooked() {
   const b = lastBooking; if (!b) return;
   if ($('bookedInfo')) $('bookedInfo').textContent = `${b.trade} • ${b.when}`;
@@ -1100,6 +1204,11 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.remove('on'));
     bf.classList.add('on'); bookFilter = bf.getAttribute('data-bfilter'); paintBookings(); return;
   }
+  if (e.target.closest('#themeRow') || e.target.closest('#themeToggle')) { toggleTheme(); return; }
+  const bd = e.target.closest('[data-bookdetail]'); if (bd) { openBookingDetail(shownBookings[Number(bd.getAttribute('data-bookdetail'))]); return; }
+  if (e.target.closest('#bdCancelBtn')) { cancelBookingDetail(); return; }
+  if (e.target.closest('#bdReschedBtn')) { rescheduleBookingDetail(); return; }
+  if (e.target.closest('#bdChatBtn')) { openChatWith(detailBooking && detailBooking._prov); return; }
   const ng = e.target.closest('[data-notifgo]'); if (ng) { const t = ng.getAttribute('data-notifgo'); stack = [t]; show(t, false); return; }
   const doc = e.target.closest('[data-doc]'); if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
   if (e.target.closest('[data-back]')) { back(); return; }
@@ -1288,6 +1397,7 @@ async function boot() {
   buildTabBars();
   loadLocalProfile();   // restore any locally-saved profile fields
   try { const l = localStorage.getItem('helpzo_lang'); if (l && LANGS[l]) curLang = l; } catch (e) {}
+  try { applyTheme(localStorage.getItem('helpzo_theme') || 'light'); } catch (e) {}
   wireOtpInputs();
   $('getOtpBtn')?.addEventListener('click', doGetOtp);
   $('verifyOtpBtn')?.addEventListener('click', doVerify);
@@ -1305,6 +1415,8 @@ async function boot() {
   });
   $('chatSendBtn')?.addEventListener('click', sendChat);
   $('chatInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+  $('fbSendBtn')?.addEventListener('click', sendFeedback);
+  $('fbInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendFeedback(); });
   $('epPhoto')?.addEventListener('change', async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     try {

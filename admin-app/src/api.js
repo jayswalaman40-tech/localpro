@@ -162,3 +162,20 @@ export async function setSignupStatus(id, status) {
   const { error } = await supabase.from('provider_signups').update({ status }).eq('id', id);
   if (error) throw error;
 }
+
+// ---------------- FEEDBACK (customer → admin) ----------------
+export async function getFeedback() {
+  const { data, error } = await supabase.from('feedback')
+    .select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function replyFeedback(customerId, body) {
+  const { error } = await supabase.from('feedback')
+    .insert({ customer_id: customerId, sender_role: 'admin', body });
+  if (error) throw error;
+}
+export async function setFeedbackStatus(id, status) {
+  const { error } = await supabase.from('feedback').update({ status }).eq('id', id);
+  if (error) throw error;
+}

@@ -55,6 +55,16 @@ function paintProvAvatar() {
   if (dot) dot.style.display = '';
 }
 
+/* ---------- theme (light / dark) ---------- */
+let curTheme = 'light';
+function applyTheme(t) {
+  curTheme = (t === 'dark') ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', curTheme);
+  try { localStorage.setItem('helpzo_theme', curTheme); } catch (e) {}
+  $('themeToggle')?.classList.toggle('on', curTheme === 'dark');
+}
+function toggleTheme() { applyTheme(curTheme === 'dark' ? 'light' : 'dark'); }
+
 /* ---------- app state ---------- */
 let stack = ['splash'];
 let categories = [];
@@ -1435,6 +1445,7 @@ document.addEventListener('click', (e) => {
   const sd = e.target.closest('[data-schday]');
   if (sd) { selectSchedDay(sd.getAttribute('data-schday')); return; }
   // Edit profile (from profile page → reg2 in edit mode)
+  if (e.target.closest('#themeRow') || e.target.closest('#themeToggle')) { toggleTheme(); return; }
   if (e.target.closest('#profAvatar')) { $('profPhoto')?.click(); return; }
   const ep = e.target.closest('[data-editprofile]');
   if (ep) { openEditProfile(); return; }
@@ -1524,6 +1535,7 @@ function wireOtpInputs() {
 async function boot() {
   buildTabBars();
   try { const l = localStorage.getItem('helpzo_lang'); if (l && LANGS[l]) curLang = l; } catch (e) {}
+  try { applyTheme(localStorage.getItem('helpzo_theme') || 'light'); } catch (e) {}
   wireOtpInputs();
   // datalist: Ahmedabad service areas (dedupe)
   const dl = $('ahmAreas');
