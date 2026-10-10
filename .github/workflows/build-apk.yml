@@ -126,3 +126,46 @@ jobs:
             - HelpZo-Provider-debug.apk
           prerelease: true
           files: apks/*.apk
+
+  # Auto-refresh the public download page (admin-app/public/downloads) with the
+  # APKs that were just built, and commit them back to this branch. Vercel then
+  # redeploys the admin app, so helpzo-admin.vercel.app/download.html always
+  # serves the newest APK with no manual step. The commit touches only
+  # admin-app/** (outside this workflow's path filter) and carries [skip ci],
+  # so it never re-triggers a build.
+  refresh-download-page:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the branch that triggered this run
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download built APKs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-apk'
+          merge-multiple: true
+          path: apks
+
+      - name: Copy APKs into the admin download page
+        run: |
+          mkdir -p admin-app/public/downloads
+          cp apks/HelpZo-Customer-debug.apk admin-app/public/downloads/HelpZo-Customer.apk
+          cp apks/HelpZo-Provider-debug.apk admin-app/public/downloads/HelpZo-Provider.apk
+
+      - name: Commit & push if the APKs changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add admin-app/public/downloads/HelpZo-Customer.apk admin-app/public/downloads/HelpZo-Provider.apk
+          if git diff --cached --quiet; then
+            echo "APKs unchanged — nothing to publish."
+          else
+            git commit -m "Auto-refresh hosted APKs (build ${GITHUB_SHA::7}) [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
