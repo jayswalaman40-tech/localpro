@@ -5,7 +5,7 @@
 // =====================================================================
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
-import { nearbyMap, demoProviders } from './maps.js';
+import { nearbyMap, demoProviders, locationPicker } from './maps.js';
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -612,6 +612,20 @@ function renderBook() {
   bookDateIso = isoLocalDate(today);
   calMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   renderCalendar();
+  initBookMap();
+}
+/* ---------- booking location picker (map) ---------- */
+let bookPicker = null, bookLatLng = null, addrTyping = false, addrTypeTimer = null;
+function initBookMap() {
+  const el = $('bookMap'); if (!el) return;
+  bookLatLng = null;
+  locationPicker(el, {
+    onPick: ({ lat, lng, address }) => {
+      bookLatLng = { lat, lng };
+      // Only auto-fill the address from the map when the user isn't typing.
+      if (address && !addrTyping && $('bookAddr')) $('bookAddr').value = address;
+    },
+  }).then((pk) => { bookPicker = pk; }).catch(() => {});
 }
 /* ---------- booking calendar (any date) + time (24/7) ---------- */
 let calMonth = null;      // first day of the month being shown
@@ -835,7 +849,7 @@ async function confirmBooking() {
     const dateNice = new Date(bookDateIso + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     if (!isDemo) {
-      await api.createBooking(p.id, { service: p.trade, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '' });
+      await api.createBooking(p.id, { service: p.trade, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng });
     }
     localBookings.unshift({
       service: selectedSub || p.trade || 'Service', provider: p.name || 'Provider',
@@ -1111,6 +1125,10 @@ async function boot() {
   $('homeSearch')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
   $('homeSearchGo')?.addEventListener('click', doSearch);
   $('citySearch')?.addEventListener('input', renderCityScreen);
+  $('bookAddr')?.addEventListener('input', () => {
+    addrTyping = true; clearTimeout(addrTypeTimer);
+    addrTypeTimer = setTimeout(() => { addrTyping = false; try { bookPicker?.geocodeAddress($('bookAddr').value); } catch (e) {} }, 700);
+  });
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).

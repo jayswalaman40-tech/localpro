@@ -156,12 +156,12 @@ export async function getMyBookings() {
 }
 
 // ---------------- BOOKINGS (scheduled) ----------------
-export async function createBooking(providerId, { service, date, time, address, note }) {
+export async function createBooking(providerId, { service, date, time, address, note, lat, lng }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) throw new Error('Not signed in');
   let me = null;
   try { me = await getMyProfile(); } catch (e) {}
-  const { data, error } = await supabase.from('bookings').insert({
+  const row = {
     customer_id: u.user.id,
     provider_id: providerId,
     service: service || null,
@@ -171,7 +171,9 @@ export async function createBooking(providerId, { service, date, time, address, 
     note: note || null,
     customer_name: me?.full_name || null,
     customer_phone: me?.phone || u.user.phone || null,
-  }).select().single();
+  };
+  if (lat != null && lng != null) { row.customer_lat = lat; row.customer_lng = lng; }
+  const { data, error } = await supabase.from('bookings').insert(row).select().single();
   if (error) throw error;
   return data;
 }

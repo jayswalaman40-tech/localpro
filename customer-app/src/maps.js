@@ -117,6 +117,50 @@ export async function nearbyMap(el, providers, onReady) {
   return map;
 }
 
+// Location picker: move the map to set an exact pin; reverse-geocodes the
+// centre to an address, and geocodeAddress() moves the map from typed text.
+// Needs "Maps JavaScript API" + "Geocoding API" on the key.
+export async function locationPicker(el, opts = {}) {
+  if (!el) return null;
+  el.style.position = 'relative'; el.style.overflow = 'hidden';
+  if (!MAPS_KEY) { placeholder(el, 'Map — enable Google Maps key to pick location'); return null; }
+  try { await loadMapsJs(); } catch (e) { placeholder(el); return null; }
+  injectStyles();
+  const g = window.google.maps;
+  const me = opts.initial || (await quickPos()) || { lat: DEF_LAT, lng: DEF_LNG };
+  el.innerHTML = '';
+  const map = new g.Map(el, { center: me, zoom: 16, disableDefaultUI: true, gestureHandling: 'greedy', clickableIcons: false, styles: MAP_STYLE });
+  // fixed centre pin
+  const pin = document.createElement('div');
+  pin.textContent = '📍';
+  pin.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:30px;pointer-events:none;z-index:5;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))';
+  el.appendChild(pin);
+  const geocoder = new g.Geocoder();
+  let t = null;
+  const emit = () => {
+    const c = map.getCenter(); const lat = c.lat(), lng = c.lng();
+    geocoder.geocode({ location: { lat, lng } }, (res, status) => {
+      const addr = (status === 'OK' && res && res[0]) ? res[0].formatted_address : '';
+      opts.onPick && opts.onPick({ lat, lng, address: addr });
+    });
+  };
+  map.addListener('idle', () => { clearTimeout(t); t = setTimeout(emit, 450); });
+  const btn = document.createElement('button');
+  btn.textContent = '◎ My location';
+  btn.style.cssText = 'position:absolute;right:10px;bottom:10px;border:0;border-radius:999px;background:#fff;color:#1667E8;font-weight:700;font-size:12px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;z-index:6';
+  btn.onclick = async () => { const p = await quickPos(); if (p) { map.setCenter(p); map.setZoom(16); } };
+  el.appendChild(btn);
+  return {
+    map,
+    geocodeAddress: (text) => {
+      if (!text || !text.trim()) return;
+      geocoder.geocode({ address: text + ', Gujarat, India' }, (res, status) => {
+        if (status === 'OK' && res && res[0]) { map.setCenter(res[0].geometry.location); map.setZoom(16); }
+      });
+    },
+  };
+}
+
 // Scatter demo providers around a center (used offline / not signed in).
 export function demoProviders(center) {
   const c = center || { lat: DEF_LAT, lng: DEF_LNG };
