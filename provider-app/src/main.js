@@ -13,6 +13,48 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<'
 const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
 const telHref = (p) => 'tel:' + String(p || '').replace(/[^\d+]/g, '');
 
+/* ---------- profile photo ---------- */
+const PROV_PHOTO_KEY = 'helpzo_provider_photo';
+let provPhoto = null;
+try { provPhoto = localStorage.getItem(PROV_PHOTO_KEY) || null; } catch (e) {}
+// Read a picked image, downscale to ~256px square, return a small JPEG data URL.
+function fileToAvatarDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('no file'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('read failed'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode failed'));
+      img.onload = () => {
+        const S = 256; const c = document.createElement('canvas'); c.width = S; c.height = S;
+        const ctx = c.getContext('2d');
+        const scale = Math.max(S / img.width, S / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+// Paint the profile avatar: photo (keeping the online dot) or the name's first letter.
+function paintProvAvatar() {
+  const el = $('profAvatar'); if (!el) return;
+  const dot = el.querySelector('span');
+  const letter = ((myProvider && myProvider.name) || 'P')[0].toUpperCase();
+  if (provPhoto) {
+    el.style.backgroundImage = `url("${provPhoto}")`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center';
+    if (el.firstChild && el.firstChild.nodeType === 3) el.firstChild.textContent = '';
+  } else {
+    el.style.backgroundImage = 'none';
+    if (el.firstChild && el.firstChild.nodeType === 3) el.firstChild.textContent = letter;
+    else el.insertBefore(document.createTextNode(letter), el.firstChild);
+  }
+  if (dot) dot.style.display = '';
+}
+
 /* ---------- app state ---------- */
 let stack = ['splash'];
 let categories = [];
@@ -796,7 +838,7 @@ async function renderProfile() {
     if ($('profName')) $('profName').textContent = myProvider.name || 'Provider';
     if ($('profTrade')) $('profTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
     if ($('profArea')) $('profArea').textContent = myProvider.service_area || myProvider.city || 'Ahmedabad, Gujarat';
-    if ($('profAvatar')) $('profAvatar').firstChild.textContent = (myProvider.name || 'P')[0].toUpperCase();
+    paintProvAvatar();
     const av = myProvider.available !== false;
     $('availToggle')?.classList.toggle('on', av);
     if ($('statusPill')) { $('statusPill').textContent = av ? '● Online' : '● Offline'; $('statusPill').className = 'pill ' + (av ? 'green' : 'grey'); }
@@ -808,6 +850,7 @@ async function renderProfile() {
       setTxt('profRatingVal', rt); setTxt('profReviews', `(${s.ratingCount} review${s.ratingCount === 1 ? '' : 's'})`);
     }
   }
+  paintProvAvatar();   // also paints the saved photo in demo mode
   updateBadges();
 }
 
@@ -1392,6 +1435,7 @@ document.addEventListener('click', (e) => {
   const sd = e.target.closest('[data-schday]');
   if (sd) { selectSchedDay(sd.getAttribute('data-schday')); return; }
   // Edit profile (from profile page → reg2 in edit mode)
+  if (e.target.closest('#profAvatar')) { $('profPhoto')?.click(); return; }
   const ep = e.target.closest('[data-editprofile]');
   if (ep) { openEditProfile(); return; }
   const bdel = e.target.closest('[data-billdel]');
@@ -1499,6 +1543,16 @@ async function boot() {
   $('earnViewAll')?.addEventListener('click', () => { txnsExpanded = !txnsExpanded; renderTxns(); $('earnViewAll').textContent = txnsExpanded ? 'Show Less ‹' : 'View All ›'; });
   $('schedCalBtn')?.addEventListener('click', toggleCalendar);
   $('availToggle')?.addEventListener('click', toggleAvail);
+  $('profPhoto')?.addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      provPhoto = await fileToAvatarDataUrl(f);
+      try { localStorage.setItem(PROV_PHOTO_KEY, provPhoto); } catch (er) {}
+      paintProvAvatar();
+      toast('Photo updated');
+    } catch (err) { toast('Could not read image'); }
+    e.target.value = '';
+  });
   $('billAddBtn')?.addEventListener('click', addBillItem);
   $('billAmt')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBillItem(); });
   $('billLabel')?.addEventListener('input', () => {

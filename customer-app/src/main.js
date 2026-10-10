@@ -31,7 +31,38 @@ let listSort = 'all';              // all | rating | dist | price
 let lastBookings = [];             // bookings currently loaded (for filter chips)
 let localBookings = [];            // bookings made this session (shown immediately)
 let bookFilter = 'upcoming';       // upcoming | completed | cancelled
+let selectedServices = [];         // multi-selected service labels (service picker)
 let toastTimer = null;
+
+/* ---------- avatar helper (photo or initials) ---------- */
+// Shows the uploaded profile photo (data URL) when present, else the initials.
+function paintAvatar(el, name, url) {
+  if (!el) return;
+  if (url) { el.style.backgroundImage = `url("${url}")`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; }
+  else { el.style.backgroundImage = 'none'; el.textContent = initials(name || 'Guest User'); }
+}
+// Read a picked image file, downscale to ~256px, return a small JPEG data URL.
+function fileToAvatarDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('no file'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('read failed'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode failed'));
+      img.onload = () => {
+        const S = 256; const c = document.createElement('canvas'); c.width = S; c.height = S;
+        const ctx = c.getContext('2d');
+        const scale = Math.max(S / img.width, S / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
 
 // Normalize a Supabase provider/RPC row into the shape the UI cards use.
 function provFromRow(p) {
@@ -138,12 +169,16 @@ const DEMO_BOOKINGS = [
   { service:'Carpenter', provider:'Mahesh Patel', when:'18 Sep 2025 • 11:00 AM', addr:'Thaltej, Ahmedabad', pill:'green', status:'Confirmed' },
 ];
 const DEMO_NOTIF = [
-  { color:'#22B24C', ic:'✓', title:'Service Request Accepted', body:'Ramesh Singh has accepted your AC repair request.', ago:'2m ago' },
-  { color:'#1667E8', ic:'📅', title:'Booking Confirmed', body:'Your booking for electrician service is confirmed for 15 Sep 2025.', ago:'1h ago' },
-  { color:'#F5A623', ic:'🏷️', title:'New Offer', body:'Get 15% OFF on your first AC service booking!', ago:'3h ago' },
-  { color:'#F5A623', ic:'🔔', title:'Reminder', body:'Your appointment is tomorrow at 5:00 PM.', ago:'1d ago' },
-  { color:'#F6B01E', ic:'★', title:'Review Request', body:'Please share your experience with Ramesh Singh.', ago:'1d ago' },
+  { color:'#22B24C', ic:'✓', title:'Service Request Accepted', body:'Ramesh Singh has accepted your AC repair request.', ago:'2m ago', go:'bookings' },
+  { color:'#1667E8', ic:'📅', title:'Booking Confirmed', body:'Your booking for electrician service is confirmed for 15 Sep 2025.', ago:'1h ago', go:'bookings' },
+  { color:'#F5A623', ic:'🏷️', title:'New Offer', body:'Get 15% OFF on your first AC service booking!', ago:'3h ago', go:'home' },
+  { color:'#F5A623', ic:'🔔', title:'Reminder', body:'Your appointment is tomorrow at 5:00 PM.', ago:'1d ago', go:'bookings' },
+  { color:'#F6B01E', ic:'★', title:'Review Request', body:'Please share your experience with Ramesh Singh.', ago:'1d ago', go:'bookings' },
 ];
+// Where a notification should take the customer when tapped.
+function notifTarget(type) {
+  return ({ booking:'bookings', lead:'bookings', review:'bookings', offer:'home', system:'home' })[type] || 'bookings';
+}
 
 /* ---------- toast ---------- */
 function toast(msg) {
@@ -330,19 +365,65 @@ async function renderMapScreen() {
 }
 function setMapText(id, v) { const e = $(id); if (e) e.textContent = v; }
 
+/* ---------- service matching + provider badges ---------- */
+// Deterministic hash so a provider's offered-service set is stable across renders.
+function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return Math.abs(h); }
+// Which services (from its category) a provider offers. Synthesised deterministically
+// so lists stay stable; ~2/3 of the category's services per provider.
+function providerServices(p) {
+  const all = SUBCATS[p.cat || selectedCat] || [];
+  return all.filter((s) => hashCode(String(p.id) + '|' + s) % 3 !== 0);
+}
+// How many of the currently-selected services this provider offers.
+function serviceMatch(p) {
+  if (!selectedServices.length) return { n: 0, all: false };
+  const offered = providerServices(p).map((s) => s.toLowerCase());
+  const n = selectedServices.filter((s) => offered.includes(String(s).toLowerCase())).length;
+  return { n, all: n === selectedServices.length && n > 0 };
+}
+// Location + rating driven badges, computed over the *visible* set.
+function computeBadges(rows) {
+  const map = {}; if (!rows.length) return map;
+  const add = (id, k) => { (map[id] = map[id] || []).push(k); };
+  const near = rows.reduce((a, c) => ((parseFloat(c.dist) || 1e9) < (parseFloat(a.dist) || 1e9) ? c : a));
+  const best = rows.reduce((a, c) => ((c.rating || 0) > (a.rating || 0) ? c : a));
+  const pop = rows.reduce((a, c) => ((c.reviews || 0) > (a.reviews || 0) ? c : a));
+  if (parseFloat(near.dist) < 1e9) add(near.id, 'near');
+  if ((best.rating || 0) >= 4.5) add(best.id, 'best');
+  if ((pop.reviews || 0) >= 80 && pop.id !== best.id) add(pop.id, 'pop');
+  return map;
+}
+const BADGE_META = {
+  near: ['#1667E8', '📍', 'Nearest'], best: ['#F6B01E', '⭐', 'Top Rated'],
+  pop: ['#E5484D', '🔥', 'Popular'], allsvc: ['#22B24C', '✅', 'All services'],
+};
+function badgeHtml(keys) {
+  if (!keys || !keys.length) return '';
+  return `<div class="pbadges">` + keys.map((k) => {
+    const m = BADGE_META[k]; if (!m) return '';
+    return `<span class="pbadge" style="background:${m[0]}1f;color:${m[0]}">${m[1]} ${m[2]}</span>`;
+  }).join('') + `</div>`;
+}
+
 /* ---------- renderers ---------- */
 function catCell(c) {
   return `<div class="scell" data-cat="${c.key}" data-label="${esc(c.label)}"><div class="scirc" style="background:${c.color}">${c.icon}</div><span class="lb">${esc(c.label)}</span></div>`;
 }
-function topCard(p) {
+function provAvatarHtml(p, size) {
+  const s = size || 64;
+  if (p.avatar || p.photo) return `<div class="avatar" style="width:${s}px;height:${s}px;border-radius:16px;background-image:url('${p.avatar || p.photo}');background-size:cover;background-position:center"></div>`;
+  return `<div class="avatar" style="width:${s}px;height:${s}px;border-radius:16px">${initials(p.name)}</div>`;
+}
+function topCard(p, badges) {
   return `<div class="card">
     <div style="display:flex;gap:12px">
-      <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
+      ${provAvatarHtml(p, 64)}
       <div style="flex:1">
         <div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
         <div class="sec" style="margin-top:2px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''}</div>
+        ${badgeHtml(badges)}
       </div>
     </div>
     <button class="btn btn-green pill" style="margin-top:12px" data-open="${p.id}">View Profile</button>
@@ -354,14 +435,16 @@ async function renderHome() {
   const top = $('homeTop'); if (!top) return;
   // Show the top 3 providers (by rating) so the section never looks empty.
   const demoTop = DEMO_PROVIDERS.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
-  top.innerHTML = demoTop.map(topCard).join('');
+  let topB = computeBadges(demoTop);
+  top.innerHTML = demoTop.map((p) => topCard(p, topB[p.id])).join('');
   if (hasSupabase) {
     try {
       const loc = await api.getCurrentLocation();
       const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
       if (live && live.length) {
         const rows = live.slice(0, 3).map((r) => { const p = provFromRow(r); providerCache[p.id] = p; return p; });
-        top.innerHTML = rows.map(topCard).join('');
+        topB = computeBadges(rows);
+        top.innerHTML = rows.map((p) => topCard(p, topB[p.id])).join('');
       }
     } catch (e) {}
   }
@@ -369,36 +452,59 @@ async function renderHome() {
 
 /* ---------- All Categories / Subcategories browse ---------- */
 function openAllCategories() {
-  subcatParent = null;
+  subcatParent = null; selectedServices = [];
   if ($('subcatTitle')) $('subcatTitle').textContent = 'All Categories';
   if ($('subcatSub')) $('subcatSub').textContent = 'Choose a service type';
   const grid = $('subcatGrid');
   if (grid) grid.innerHTML = `<div class="sgrid">${CATS.map(catCell).join('')}</div>`;
+  if ($('subcatBook')) $('subcatBook').style.display = 'none';
+  const tabs = document.querySelector('#s-subcats [data-tabbar]'); if (tabs) tabs.style.display = '';
   show('subcats');
 }
+// Tapping a category opens its services as a MULTI-select list with a sticky
+// "Book" bar. Pick one or more services, then Book → provider list ranked by
+// how many of the chosen services each provider offers.
 function openSubcats(key) {
   const c = CATS.find((x) => x.key === key);
-  if (!c || !(SUBCATS[key] && SUBCATS[key].length)) { selectedCat = key; selectedSub = null; searchQuery = ''; show('list'); return; }
-  subcatParent = key;
+  if (!c || !(SUBCATS[key] && SUBCATS[key].length)) { selectedCat = key; selectedSub = null; selectedServices = []; searchQuery = ''; show('list'); return; }
+  subcatParent = key; selectedCat = key; selectedServices = []; searchQuery = '';
   if ($('subcatTitle')) $('subcatTitle').textContent = c.label;
-  if ($('subcatSub')) $('subcatSub').textContent = 'Select a service';
+  if ($('subcatSub')) $('subcatSub').textContent = 'Select one or more services';
   const grid = $('subcatGrid');
-  if (grid) {
-    grid.innerHTML = SUBCATS[key].map((s) => `<div class="subrow" data-subcat="${esc(s)}">
-      <div class="subic" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
-      <div class="subtxt">${esc(s)}</div><span class="mc">›</span></div>`).join('');
-  }
+  if (grid) grid.innerHTML = SUBCATS[key].map((s) => serviceRow(c, s)).join('');
+  updateBookBar();
   show('subcats');
 }
-function providerCard(p) {
+function serviceRow(c, s) {
+  return `<div class="subrow svc" data-svc="${esc(s)}">
+    <div class="subic" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+    <div class="subtxt">${esc(s)}</div><span class="svc-check">○</span></div>`;
+}
+function updateBookBar() {
+  const bar = $('subcatBook'); if (!bar) return;
+  const n = selectedServices.length;
+  bar.style.display = n ? 'flex' : 'none';
+  const btn = $('subcatBookBtn'); if (btn) btn.textContent = n > 1 ? `Book — ${n} services` : 'Book';
+  // The bottom tab bar sits above the sticky bar; hide it while the Book bar shows.
+  const tabs = document.querySelector('#s-subcats [data-tabbar]');
+  if (tabs) tabs.style.display = n ? 'none' : '';
+}
+function providerCard(p, badges) {
+  let svcLine = '';
+  if (selectedServices.length) {
+    const m = serviceMatch(p);
+    svcLine = `<div class="sec" style="margin-top:3px;font-size:12px;color:${m.all ? 'var(--success)' : 'var(--tSecondary)'}">${m.all ? `✓ Offers all ${selectedServices.length} selected services` : `Offers ${m.n} of ${selectedServices.length} selected services`}</div>`;
+  }
   return `<div class="card" style="margin-bottom:12px">
     <div style="display:flex;gap:12px">
-      <div class="avatar" style="width:64px;height:64px;border-radius:16px">${initials(p.name)}</div>
+      ${provAvatarHtml(p, 64)}
       <div style="flex:1">
         <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
         <div class="meta">📍 ${p.dist} km away</div>
         <div class="price" style="margin-top:2px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary)">onwards</span></div>
+        ${svcLine}
+        ${badgeHtml(badges)}
       </div>
     </div>
     <button class="btn btn-green pill" style="margin-top:12px" data-open="${p.id}">Book Now</button>
@@ -433,7 +539,7 @@ async function renderList() {
 // Run a search from the Home search bar.
 function doSearch() {
   const q = ($('homeSearch')?.value || '').trim();
-  searchQuery = q; selectedSub = null;
+  searchQuery = q; selectedSub = null; selectedServices = [];
   // If the query is (part of) a single category name, scope to that category.
   const matched = CATS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()));
   selectedCat = (q && matched.length === 1) ? matched[0].key : null;
@@ -466,8 +572,19 @@ function paintList() {
   if (listSort === 'rating') rows.sort((a, b) => (b.rating || 0) - (a.rating || 0));
   else if (listSort === 'dist') rows.sort((a, b) => (parseFloat(a.dist) || 1e9) - (parseFloat(b.dist) || 1e9));
   else if (listSort === 'price') rows.sort((a, b) => (a.price || 0) - (b.price || 0));
+  // When services were chosen on the picker, providers offering ALL of them
+  // float to the top, then by how many they offer, then by rating.
+  if (selectedServices.length) {
+    rows.forEach((p) => { p._m = serviceMatch(p).n; });
+    rows.sort((a, b) => (b._m - a._m) || ((b.rating || 0) - (a.rating || 0)));
+  }
   if (!rows.length) { el.innerHTML = `<div class="empty">No providers found nearby.<br>Try a different service.</div>`; return; }
-  el.innerHTML = rows.map(providerCard).join('');
+  const badges = computeBadges(rows);
+  el.innerHTML = rows.map((p) => {
+    const keys = (badges[p.id] || []).slice();
+    if (selectedServices.length && serviceMatch(p).all) keys.unshift('allsvc');
+    return providerCard(p, keys);
+  }).join('');
 }
 function reviewRow(r) {
   const when = r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
@@ -778,26 +895,26 @@ async function renderNotif() {
       el.innerHTML = rows.length ? rows.map((n, i) => {
         const ic = notifIcon(n.type);
         const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-        return `<div class="row" style="align-items:flex-start;${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+        return `<div class="row" style="align-items:flex-start;cursor:pointer;${i ? 'border-top:1px solid var(--cardBorder)' : ''}" data-notifgo="${notifTarget(n.type)}">
           <div class="avatar" style="width:44px;height:44px;background:${ic.c};color:#fff">${ic.i}</div>
           <div class="mid"><div style="display:flex"><div class="h3" style="flex:1">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
-            <div class="sec" style="margin-top:2px">${esc(n.body || '')}</div></div></div>`;
+            <div class="sec" style="margin-top:2px">${esc(n.body || '')}</div><div class="ter" style="margin-top:4px;color:var(--primary)">Tap to view ›</div></div></div>`;
       }).join('') : `<div class="empty">No notifications yet.</div>`;
     } catch (e) { el.innerHTML = `<div class="empty">No notifications yet.</div>`; }
     return;
   }
   el.innerHTML = DEMO_NOTIF.map((n, i) => `
-    <div class="row" style="align-items:flex-start;${i ? 'border-top:1px solid var(--cardBorder)' : ''}">
+    <div class="row" style="align-items:flex-start;cursor:pointer;${i ? 'border-top:1px solid var(--cardBorder)' : ''}" data-notifgo="${n.go || 'bookings'}">
       <div class="avatar" style="width:44px;height:44px;background:${n.color};color:#fff">${n.ic}</div>
       <div class="mid"><div style="display:flex"><div class="h3" style="flex:1">${esc(n.title)}</div><span class="ter">${esc(n.ago)}</span></div>
-        <div class="sec" style="margin-top:2px">${esc(n.body)}</div></div>
+        <div class="sec" style="margin-top:2px">${esc(n.body)}</div><div class="ter" style="margin-top:4px;color:var(--primary)">Tap to view ›</div></div>
     </div>`).join('');
 }
 function renderAccount() {
   const name = (myProfile && myProfile.full_name) || 'Guest User';
   const phone = (myProfile && myProfile.phone) || (session?.user?.phone ? '+' + session.user.phone : '');
   if ($('accName')) $('accName').textContent = name;
-  if ($('accAvatar')) $('accAvatar').textContent = initials(name);   // keep avatar in sync with the name
+  paintAvatar($('accAvatar'), name, myProfile && myProfile.avatar);   // photo if set, else initials
   if ($('accPhone')) $('accPhone').textContent = phone || '+91 —';
   const pct = profileCompletion();
   if ($('completePct')) $('completePct').textContent = pct + '%';
@@ -936,9 +1053,18 @@ document.addEventListener('click', (e) => {
     if (key === '__more') { openAllCategories(); return; }
     selectedCat = key; openSubcats(key); return;
   }
-  const subc = e.target.closest('[data-subcat]'); if (subc) {
-    selectedSub = subc.getAttribute('data-subcat');
-    selectedCat = subcatParent || selectedCat; searchQuery = '';
+  const svc = e.target.closest('[data-svc]'); if (svc) {
+    const label = svc.getAttribute('data-svc');
+    const i = selectedServices.indexOf(label);
+    const chk = svc.querySelector('.svc-check');
+    if (i >= 0) { selectedServices.splice(i, 1); svc.classList.remove('on'); if (chk) chk.textContent = '○'; }
+    else { selectedServices.push(label); svc.classList.add('on'); if (chk) chk.textContent = '●'; }
+    updateBookBar(); return;
+  }
+  if (e.target.closest('#subcatBookBtn')) {
+    if (!selectedServices.length) { toast('Select at least one service'); return; }
+    selectedSub = selectedServices.length === 1 ? selectedServices[0] : null;
+    selectedCat = subcatParent || selectedCat;
     show('list'); return;
   }
   const open = e.target.closest('[data-open]'); if (open) { openProvider(open.getAttribute('data-open')); return; }
@@ -954,6 +1080,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#profChatBtn')) { openChatWith(selectedProvider); return; }
   if (e.target.closest('#bookedChatBtn')) { openChatWith(selectedProvider); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
+  if (e.target.closest('#epPhotoBtn') || e.target.closest('#epAvatarWrap')) { $('epPhoto')?.click(); return; }
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }
   const gch = e.target.closest('#epGender [data-gender]'); if (gch) { document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.remove('on')); gch.classList.add('on'); return; }
   const lng = e.target.closest('[data-lang]'); if (lng) { setLang(lng.getAttribute('data-lang')); return; }
@@ -963,8 +1090,8 @@ document.addEventListener('click', (e) => {
   const billBtn = e.target.closest('[data-bill]'); if (billBtn) { openBill(billBtn.getAttribute('data-bill')); return; }
   const payBtn = e.target.closest('[data-billpay]'); if (payBtn) { approveAndPay(payBtn.getAttribute('data-billpay'), Number(payBtn.getAttribute('data-amt')) || 0); return; }
   const dispBtn = e.target.closest('[data-billdispute]'); if (dispBtn) { disputeBill(dispBtn.getAttribute('data-billdispute')); return; }
-  const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; searchQuery = ''; openAllCategories(); return; }
-  const allprov = e.target.closest('[data-allprov]'); if (allprov) { selectedCat = null; selectedSub = null; searchQuery = ''; show('list'); return; }
+  const seeall = e.target.closest('[data-seeall]'); if (seeall) { selectedCat = null; selectedSub = null; selectedServices = []; searchQuery = ''; openAllCategories(); return; }
+  const allprov = e.target.closest('[data-allprov]'); if (allprov) { selectedCat = null; selectedSub = null; selectedServices = []; searchQuery = ''; show('list'); return; }
   const sort = e.target.closest('[data-sort]'); if (sort) {
     document.querySelectorAll('[data-sort]').forEach((c) => c.classList.remove('on'));
     sort.classList.add('on'); listSort = sort.getAttribute('data-sort'); paintList(); return;
@@ -973,6 +1100,7 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.remove('on'));
     bf.classList.add('on'); bookFilter = bf.getAttribute('data-bfilter'); paintBookings(); return;
   }
+  const ng = e.target.closest('[data-notifgo]'); if (ng) { const t = ng.getAttribute('data-notifgo'); stack = [t]; show(t, false); return; }
   const doc = e.target.closest('[data-doc]'); if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
   if (e.target.closest('[data-back]')) { back(); return; }
   const tst = e.target.closest('[data-toast]'); if (tst) { toast(tst.getAttribute('data-toast')); return; }
@@ -1100,7 +1228,7 @@ function loadLocalProfile() {
 function saveLocalProfile() {
   try {
     const p = myProfile || {};
-    localStorage.setItem(PROFILE_KEY, JSON.stringify({ full_name: p.full_name, email: p.email, gender: p.gender, area: p.area, home_area: p.home_area, address: p.address }));
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({ full_name: p.full_name, email: p.email, gender: p.gender, area: p.area, home_area: p.home_area, address: p.address, avatar: p.avatar }));
   } catch (e) {}
 }
 function profileCompletion() {
@@ -1116,7 +1244,7 @@ function renderEditProfile() {
   if ($('epArea')) $('epArea').value = p.area || p.home_area || '';
   if ($('epAddr')) $('epAddr').value = p.address || '';
   if ($('epPhone')) $('epPhone').value = p.phone || (session?.user?.phone ? '+' + session.user.phone : '') || '';
-  if ($('epAvatar')) $('epAvatar').textContent = initials(name || 'Guest User');
+  paintAvatar($('epAvatar'), name, p.avatar);
   document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-gender') === p.gender));
   const dl = $('epAreaList'); if (dl && !dl.children.length) dl.innerHTML = AHM_AREAS.map((a) => `<option value="${a}">`).join('');
 }
@@ -1177,6 +1305,18 @@ async function boot() {
   });
   $('chatSendBtn')?.addEventListener('click', sendChat);
   $('chatInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+  $('epPhoto')?.addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const url = await fileToAvatarDataUrl(f);
+      myProfile = { ...(myProfile || {}), avatar: url };
+      saveLocalProfile();
+      paintAvatar($('epAvatar'), myProfile.full_name, url);
+      paintAvatar($('accAvatar'), myProfile.full_name, url);
+      toast('Photo updated');
+    } catch (err) { toast('Could not read image'); }
+    e.target.value = '';
+  });
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).
