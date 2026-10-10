@@ -88,6 +88,7 @@ const AHMEDABAD_AREAS = ['Bodakdev','Satellite','Vastrapur','Thaltej','Bopal','S
 
 /* ---------- DEMO data (keeps screens populated like the mockups) ---------- */
 const DEMO_JOBS = [
+  { cat:'plumber', title:'Plumbing', area:'Satellite, Ahmedabad', when:'Today, 3:00 PM', name:'Rohit Mehta', phone:'+91 98240 11223', desc:'Tap leaking in bathroom', status:'New Request', pill:'orange', isNew:true },
   { cat:'ac_repair', title:'AC Repair', area:'Bodakdev, Ahmedabad', when:'Today, 5:00 PM', name:'Rahul Sharma', phone:'+91 98765 43210', status:'On the way', pill:'green', a:'Get Directions', b:'Update Status', ga:'enroute', gb:'enroute' },
   { cat:'electrician', title:'Electrician', area:'Thaltej, Ahmedabad', when:'Today, 6:30 PM', name:'Neha Patel', phone:'+91 91234 56789', status:'In Progress', pill:'blue', a:'View Details', b:'Mark Complete', ga:'jobdetail', gb:'completed' },
   { cat:'carpenter', title:'Carpenter', area:'Vastrapur, Ahmedabad', when:'Tomorrow, 10:00 AM', name:'Kunal Mehta', phone:'+91 99887 66554', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
@@ -435,7 +436,13 @@ function renderCompleted() {
 
 /* ---------- renderers ---------- */
 function jobCard(j) {
-  return `<div class="card" style="margin-bottom:12px" ${j.gb ? `data-go="${j.gb}"` : ''}>
+  // A brand-new request must be Accepted/Rejected first (card still opens details on tap).
+  const actions = j.isNew
+    ? `<button class="btn btn-green sm" data-acceptjob>✓ Accept</button>
+       <button class="btn btn-out-danger sm" data-rejectjob>Reject</button>`
+    : `<button class="btn btn-out sm" ${j.ga ? `data-go="${j.ga}"` : ''}>${esc(j.a)}</button>
+       <button class="btn btn-blue sm" ${j.gb ? `data-go="${j.gb}"` : ''}>${esc(j.b)}</button>`;
+  return `<div class="card" style="margin-bottom:12px" data-go="${j.isNew ? 'jobdetail' : (j.gb || 'jobdetail')}">
     <div style="display:flex;gap:12px"><div class="scirc ${catCls(j.cat)}">${catIcon(j.cat)}</div>
       <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(j.title)}</div><span class="pill ${j.pill}">${esc(j.status)}</span></div>
         <div class="meta"><span class="mi">📍</span>${esc(j.area)}</div>
@@ -443,15 +450,12 @@ function jobCard(j) {
         <div class="meta"><span class="mi">👤</span>${esc(j.name)}</div>
         <div class="meta"><span class="mi">📞</span><a href="${telHref(j.phone)}" style="color:inherit;text-decoration:none">${esc(j.phone)}</a> <span style="color:var(--whatsapp)">💬</span></div>
       </div></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-out sm" ${j.ga ? `data-go="${j.ga}"` : ''}>${esc(j.a)}</button>
-      <button class="btn btn-blue sm" ${j.gb ? `data-go="${j.gb}"` : ''}>${esc(j.b)}</button>
-    </div></div>`;
+    <div style="display:flex;gap:8px;margin-top:12px">${actions}</div></div>`;
 }
 function bookingCard(b) {
   const st = b.status || 'pending';
   const pill = (st === 'confirmed' || st === 'completed') ? 'green' : st === 'cancelled' ? 'grey' : 'orange';
-  return `<div class="card" style="margin-bottom:12px">
+  return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
     <div style="display:flex;gap:12px"><div class="scirc c-more">🛠️</div><div style="flex:1">
       <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill ${pill}">${esc(st[0].toUpperCase() + st.slice(1))}</span></div>
       <div class="meta"><span class="mi">📍</span>${esc(b.address || '—')}</div>
@@ -459,9 +463,11 @@ function bookingCard(b) {
       <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')}</div>
       <div class="meta"><span class="mi">📞</span><a href="${telHref(b.customer_phone)}" style="color:inherit;text-decoration:none">${esc(b.customer_phone || '')}</a></div>
     </div></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-out sm" data-maps="${esc(b.address || 'Ahmedabad')}">🧭 Directions</button>
-      <button class="btn btn-blue sm" data-book-next="${b.id}" data-book-status="${st}">Update Status</button>
+    <div style="display:flex;gap:8px;margin-top:12px">${st === 'pending'
+      ? `<button class="btn btn-green sm" data-acceptbook="${b.id}">✓ Accept</button>
+         <button class="btn btn-out-danger sm" data-rejectbook="${b.id}">Reject</button>`
+      : `<button class="btn btn-out sm" data-maps="${esc(b.address || 'Ahmedabad')}">🧭 Directions</button>
+         <button class="btn btn-blue sm" data-book-next="${b.id}" data-book-status="${st}">Update Status</button>`}
     </div></div>`;
 }
 let jobTab = 'active';
@@ -1288,6 +1294,15 @@ document.addEventListener('click', (e) => {
   if (accTop) { acceptLead(accTop.getAttribute('data-accept'), accTop.closest('.card')); return; }
   const rejTop = e.target.closest('[data-reject]');
   if (rejTop) { rejectLead(rejTop.getAttribute('data-reject'), rejTop.closest('.card')); return; }
+  // New job/booking: Accept/Reject must win over the card's tap-to-open.
+  const aj = e.target.closest('[data-acceptjob]');
+  if (aj) { const c = aj.closest('.card'); if (c) c.style.opacity = '.55'; toast('Job accepted — added to your jobs'); return; }
+  const rj = e.target.closest('[data-rejectjob]');
+  if (rj) { removeJobCard(rj.closest('.card')); toast('Job rejected'); return; }
+  const ab = e.target.closest('[data-acceptbook]');
+  if (ab) { acceptBooking(ab.getAttribute('data-acceptbook'), ab.closest('.card')); return; }
+  const rb = e.target.closest('[data-rejectbook]');
+  if (rb) { rejectBooking(rb.getAttribute('data-rejectbook'), rb.closest('.card')); return; }
   const go = e.target.closest('[data-go]');
   if (go) {
     // Opening a job/lead into the flow → remember which job it is.
@@ -1400,6 +1415,22 @@ async function advanceBooking(id, cur) {
   const next = { pending: 'confirmed', confirmed: 'completed', completed: 'completed', cancelled: 'cancelled' }[cur] || 'confirmed';
   if (hasSupabase && id) { try { await api.setBookingStatus(id, next); toast('Marked ' + next); renderJobs(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
   toast('Status updated');
+}
+function removeJobCard(cardEl) {
+  if (!cardEl) return;
+  const list = cardEl.parentElement;
+  cardEl.remove();
+  if (list && list.id === 'jobsList' && !list.querySelector('.card')) list.innerHTML = `<div class="empty">No ${jobTab} jobs.</div>`;
+}
+async function acceptBooking(id, cardEl) {
+  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'confirmed'); toast('Booking accepted'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not accept'); return; } }
+  if (cardEl) cardEl.style.opacity = '.55';
+  toast('Booking accepted');
+}
+async function rejectBooking(id, cardEl) {
+  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'cancelled'); toast('Booking rejected'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not reject'); return; } }
+  removeJobCard(cardEl);
+  toast('Booking rejected');
 }
 
 /* ---------- KYC file picking ---------- */
