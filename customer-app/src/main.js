@@ -294,6 +294,7 @@ function onEnter(id) {
   if (id === 'lang') renderLangScreen();
   if (id === 'city') renderCityScreen();
   if (id === 'booked') renderBooked();
+  if (id === 'chat') renderChat();
   if (id === 'map') renderMapScreen();
 }
 
@@ -860,6 +861,49 @@ async function confirmBooking() {
   } catch (e) { toast(e.message || 'Could not book'); }
   finally { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
 }
+/* ---------- chat with provider (realtime) ---------- */
+let chatProvider = null, chatSub = null;
+const DEMO_CHAT_C = [
+  { me: false, body: 'Hello! Thanks for reaching out. How can I help?', time: '10:02 AM' },
+  { me: true, body: 'Hi, my kitchen tap is leaking. Can you come today?', time: '10:03 AM' },
+  { me: false, body: 'Sure, I can reach by 3 PM. Please share your address.', time: '10:04 AM' },
+];
+const chatTime = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+function chatBubble(m) {
+  return m.me
+    ? `<div style="display:flex;justify-content:flex-end;margin:6px 0"><div style="max-width:76%;background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px;padding:9px 12px;font-size:13.5px">${esc(m.body)}<div style="font-size:10px;opacity:.75;text-align:right;margin-top:2px">${esc(m.time || '')}</div></div></div>`
+    : `<div style="display:flex;margin:6px 0"><div style="max-width:76%;background:var(--cardBg,#fff);border:1px solid var(--cardBorder);border-radius:14px 14px 14px 4px;padding:9px 12px;font-size:13.5px">${esc(m.body)}<div style="font-size:10px;color:var(--tTertiary);margin-top:2px">${esc(m.time || '')}</div></div></div>`;
+}
+function openChatWith(p) { chatProvider = p || selectedProvider || DEMO_PROVIDERS[0]; show('chat'); }
+function scrollChat() { const sc = $('chatScroll'); if (sc) sc.scrollTop = sc.scrollHeight; }
+function appendChat(m) { const box = $('chatMsgs'); if (!box) return; box.insertAdjacentHTML('beforeend', chatBubble(m)); scrollChat(); }
+async function renderChat() {
+  const p = chatProvider || selectedProvider || DEMO_PROVIDERS[0]; if (!p) return;
+  if ($('chatName')) $('chatName').textContent = p.name || 'Provider';
+  if ($('chatAvatar')) $('chatAvatar').textContent = initials(p.name || 'P');
+  if ($('chatCallBtn')) $('chatCallBtn').setAttribute('data-call', p.phone || '+91 90000 00000');
+  const box = $('chatMsgs'); if (!box) return;
+  const real = hasSupabase && session && p.id && !String(p.id).startsWith('d');
+  let msgs = DEMO_CHAT_C;
+  if (real) {
+    try { const rows = await api.getMessages(p.id); if (rows && rows.length) msgs = rows.map((r) => ({ me: r.sender_role === 'customer', body: r.body, time: chatTime(r.created_at) })); } catch (e) {}
+  }
+  box.innerHTML = msgs.map(chatBubble).join(''); scrollChat();
+  try { chatSub?.unsubscribe?.(); } catch (e) {}
+  chatSub = null;
+  if (real) {
+    try { chatSub = await api.subscribeMessages(p.id, (row) => { appendChat({ me: row.sender_role === 'customer', body: row.body, time: chatTime(row.created_at) }); }); } catch (e) {}
+  }
+}
+async function sendChat() {
+  const inp = $('chatInput'); if (!inp) return;
+  const body = (inp.value || '').trim(); if (!body) return;
+  inp.value = '';
+  appendChat({ me: true, body, time: chatTime(new Date()) });
+  const p = chatProvider;
+  const real = hasSupabase && session && p?.id && !String(p.id).startsWith('d');
+  if (real) { try { await api.sendMessage(p.id, body); } catch (e) { toast('Message not sent'); } }
+}
 function renderBooked() {
   const b = lastBooking; if (!b) return;
   if ($('bookedInfo')) $('bookedInfo').textContent = `${b.trade} • ${b.when}`;
@@ -907,6 +951,8 @@ document.addEventListener('click', (e) => {
   }
   const callEl = e.target.closest('[data-call]'); if (callEl) { const ph = callEl.getAttribute('data-call'); if (ph) window.location.href = telHref(ph); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
+  if (e.target.closest('#profChatBtn')) { openChatWith(selectedProvider); return; }
+  if (e.target.closest('#bookedChatBtn')) { openChatWith(selectedProvider); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }
   const gch = e.target.closest('#epGender [data-gender]'); if (gch) { document.querySelectorAll('#epGender [data-gender]').forEach((c) => c.classList.remove('on')); gch.classList.add('on'); return; }
@@ -1129,6 +1175,8 @@ async function boot() {
     addrTyping = true; clearTimeout(addrTypeTimer);
     addrTypeTimer = setTimeout(() => { addrTyping = false; try { bookPicker?.geocodeAddress($('bookAddr').value); } catch (e) {} }, 700);
   });
+  $('chatSendBtn')?.addEventListener('click', sendChat);
+  $('chatInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 
   // Restore session + reference data before routing (guarded so the splash
   // never hangs on the network).

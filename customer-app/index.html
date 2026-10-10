@@ -253,7 +253,8 @@
     </div>
     <div class="sticky">
       <button class="btn btn-green" style="flex:2" data-go="book">Book Now</button>
-      <button class="btn btn-out-green" style="flex:1" id="callBtn">&#128222; Call</button>
+      <button class="btn btn-out-green" style="flex:1" id="callBtn">&#128222;</button>
+      <button class="btn btn-out" style="flex:1" id="profChatBtn">&#128172; Chat</button>
     </div>
   </div>
 
@@ -356,6 +357,19 @@
     <div class="tabs" data-tabbar></div>
   </div>
 
+  <!-- chat with provider -->
+  <div class="screen" id="s-chat">
+    <div class="hdr" style="gap:10px"><div class="ic-btn" data-back>&#8249;</div>
+      <div class="avatar" id="chatAvatar" style="width:38px;height:38px">P</div>
+      <div style="flex:1"><div class="h3" id="chatName" style="font-size:15px">Provider</div><div class="sec" style="font-size:11.5px;color:var(--success)">● Online</div></div>
+      <a class="ic-btn" id="chatCallBtn" href="#">&#128222;</a></div>
+    <div class="scroll" id="chatScroll" style="background:var(--bg,#F4F6FA)"><div class="pad" id="chatMsgs" style="padding-bottom:12px"></div></div>
+    <div style="display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));border-top:1px solid var(--cardBorder);background:var(--cardBg,#fff)">
+      <input id="chatInput" placeholder="Type a message…" style="flex:1;border:1px solid var(--cardBorder);border-radius:999px;padding:11px 16px;font:inherit;font-size:14px;background:var(--bg,#F4F6FA);color:var(--tPrimary)">
+      <button id="chatSendBtn" class="btn btn-blue" style="width:auto;padding:0 18px;border-radius:999px">Send</button>
+    </div>
+  </div>
+
   <!-- booking success -->
   <div class="screen" id="s-booked">
     <div class="scroll"><div class="pad" style="text-align:center;padding-top:calc(48px + env(safe-area-inset-top,0))">
@@ -364,6 +378,7 @@
       <p class="sec" id="bookedInfo" style="margin-top:6px"></p>
       <div class="card" style="text-align:left;margin-top:20px" id="bookedProv"></div>
       <button class="btn btn-green" id="bookedCallBtn" style="margin-top:20px">&#128222; Call Provider Now</button>
+      <button class="btn btn-out" id="bookedChatBtn" style="margin-top:10px">&#128172; Chat with Provider</button>
       <button class="btn btn-out" data-go="bookings" style="margin-top:10px">View My Bookings</button>
       <div class="link" data-go="home" style="margin-top:16px;display:inline-block">Back to Home</div>
     </div></div>

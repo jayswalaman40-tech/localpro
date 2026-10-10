@@ -917,7 +917,20 @@ async function openChat() {
   }
   box.innerHTML = msgs.map(bubble).join('');
   const sc = $('chatScroll'); if (sc) sc.scrollTop = sc.scrollHeight;
+  // realtime: show the customer's new messages live
+  try { chatSub?.unsubscribe?.(); } catch (e) {}
+  chatSub = null;
+  if (hasSupabase && myProvider && chatCustomer?.id) {
+    try {
+      chatSub = await api.subscribeMessages(chatCustomer.id, (row) => {
+        if (row.sender_role === 'provider') return;   // our own echo
+        box.insertAdjacentHTML('beforeend', bubble({ me: false, body: row.body, time: new Date(row.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }));
+        const s2 = $('chatScroll'); if (s2) s2.scrollTop = s2.scrollHeight;
+      });
+    } catch (e) {}
+  }
 }
+let chatSub = null;
 async function sendChat() {
   const inp = $('chatInput'); if (!inp) return;
   const text = inp.value.trim(); if (!text) return;
