@@ -403,6 +403,7 @@
   <!-- 06 ACTIVE JOBS (Jobs tab) -->
   <div class="screen" id="s-jobs">
     <div class="hdr blue"><div class="htxt"><div class="h1">My Jobs</div><div class="sub">Jobs you accepted — update status &amp; complete</div></div>
+      <div class="ic-btn" data-go="messages" style="position:relative;margin-right:8px">&#128172;<span id="msgBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);min-width:16px;height:16px;padding:0 3px;border-radius:8px;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;color:#fff">0</span></div>
       <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span id="notifBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
     <div class="scroll sheet"><div class="pad">
       <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
@@ -684,11 +685,17 @@
   </div>
 
   <!-- 15 CHAT -->
+  <div class="screen" id="s-messages">
+    <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="htxt"><div class="h1">Messages</div><div class="sub">Chats with your customers</div></div></div>
+    <div class="scroll sheet"><div class="pad" id="msgThreads"></div></div>
+    <div class="tabs" data-tabbar></div>
+  </div>
+
   <div class="screen" id="s-chat">
     <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div><div class="avatar" style="width:38px;height:38px">R</div>
       <div class="htxt"><div class="h1" style="font-size:16px" id="chatName">Rahul Sharma</div><div class="sub" style="font-size:11.5px">Online</div></div><button class="hpill">&#128222;</button></div>
     <div class="scroll" style="padding-bottom:8px;display:flex;flex-direction:column" id="chatScroll">
-      <div class="pad" style="padding-bottom:0">
+      <div class="pad" style="padding-bottom:0" id="chatJobCard">
         <div class="card" style="display:flex;gap:10px;align-items:center;padding:10px 14px"><div class="scirc c-ac" style="width:34px;height:34px;font-size:15px">&#10052;</div><div style="flex:1"><div style="font-weight:700;font-size:13.5px">AC Repair</div><div class="ter">Split AC not cooling properly</div></div><span class="pill blue">In Progress</span></div>
       </div>
       <div class="datechip">Today</div>

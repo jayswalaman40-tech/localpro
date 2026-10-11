@@ -76,6 +76,7 @@ let selectedCatLabel = null;
 let selectedExp = 2;
 let editMode = false;      // true = reg2 opened from Profile as "Edit Profile"
 let chatCustomer = null;   // { id, name } for the active chat
+let chatFromInbox = false; // true when chat opened from the Messages inbox
 let chatChannel = null;
 let timerHandle = null;
 let toastTimer = null;
@@ -350,6 +351,7 @@ function onEnter(id) {
     });
   }
   if (id === 'chat') openChat();
+  if (id === 'messages') renderMessages();
   if (id === 'completed') renderCompleted();
   if (id === 'progress') { startTimer(); initSignature(); initBill(); } else stopTimer();
 }
@@ -961,6 +963,9 @@ function bubble(m) {
 async function openChat() {
   const box = $('chatMsgs'); if (!box) return;
   if ($('chatName')) $('chatName').textContent = chatCustomer?.name || 'Rahul Sharma';
+  // Hide the job-context card when the chat was opened from the inbox (no job).
+  if ($('chatJobCard')) $('chatJobCard').style.display = chatFromInbox ? 'none' : '';
+  chatFromInbox = false;
   let msgs = DEMO_CHAT;
   if (hasSupabase && myProvider && chatCustomer?.id) {
     try {
@@ -995,6 +1000,50 @@ async function sendChat() {
     try { await api.sendMessage(chatCustomer.id, text); } catch (e) { toast('Message not sent'); }
   }
 }
+
+/* ---------- messages inbox ---------- */
+const DEMO_THREADS = [
+  { customerId: 'c1', name: 'Rahul Sharma', phone: '+91 98240 11223', last: 'Bhaiya kitne baje aaoge?', lastRole: 'customer', at: new Date(Date.now() - 5 * 60000).toISOString(), count: 2 },
+  { customerId: 'c2', name: 'Priya Patel', phone: '+91 99250 78123', last: 'Thank you, kaam accha hua 🙏', lastRole: 'customer', at: new Date(Date.now() - 3 * 3600000).toISOString(), count: 1 },
+];
+let inboxSub = null, msgUnread = 0;
+function timeAgo(iso) { const d = (Date.now() - new Date(iso).getTime()) / 1000; if (d < 60) return 'now'; if (d < 3600) return Math.floor(d / 60) + 'm'; if (d < 86400) return Math.floor(d / 3600) + 'h'; return Math.floor(d / 86400) + 'd'; }
+function setMsgBadge(n) { msgUnread = Math.max(0, n); const b = $('msgBadge'); if (!b) return; if (msgUnread > 0) { b.textContent = msgUnread > 9 ? '9+' : String(msgUnread); b.style.display = 'flex'; } else b.style.display = 'none'; }
+function markInboxRead() { try { localStorage.setItem('helpzo_inbox_seen', new Date().toISOString()); } catch (e) {} setMsgBadge(0); }
+async function refreshInboxBadge() {
+  if (!(hasSupabase && myProvider)) return;
+  try {
+    const t = await api.getMessageThreads();
+    let seen = null; try { seen = localStorage.getItem('helpzo_inbox_seen'); } catch (e) {}
+    setMsgBadge(t.filter((x) => x.lastRole !== 'provider' && (!seen || x.at > seen)).length);
+    if (!inboxSub) { try { inboxSub = await api.subscribeInbox((row) => { if (row.sender_role !== 'provider') setMsgBadge(msgUnread + 1); }); } catch (e) {} }
+  } catch (e) {}
+}
+async function renderMessages() {
+  const el = $('msgThreads'); if (!el) return;
+  let threads = DEMO_THREADS;
+  if (hasSupabase && myProvider) {
+    try { threads = await api.getMessageThreads(); } catch (e) { threads = []; }
+  }
+  if (!threads.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--tSecondary);padding:48px 16px">
+      <div style="font-size:34px">💬</div><div style="font-weight:700;margin-top:8px;color:var(--tPrimary)">No messages yet</div>
+      <div style="font-size:12.5px;margin-top:4px">When a customer messages you, their chat shows up here.</div></div>`;
+    markInboxRead(); return;
+  }
+  el.innerHTML = threads.map((t) => {
+    const nm = t.name || 'Customer';
+    const pre = t.lastRole === 'provider' ? 'You: ' : '';
+    return `<div style="display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--cardBorder);cursor:pointer" data-thread="${esc(t.customerId)}" data-name="${esc(nm)}" data-phone="${esc(t.phone || '')}">
+      <div class="avatar" style="width:48px;height:48px;flex-shrink:0">${esc((nm[0] || 'C').toUpperCase())}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center"><div style="font-weight:700;flex:1;color:var(--tPrimary)">${esc(nm)}</div><span class="ter" style="font-size:11.5px">${timeAgo(t.at)}</span></div>
+        <div style="color:var(--tSecondary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">${esc(pre + (t.last || ''))}</div>
+      </div></div>`;
+  }).join('');
+  markInboxRead();
+}
+function openThread(id, name, phone) { chatCustomer = { id, name, phone }; show('chat'); }
 
 /* ---------- job timer (in-progress screen) ---------- */
 function startTimer() {
@@ -1447,6 +1496,7 @@ document.addEventListener('click', (e) => {
   if (sd) { selectSchedDay(sd.getAttribute('data-schday')); return; }
   // Edit profile (from profile page → reg2 in edit mode)
   if (e.target.closest('#themeRow') || e.target.closest('#themeToggle')) { toggleTheme(); return; }
+  const thr = e.target.closest('[data-thread]'); if (thr) { chatFromInbox = true; openThread(thr.getAttribute('data-thread'), thr.getAttribute('data-name'), thr.getAttribute('data-phone')); return; }
   if (e.target.closest('#profAvatar')) { $('profPhoto')?.click(); return; }
   const ep = e.target.closest('[data-editprofile]');
   if (ep) { openEditProfile(); return; }
@@ -1616,6 +1666,7 @@ async function boot() {
     try { categories = await api.getCategories(); } catch (e) { categories = []; }
     try { session = await api.getSession(); } catch (e) {}
     if (session) { try { myProvider = await api.getMyProvider(); } catch (e) {} }
+    if (myProvider) { refreshInboxBadge(); }
   })();
 
   const route = () => {

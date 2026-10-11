@@ -218,6 +218,47 @@ export async function subscribeMessages(customerId, cb) {
     .subscribe();
   return ch;
 }
+// Inbox: every customer who has messaged this provider, newest conversation
+// first, with the last message. Customer names come from the provider's own
+// leads/bookings (profiles are self-read only under RLS).
+export async function getMessageThreads() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase.from('messages').select('*')
+    .eq('provider_id', prov.id).order('created_at', { ascending: false });
+  if (error) throw error;
+  const rows = data ?? [];
+  // name/phone lookup from leads + bookings
+  const nameMap = {};
+  try {
+    const [{ data: lds }, { data: bks }] = await Promise.all([
+      supabase.from('leads').select('customer_id, customer_name, customer_phone').eq('provider_id', prov.id),
+      supabase.from('bookings').select('customer_id, customer_name, customer_phone').eq('provider_id', prov.id),
+    ]);
+    [...(lds || []), ...(bks || [])].forEach((r) => {
+      if (r.customer_id && !nameMap[r.customer_id]) nameMap[r.customer_id] = { name: r.customer_name, phone: r.customer_phone };
+    });
+  } catch (e) {}
+  const threads = [];
+  const seen = {};
+  rows.forEach((m) => {
+    if (seen[m.customer_id]) { seen[m.customer_id].count++; return; }
+    const info = nameMap[m.customer_id] || {};
+    const t = { customerId: m.customer_id, name: info.name, phone: info.phone, last: m.body, lastRole: m.sender_role, at: m.created_at, count: 1 };
+    seen[m.customer_id] = t; threads.push(t);
+  });
+  return threads;
+}
+// Subscribe to ALL new messages for this provider (inbox-level), for live refresh.
+export async function subscribeInbox(cb) {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const ch = supabase.channel('inbox-' + prov.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `provider_id=eq.${prov.id}` },
+      (payload) => cb(payload.new))
+    .subscribe();
+  return ch;
+}
 
 // ---------------- REVIEWS ----------------
 export async function getMyReviews() {
