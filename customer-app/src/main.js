@@ -444,20 +444,28 @@ async function renderHome() {
   applyProfileCity();
   const grid = $('catGrid'); if (grid) grid.innerHTML = POPULAR.map(catCell).join('') + catCell(MORE_TILE);
   const top = $('homeTop'); if (!top) return;
-  // Show the top 3 providers (by rating) so the section never looks empty.
-  const demoTop = DEMO_PROVIDERS.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
-  let topB = computeBadges(demoTop);
-  top.innerHTML = demoTop.map((p) => topCard(p, topB[p.id])).join('');
+  const paintDemoTop = () => {
+    const d = DEMO_PROVIDERS.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
+    const b = computeBadges(d);
+    top.innerHTML = d.map((p) => topCard(p, b[p.id])).join('');
+  };
   if (hasSupabase) {
+    // Signed in / live backend → show real nearby providers (loading first),
+    // never flash demo providers that then get replaced.
+    top.innerHTML = `<div class="empty">Loading…</div>`;
     try {
       const loc = await api.getCurrentLocation();
       const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
       if (live && live.length) {
         const rows = live.slice(0, 3).map((r) => { const p = provFromRow(r); providerCache[p.id] = p; return p; });
-        topB = computeBadges(rows);
-        top.innerHTML = rows.map((p) => topCard(p, topB[p.id])).join('');
+        const b = computeBadges(rows);
+        top.innerHTML = rows.map((p) => topCard(p, b[p.id])).join('');
+        return;
       }
     } catch (e) {}
+    paintDemoTop();   // backend reachable but nothing nearby → demo so it isn't empty
+  } else {
+    paintDemoTop();   // offline
   }
 }
 
