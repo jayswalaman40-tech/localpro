@@ -806,30 +806,34 @@ function renderBookings() {
   const el = $('bookRows'); if (!el) return;
   bookFilter = 'upcoming';
   document.querySelectorAll('[data-bfilter]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-bfilter') === 'upcoming'));
-  // Seed with this session's bookings + demo so the screen is never blank,
-  // then swap in live rows (keeping session bookings on top).
-  lastBookings = localBookings.concat(DEMO_BOOKINGS.map((b) => ({
-    service: b.service, provider: b.provider, when: b.when, addr: b.addr, status: b.status,
-  })));
-  paintBookings();
   if (hasSupabase && session) {
+    // Signed in → show ONLY real data. Start from this session's own bookings
+    // (or a loading note), then swap in the live rows. Never flash demo
+    // bookings that then disappear.
+    lastBookings = localBookings.slice();
+    if (lastBookings.length) paintBookings();
+    else { const el2 = $('bookRows'); if (el2) el2.innerHTML = `<div class="empty">Loading…</div>`; }
     api.getMyBookingList().then((live) => {
-      if (live && live.length) {
-        const liveRows = live.map((b) => {
-          const pv = b.provider || {};
-          const st = (b.status || 'pending');
-          return {
-            id: b.id, service: b.service || 'Service', provider: pv.name || 'Provider',
-            when: `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim(), addr: b.address || '',
-            status: st[0].toUpperCase() + st.slice(1),
-            bill: b.bill_status || 'none', total: b.total_amount, paid: !!b.paid,
-          };
-        });
-        // Keep demo-provider bookings made this session (not persisted server-side).
-        lastBookings = localBookings.filter((b) => b._demo).concat(liveRows);
-        paintBookings();
-      }
-    }).catch(() => {});
+      const liveRows = (live || []).map((b) => {
+        const pv = b.provider || {};
+        const st = (b.status || 'pending');
+        return {
+          id: b.id, service: b.service || 'Service', provider: pv.name || 'Provider',
+          when: `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim(), addr: b.address || '',
+          status: st[0].toUpperCase() + st.slice(1),
+          bill: b.bill_status || 'none', total: b.total_amount, paid: !!b.paid,
+        };
+      });
+      // Keep demo-provider bookings made this session (not persisted server-side).
+      lastBookings = localBookings.filter((b) => b._demo).concat(liveRows);
+      paintBookings();
+    }).catch(() => { paintBookings(); });
+  } else {
+    // Offline / not signed in → demo data so the screen isn't blank.
+    lastBookings = localBookings.concat(DEMO_BOOKINGS.map((b) => ({
+      service: b.service, provider: b.provider, when: b.when, addr: b.addr, status: b.status,
+    })));
+    paintBookings();
   }
 }
 let shownBookings = [];     // the bookings currently rendered (for tap → details)
