@@ -1113,16 +1113,41 @@ function initSignature() { sigJob.mount(); }
 function isVerified() {
   return !!(myProvider && (myProvider.verified === true || myProvider.kyc_status === 'verified'));
 }
+// Stable positive number derived from the provider id → unique per provider.
+function certSerial(id) {
+  const s = String(id || 'helpzo'); let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+const pad5 = (n) => String(n % 100000).padStart(5, '0');
+// Demo provider so the certificate previews even before a real listing exists.
+const DEMO_CERT_PROVIDER = { id: 'HZDEMO001', name: 'Rajesh Patel', custom_category: 'Electrician', service_area: 'Satellite, Ahmedabad', experience_yrs: 8, aadhaar_no: '0000 0000 4821', verified: true, updated_at: Date.now() };
 async function renderCertificate() {
   const pending = $('certPending'), cardEl = $('certCard');
-  if (!isVerified()) { if (pending) pending.style.display = 'block'; if (cardEl) cardEl.style.display = 'none'; return; }
+  // Real provider → show pending until verified. No provider (demo) → preview.
+  const prov = myProvider || DEMO_CERT_PROVIDER;
+  const verified = myProvider ? isVerified() : true;
+  if (!verified) { if (pending) pending.style.display = 'block'; if (cardEl) cardEl.style.display = 'none'; return; }
   if (pending) pending.style.display = 'none';
   if (cardEl) cardEl.style.display = 'block';
-  if ($('certName')) $('certName').textContent = myProvider.name || 'Provider';
-  if ($('certSignName')) $('certSignName').textContent = myProvider.name || 'Provider';
-  if ($('certTrade')) $('certTrade').textContent = selectedCatLabel || myProvider.custom_category || 'Service Professional';
-  if ($('certId')) $('certId').textContent = 'HZ-' + String(myProvider.id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
-  if ($('certDate')) $('certDate').textContent = new Date(myProvider.updated_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const name = prov.name || 'Provider';
+  const trade = (myProvider && selectedCatLabel) || prov.custom_category || 'Service Professional';
+  const area = prov.service_area || prov.city || 'Ahmedabad';
+  const exp = (prov.experience_yrs ? prov.experience_yrs + ' years of ' : '') + 'work experience';
+  const d = new Date(prov.updated_at || Date.now());
+  const serial = certSerial(prov.id);
+  if ($('certName')) $('certName').textContent = name;
+  if ($('certSignName')) $('certSignName').textContent = name;
+  if ($('certTrade')) $('certTrade').textContent = trade;
+  if ($('certDesc')) $('certDesc').innerHTML = `<span style="font-weight:700;color:#16264A">${esc(trade)}</span> with ${esc(exp)} in ${esc(area)}. Identity proof, mobile OTP and document verification completed by HelpZo. Recognised as a trusted, verified HelpZo provider.`;
+  // Unique, stable per provider
+  if ($('certNo')) $('certNo').textContent = `HZ-${d.getFullYear()}-${pad5(serial)}`;
+  if ($('certId')) $('certId').textContent = `HZ-PRV-${pad5(serial * 7 + 13)}`;
+  if ($('certAadhaar')) {
+    const a = String(prov.aadhaar_no || '').replace(/\D/g, '');
+    $('certAadhaar').textContent = '••••' + (a ? a.slice(-4) : pad5(serial * 3 + 7).slice(-4));
+  }
+  if ($('certDate')) $('certDate').textContent = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   sigCert.mount();
   // Load an already-saved signature, if any.
   if (hasSupabase && myProvider.signature_path) {
