@@ -968,3 +968,23 @@ create policy "feedback admin all" on public.feedback for all
   using (public.is_admin()) with check (public.is_admin());
 do $$ begin alter publication supabase_realtime add table public.feedback; exception when others then null; end $$;
 notify pgrst, 'reload schema';
+
+-- ============ 0018 NOTIFY PROVIDER ON VERIFICATION ============
+-- When an admin verifies a provider (verified → true, or kyc_status → 'verified'),
+-- drop a notification into the provider's feed so they know their certificate is
+-- ready and they can go live.
+create or replace function public.providers_after_verify()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if (coalesce(new.verified, false) = true and coalesce(old.verified, false) = false)
+     or (new.kyc_status = 'verified' and coalesce(old.kyc_status, 'none') <> 'verified') then
+    insert into public.notifications (user_id, type, title, body)
+    values (new.user_id, 'system', 'You are verified! 🎉',
+      'Congratulations! HelpZo has verified your profile. Your verification certificate is ready — you can now go live and start receiving jobs.');
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_providers_verify on public.providers;
+create trigger trg_providers_verify after update on public.providers
+  for each row execute function public.providers_after_verify();
+notify pgrst, 'reload schema';

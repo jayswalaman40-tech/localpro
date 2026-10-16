@@ -1338,6 +1338,12 @@ async function submitRegistration() {
 /* ---------- availability toggle ---------- */
 async function toggleAvail() {
   const t = $('availToggle'); const on = !t.classList.contains('on');
+  // A provider can only go live once verified (certificate issued).
+  if (on && hasSupabase && !isVerified()) {
+    toast('Get verified first — your certificate must be issued to go live');
+    show('certificate');
+    return;
+  }
   t.classList.toggle('on', on);
   if ($('statusPill')) { $('statusPill').textContent = on ? '● Online' : '● Offline'; $('statusPill').className = 'pill ' + (on ? 'green' : 'grey'); }
   if (hasSupabase && myProvider) { try { await api.setAvailable(on); } catch (e) {} }
