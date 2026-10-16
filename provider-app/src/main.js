@@ -147,6 +147,9 @@ const DEMO_JOBS = [
   { cat:'carpenter', title:'Carpenter', area:'Vastrapur, Ahmedabad', when:'Tomorrow, 10:00 AM', name:'Kunal Mehta', phone:'+91 99887 66554', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
   { cat:'cleaning', title:'Cleaning', area:'Satellite, Ahmedabad', when:'Tomorrow, 2:00 PM', name:'Priya Desai', phone:'+91 87654 32109', status:'Scheduled', pill:'purple', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
   { cat:'plumber', title:'Plumbing', area:'Maninagar, Ahmedabad', when:'In 2 days, 11:00 AM', name:'Amit Shah', phone:'+91 90909 12345', status:'Scheduled', pill:'orange', a:'Reschedule', b:'View Details', ga:'', gb:'jobdetail' },
+  { cat:'ac_repair', title:'AC Repair', area:'Satellite, Ahmedabad', when:'Yesterday, 4:00 PM', name:'Mehul Shah', phone:'+91 98250 11111', desc:'AC gas refill — done', status:'Completed', pill:'green', a:'View Details', b:'', ga:'jobdetail', gb:'' },
+  { cat:'plumber', title:'Plumbing', area:'Bopal, Ahmedabad', when:'2 days ago', name:'Ritu Shah', phone:'+91 98250 22222', desc:'Pipe leak fixed', status:'Completed', pill:'green', a:'View Details', b:'', ga:'jobdetail', gb:'' },
+  { cat:'electrician', title:'Electrician', area:'Naranpura, Ahmedabad', when:'3 days ago', name:'Sachin Rao', phone:'+91 98250 33333', desc:'Switchboard replaced', status:'Completed', pill:'green', a:'View Details', b:'', ga:'jobdetail', gb:'' },
 ];
 const DEMO_LEADS = [
   { cat:'ac_repair', title:'AC Repair', name:'Rohit Mehta', phone:'+91 98240 11223', area:'Ahmedabad - Satellite', desc:'AC not cooling, needs service', dist:'2.1 km • Today, 5:00 PM', price:'₹300 - ₹500' },
@@ -525,6 +528,7 @@ function bookingCard(b) {
     </div></div>`;
 }
 let jobTab = 'active';
+let pendingJobTab = null;   // set by the "Jobs Done" tile to open the Completed tab
 let lastJobsRows = null;   // real bookings array, or null = use demo
 function jobBucket(st) {
   const s = String(st || 'pending').toLowerCase();
@@ -534,8 +538,9 @@ function jobBucket(st) {
 }
 async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
-  jobTab = 'active';
-  document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === 'active'));
+  jobTab = pendingJobTab || 'active';   // e.g. "Jobs Done" tile opens the Completed tab
+  pendingJobTab = null;
+  document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === jobTab));
   if (hasSupabase && myProvider) {
     list.innerHTML = `<div class="empty">Loading…</div>`;
     try {
@@ -557,7 +562,7 @@ function updateJobCounts() {
 function paintJobs() {
   const list = $('jobsList'); if (!list) return;
   if (lastJobsRows === null) {   // demo / not signed in
-    jobsView = jobTab === 'active' ? DEMO_JOBS : [];
+    jobsView = DEMO_JOBS.filter((j) => jobBucket(j.status) === jobTab);
     list.innerHTML = jobsView.length ? jobsView.map(jobCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
     return;
   }
@@ -630,6 +635,7 @@ function paintLeads() {
 }
 /* ---------- earnings ---------- */
 const EARN_DATA = {
+  today: { label: 'Today',      total: 850,  jobs: 2,  bars: [['9a', 30], ['12p', 65], ['3p', 90], ['6p', 55]] },
   week:  { label: 'This Week',  total: 3300, jobs: 6,  bars: [['M', 40], ['T', 70], ['W', 55], ['T', 85], ['F', 60], ['S', 95]] },
   month: { label: 'This Month', total: 12480, jobs: 24, bars: [['W1', 52], ['W2', 88], ['W3', 66], ['W4', 76]] },
   year:  { label: 'This Year',  total: 148600, jobs: 286, bars: [['Q1', 48], ['Q2', 72], ['Q3', 90], ['Q4', 64]] },
@@ -1496,6 +1502,9 @@ document.addEventListener('click', (e) => {
   if (sd) { selectSchedDay(sd.getAttribute('data-schday')); return; }
   // Edit profile (from profile page → reg2 in edit mode)
   if (e.target.closest('#themeRow') || e.target.closest('#themeToggle')) { toggleTheme(); return; }
+  if (e.target.closest('#statJobsTile')) { pendingJobTab = 'completed'; show('jobs'); return; }
+  if (e.target.closest('#statHappyTile')) { const n = $('statHappy')?.textContent || '0'; toast(`You've served ${n} happy customers so far 🎉`); return; }
+  if (e.target.closest('#statEarnTile')) { earnPeriod = 'today'; show('earnings'); return; }
   const thr = e.target.closest('[data-thread]'); if (thr) { chatFromInbox = true; openThread(thr.getAttribute('data-thread'), thr.getAttribute('data-name'), thr.getAttribute('data-phone')); return; }
   if (e.target.closest('#profAvatar')) { $('profPhoto')?.click(); return; }
   const ep = e.target.closest('[data-editprofile]');
@@ -1632,7 +1641,7 @@ async function boot() {
   $('submitRegBtn')?.addEventListener('click', submitRegistration);
   $('reg2Back')?.addEventListener('click', () => { if (editMode) { editMode = false; show('profile'); } else show('reg1'); });
   $('reg2NextBtn')?.addEventListener('click', () => { if (editMode) saveProfileEdits(); else show('reg3'); });
-  $('earnPeriodBtn')?.addEventListener('click', () => { const order = ['week', 'month', 'year']; setEarnPeriod(order[(order.indexOf(earnPeriod) + 1) % 3]); });
+  $('earnPeriodBtn')?.addEventListener('click', () => { const order = ['today', 'week', 'month', 'year']; setEarnPeriod(order[(order.indexOf(earnPeriod) + 1) % order.length]); });
   $('earnViewAll')?.addEventListener('click', () => { txnsExpanded = !txnsExpanded; renderTxns(); $('earnViewAll').textContent = txnsExpanded ? 'Show Less ‹' : 'View All ›'; });
   $('schedCalBtn')?.addEventListener('click', toggleCalendar);
   $('availToggle')?.addEventListener('click', toggleAvail);
