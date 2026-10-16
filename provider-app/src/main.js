@@ -1214,6 +1214,8 @@ function prefillReg2() {
   if (!myProvider) return;
   if ($('regName')) $('regName').value = myProvider.name || '';
   if ($('regEmail')) $('regEmail').value = myProvider.email || '';
+  if ($('editName')) $('editName').value = myProvider.name || '';
+  if ($('editEmail')) $('editEmail').value = myProvider.email || '';
   if ($('regArea')) $('regArea').value = myProvider.service_area || myProvider.city || '';
   if ($('regExp')) $('regExp').value = myProvider.experience_yrs ?? '';
   if ($('regBio')) { $('regBio').value = myProvider.about || ''; if ($('bioCount')) $('bioCount').textContent = ($('regBio').value || '').length; }
@@ -1228,16 +1230,21 @@ function prefillReg2() {
 }
 function applyReg2Mode() {
   const steps = $('reg2Steps'), title = $('reg2Title'), sub = $('reg2Sub'), nextBtn = $('reg2NextBtn');
+  const personal = $('reg2Personal'), svcHead = $('reg2SvcHeading');
   if (editMode) {
     if (steps) steps.style.display = 'none';
     if (title) title.textContent = 'Edit Profile';
-    if (sub) sub.textContent = 'Update your details';
+    if (sub) sub.textContent = 'Update your personal & service details';
     if (nextBtn) nextBtn.textContent = '✓ Save Changes';
+    if (personal) personal.style.display = 'block';   // show Personal Information fields
+    if (svcHead) svcHead.style.display = 'none';       // hide the duplicate heading
   } else {
     if (steps) steps.style.display = '';
     if (title) title.textContent = 'Register as Provider';
     if (sub) sub.textContent = 'Join HelpZo and get more work';
     if (nextBtn) nextBtn.textContent = 'Next';
+    if (personal) personal.style.display = 'none';     // personal (name/email) comes from step 1
+    if (svcHead) svcHead.style.display = '';
   }
 }
 async function saveProfileEdits() {
@@ -1245,8 +1252,8 @@ async function saveProfileEdits() {
   try {
     if (hasSupabase && session) {
       const fields = {
-        name: $('regName').value.trim() || myProvider?.name || 'Provider',
-        email: $('regEmail').value.trim() || null,
+        name: ($('editName')?.value || '').trim() || myProvider?.name || 'Provider',
+        email: ($('editEmail')?.value || '').trim() || null,
         service_area: $('regArea').value.trim() || null,
         city: $('regArea').value.trim() || null,
         about: $('regBio').value.trim() || null,
@@ -1264,8 +1271,8 @@ async function saveProfileEdits() {
     } else {
       // Demo / offline: reflect the edits locally so the profile actually updates.
       myProvider = Object.assign({}, myProvider, {
-        name: $('regName').value.trim() || myProvider?.name || 'Provider',
-        email: $('regEmail').value.trim() || myProvider?.email || null,
+        name: ($('editName')?.value || '').trim() || myProvider?.name || 'Provider',
+        email: ($('editEmail')?.value || '').trim() || myProvider?.email || null,
         service_area: $('regArea').value.trim() || myProvider?.service_area || null,
         about: $('regBio').value.trim() || myProvider?.about || null,
         experience_yrs: Number($('regExp').value) || myProvider?.experience_yrs || 0,
