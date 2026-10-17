@@ -206,7 +206,7 @@ function toast(msg) {
 }
 
 /* ---------- navigation ---------- */
-const TAB_SCREENS = ['jobs', 'leads', 'schedule', 'earnings', 'profile'];
+const TAB_SCREENS = ['jobs', 'schedule', 'earnings', 'profile'];
 function show(id, push = true) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('on'));
   const el = $('s-' + id);
@@ -311,7 +311,6 @@ function renderLangScreen() {
 /* ---------- bottom tab bar ---------- */
 const TABS = [
   { id: 'jobs', ic: '💼', lb: 'Jobs' },
-  { id: 'leads', ic: '🔔', lb: 'Leads' },
   { id: 'schedule', ic: '📅', lb: 'Schedule' },
   { id: 'earnings', ic: '₹', lb: 'Earnings' },
   { id: 'profile', ic: '👤', lb: 'Profile' },
@@ -321,7 +320,8 @@ function buildTabBars() {
     const cur = bar.closest('.screen').id.replace('s-', '');
     bar.innerHTML = TABS.map((tb) => {
       const on = tb.id === cur ? ' on' : '';
-      const badge = tb.id === 'leads' ? '<span class="tbadge">4</span>' : '';
+      // new-request badge now lives on the Jobs tab (the "New" sub-tab)
+      const badge = tb.id === 'jobs' ? '<span class="tbadge" style="display:none">0</span>' : '';
       return `<div class="tab${on}" data-tab="${tb.id}"><span class="ti">${tb.ic}</span>${badge}${tb.lb}</div>`;
     }).join('');
   });
@@ -538,29 +538,62 @@ function jobBucket(st) {
 }
 async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
-  jobTab = pendingJobTab || 'active';   // e.g. "Jobs Done" tile opens the Completed tab
+  jobTab = pendingJobTab || 'new';   // default to the New-requests tab ("Jobs Done" tile opens Completed)
   pendingJobTab = null;
   document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === jobTab));
+  loadLeadsForJobs();   // populate the "New" tab (incoming requests) in the background
   if (hasSupabase && myProvider) {
-    list.innerHTML = `<div class="empty">Loading…</div>`;
+    if (jobTab !== 'new') list.innerHTML = `<div class="empty">Loading…</div>`;
     try {
       const rows = await api.getMyBookings();
       if (rows && rows.length) { lastJobsRows = rows; updateJobCounts(); paintJobs(); return; }
     } catch (e) {}
   }
   lastJobsRows = null;   // no real jobs yet → show demo so the screen looks populated
-  paintJobs();
+  updateJobCounts(); paintJobs();
+}
+// Load the incoming-request (leads) list that powers the "New" tab.
+async function loadLeadsForJobs() {
+  if (hasSupabase && myProvider) {
+    try { const rows = await api.getMyLeads(); lastLeadsRows = (rows && rows.length) ? rows : []; }
+    catch (e) { lastLeadsRows = []; }
+  } else {
+    lastLeadsRows = null;   // demo
+    // Show the incoming-request popup once in demo so the feature is visible.
+    if (!demoPopShown && DEMO_LEADS.length) { demoPopShown = true; setTimeout(() => showRequestPopup(DEMO_LEADS[0]), 1400); }
+  }
+  updateJobCounts();
+  if (jobTab === 'new') paintJobs();
+}
+function newRequestCount() {
+  if (lastLeadsRows === null) return DEMO_LEADS.length;   // demo
+  return lastLeadsRows.filter((l) => leadBucket(l.status) === 'pending').length;
+}
+function updateNewBadge(n) {
+  document.querySelectorAll('.tbadge').forEach((b) => { b.textContent = n > 9 ? '9+' : String(n); b.style.display = n > 0 ? 'flex' : 'none'; });
 }
 function updateJobCounts() {
-  const c = { active: 0, completed: 0, cancelled: 0 };
+  const c = { new: 0, active: 0, completed: 0, cancelled: 0 };
   (lastJobsRows || []).forEach((b) => { c[jobBucket(b.status)]++; });
+  c.new = newRequestCount();
   document.querySelectorAll('[data-jobtab]').forEach((ch) => {
     const k = ch.getAttribute('data-jobtab');
-    ch.textContent = k[0].toUpperCase() + k.slice(1) + (lastJobsRows ? ` (${c[k]})` : '');
+    const showCount = k === 'new' ? true : !!lastJobsRows;
+    ch.textContent = k[0].toUpperCase() + k.slice(1) + (showCount ? ` (${c[k]})` : '');
   });
+  updateNewBadge(c.new);
 }
 function paintJobs() {
   const list = $('jobsList'); if (!list) return;
+  if (jobTab === 'new') {   // incoming requests (leads)
+    if (lastLeadsRows === null) {   // demo / not signed in
+      list.innerHTML = DEMO_LEADS.length ? DEMO_LEADS.map(leadCard).join('') : `<div class="empty">No new requests right now.</div>`;
+    } else {
+      const pend = lastLeadsRows.filter((l) => leadBucket(l.status) === 'pending');
+      list.innerHTML = pend.length ? pend.map(realLeadCard).join('') : `<div class="empty">No new requests right now.</div>`;
+    }
+    return;
+  }
   if (lastJobsRows === null) {   // demo / not signed in
     jobsView = DEMO_JOBS.filter((j) => jobBucket(j.status) === jobTab);
     list.innerHTML = jobsView.length ? jobsView.map(jobCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
@@ -1562,13 +1595,44 @@ function pickPhoto() {
 }
 
 /* ---------- lead + booking actions ---------- */
+function refreshLeadViews() {
+  if ($('leadsList')) renderLeads();        // legacy leads screen, if present
+  else loadLeadsForJobs();                  // the New tab inside Jobs
+}
 async function acceptLead(id, cardEl) {
-  if (hasSupabase && id) { try { await api.markLeadContacted(id); toast('Lead accepted'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
-  removeLeadCard(cardEl); toast('Lead accepted — added to your jobs');
+  if (hasSupabase && id) { try { await api.markLeadContacted(id); toast('Request accepted'); refreshLeadViews(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
+  removeLeadCard(cardEl); toast('Request accepted — added to your jobs');
 }
 async function rejectLead(id, cardEl) {
-  if (hasSupabase && id) { try { await api.setLeadStatus(id, 'cancelled'); toast('Lead rejected'); renderLeads(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
-  removeLeadCard(cardEl); toast('Lead rejected');
+  if (hasSupabase && id) { try { await api.setLeadStatus(id, 'cancelled'); toast('Request declined'); refreshLeadViews(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
+  removeLeadCard(cardEl); toast('Request declined');
+}
+
+/* ---------- incoming new-request popup (shows for a few seconds on the Jobs page) ---------- */
+let reqPopData = null, reqPopTimer = null, demoPopShown = false;
+function showRequestPopup(req) {
+  const ov = $('reqPopup'); if (!ov || !req) return;
+  reqPopData = req;
+  const title = req.title || req.service || req.customer_name || 'New service request';
+  const sub = req.area || req.customer_phone || '';
+  const desc = req.note || req.desc || (req.price ? ('Budget: ' + req.price) : 'A customer wants to book you. Accept to add it to your jobs.');
+  if ($('reqPopTitle')) $('reqPopTitle').textContent = title;
+  if ($('reqPopSub')) $('reqPopSub').textContent = sub;
+  if ($('reqPopDesc')) $('reqPopDesc').textContent = desc;
+  ov.style.display = 'flex';
+  const fill = $('reqPopFill');
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '100%';
+    requestAnimationFrame(() => { fill.style.transition = 'width 8s linear'; fill.style.width = '0%'; }); }
+  clearTimeout(reqPopTimer);
+  reqPopTimer = setTimeout(hideRequestPopup, 8000);   // auto-dismiss after a few seconds
+}
+function hideRequestPopup() { const ov = $('reqPopup'); if (ov) ov.style.display = 'none'; clearTimeout(reqPopTimer); reqPopData = null; }
+function popupAccept() { const r = reqPopData; hideRequestPopup(); acceptLead(r && r.id, null); if (stack[stack.length - 1] !== 'jobs') { pendingJobTab = 'new'; show('jobs'); } }
+function popupReject() { const r = reqPopData; hideRequestPopup(); rejectLead(r && r.id, null); }
+let leadsSub = null;
+async function watchIncomingRequests() {
+  if (!(hasSupabase && myProvider) || leadsSub) return;
+  try { leadsSub = await api.subscribeLeads((row) => { showRequestPopup(row); loadLeadsForJobs(); }); } catch (e) {}
 }
 // Demo feedback: drop the acted-on lead card, show empty state if none left.
 function removeLeadCard(cardEl) {
@@ -1706,6 +1770,8 @@ async function boot() {
   $('chatSend')?.addEventListener('click', sendChat);
   $('chatInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
   $('regBio')?.addEventListener('input', () => { if ($('bioCount')) $('bioCount').textContent = $('regBio').value.length; });
+  $('reqPopAccept')?.addEventListener('click', popupAccept);
+  $('reqPopReject')?.addEventListener('click', popupReject);
 
   // Restore session + categories before routing, but never hang the splash.
   const ready = (async () => {
@@ -1713,7 +1779,7 @@ async function boot() {
     try { categories = await api.getCategories(); } catch (e) { categories = []; }
     try { session = await api.getSession(); } catch (e) {}
     if (session) { try { myProvider = await api.getMyProvider(); } catch (e) {} }
-    if (myProvider) { refreshInboxBadge(); }
+    if (myProvider) { refreshInboxBadge(); watchIncomingRequests(); }
   })();
 
   const route = () => {

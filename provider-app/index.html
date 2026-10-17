@@ -176,6 +176,20 @@
   .stile .lb{font-size:12px;margin-top:6px;font-weight:600;color:var(--tPrimary);}
   .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#0F2547;color:#fff;padding:12px 18px;border-radius:14px;font-size:13.5px;font-weight:600;z-index:100;max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.25);}
   .toast.show{opacity:1;bottom:104px;}
+  .reqpop-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,15,30,.42);display:flex;align-items:flex-start;justify-content:center;padding:18px;animation:reqFade .18s ease;}
+  @keyframes reqFade{from{opacity:0}to{opacity:1}}
+  .reqpop{width:100%;max-width:420px;margin-top:14px;background:var(--card,#fff);border-radius:20px;overflow:hidden;box-shadow:0 20px 48px rgba(0,0,0,.32);animation:reqDrop .28s cubic-bezier(.2,.9,.3,1.3);}
+  @keyframes reqDrop{from{transform:translateY(-28px);opacity:.4}to{transform:translateY(0);opacity:1}}
+  .reqpop-track{height:4px;background:rgba(0,0,0,.08);}
+  .reqpop-fill{height:100%;width:100%;background:var(--primary,#1E66F5);}
+  .reqpop-head{display:flex;gap:12px;align-items:center;padding:16px 16px 4px;}
+  .reqpop-bell{width:46px;height:46px;border-radius:14px;background:rgba(30,102,245,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto;}
+  .reqpop-tag{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--primary,#1E66F5);}
+  .reqpop-title{font-size:16px;font-weight:700;color:var(--tPrimary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .reqpop-sub{font-size:12.5px;color:var(--tSecondary);margin-top:1px;}
+  .reqpop-desc{padding:6px 16px 0;font-size:13px;color:var(--tSecondary);line-height:1.4;}
+  .reqpop-btns{display:flex;gap:10px;padding:14px 16px 16px;}
+  .reqpop-btns .btn{flex:1;}
   .otp-row{display:flex;gap:10px;justify-content:center;margin:8px 0;}
   .otp-row input{width:46px;height:54px;border:1px solid var(--cardBorder);border-radius:14px;text-align:center;font-size:22px;font-weight:700;color:var(--tPrimary);outline:none;font-family:inherit;}
   .otp-row input:focus{border-color:var(--primary);}
@@ -412,7 +426,7 @@
       <div class="ic-btn" data-go="messages" style="position:relative;margin-right:8px">&#128172;<span id="msgBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);min-width:16px;height:16px;padding:0 3px;border-radius:8px;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;color:#fff">0</span></div>
       <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span id="notifBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">3</span></div></div>
     <div class="scroll sheet"><div class="pad">
-      <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
+      <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="new">New</div><div class="chip" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
       <div style="display:flex;gap:10px;margin-bottom:14px"><div class="searchbar" style="flex:1">&#128269;<input id="jobSearch" placeholder="Search jobs..."></div><button class="btn btn-out sm" style="width:auto;padding:0 16px" data-toast="Filters coming soon">&#9776; Filter</button></div>
       <div id="jobsList"></div>
     </div></div>
@@ -809,6 +823,26 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- Incoming new-request popup (shows for a few seconds, Accept/Cancel inline) -->
+  <div class="reqpop-overlay" id="reqPopup" style="display:none">
+    <div class="reqpop">
+      <div class="reqpop-track"><div class="reqpop-fill" id="reqPopFill"></div></div>
+      <div class="reqpop-head">
+        <div class="reqpop-bell">🔔</div>
+        <div style="flex:1;min-width:0">
+          <div class="reqpop-tag">New Request</div>
+          <div class="reqpop-title" id="reqPopTitle">Service request</div>
+          <div class="reqpop-sub" id="reqPopSub"></div>
+        </div>
+      </div>
+      <div class="reqpop-desc" id="reqPopDesc"></div>
+      <div class="reqpop-btns">
+        <button class="btn btn-out-danger" id="reqPopReject">✕ Cancel</button>
+        <button class="btn btn-green" id="reqPopAccept">✓ Accept</button>
+      </div>
+    </div>
+  </div>
 </div>
 <script type="module" src="/src/main.js"></script>
 </body>
