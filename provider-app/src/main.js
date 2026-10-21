@@ -369,6 +369,7 @@ function normalizeJob(src) {
   const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
   if (real) return {
     rawId: src.id || null, bill_status: src.bill_status || 'none', paid: !!src.paid,
+    status: src.status || 'pending',
     cat: src.category || catKeyFromLabel(src.service),
     cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
     service: src.service || 'Service', desc: src.note || src.description || '',
@@ -781,7 +782,9 @@ let schedSel = new Date();          // selected date
 let calMonth = new Date();          // month shown in the calendar
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+let schedRows = null;   // real bookings for the schedule (null = not loaded yet)
 function renderSchedule() {
+  schedRows = null;   // refetch fresh each time the Schedule screen opens
   renderWeekStrip();
   const cal = $('schedCal'); if (cal) cal.style.display = 'none';   // calendar closed on enter
   renderSchedList();
@@ -846,24 +849,31 @@ function selectSchedDay(isoStr) {
   const cal = $('schedCal'); if (cal && cal.style.display === 'block') renderCalendar();
   renderSchedList();
 }
-function renderSchedList() {
+async function renderSchedList() {
   const list = $('schedList'); if (!list) return;
-  // Show only the jobs for the selected day (demo jobs are pinned to day offsets).
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const offset = Math.round((new Date(schedSel.getFullYear(), schedSel.getMonth(), schedSel.getDate()) - today) / 86400000);
-  const rows = DEMO_SCHED.filter((s) => s.day === offset);
-  schedView = rows;   // remember so Start Job / Directions can load the right job
+  // Real scheduled bookings for the selected day.
+  if (hasSupabase && myProvider) {
+    if (schedRows === null) { list.innerHTML = `<div class="empty">Loading…</div>`; try { schedRows = await api.getMyBookings(); } catch (e) { schedRows = []; } }
+  } else { schedRows = []; }
+  const dayIso = iso(schedSel);
+  const rows = (schedRows || []).filter((b) => b.scheduled_date === dayIso && jobBucket(b.status) !== 'cancelled');
+  schedView = rows;   // remember so "See Job" opens the right booking
   if ($('schedCount')) $('schedCount').textContent = rows.length + (rows.length === 1 ? ' Job Scheduled' : ' Jobs Scheduled');
   if (!rows.length) { list.innerHTML = `<div class="empty">No jobs scheduled for this day.</div>`; return; }
-  list.innerHTML = rows.map((s) => `
-    <div class="card" style="margin-bottom:12px"><div style="display:flex;gap:10px">
-      <div style="text-align:center;flex-shrink:0"><div style="font-weight:700;font-size:12px">${s.t1}</div><div class="ter" style="margin-top:4px">${s.t2}</div></div>
+  list.innerHTML = rows.map((b) => {
+    const cat = b.category || catKeyFromLabel(b.service);
+    const bucket = jobBucket(b.status);
+    const pill = bucket === 'new' ? 'orange' : bucket === 'completed' ? 'green' : 'blue';
+    const st = String(b.status || 'pending'); const label = bucket === 'new' ? 'New' : st[0].toUpperCase() + st.slice(1);
+    return `<div class="card" style="margin-bottom:12px" data-go="jobdetail"><div style="display:flex;gap:10px">
+      <div style="text-align:center;flex-shrink:0;min-width:40px"><div style="font-weight:700;font-size:12px">${esc(b.scheduled_time || '—')}</div></div>
       <div style="width:1px;background:var(--cardBorder)"></div>
-      <div style="flex:1"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px;align-items:center"><div class="scirc ${catCls(s.cat)}" style="width:36px;height:36px;font-size:16px">${catIcon(s.cat)}</div><div class="h3" style="font-size:15px">${esc(s.title)}</div></div><span class="pill ${s.p}">${esc(s.pill)}</span></div>
-        <div class="meta"><span class="mi">👤</span>${esc(s.name)} • ${esc(s.area)}</div>
-        <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(s.desc)}</div>
-        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-out sm" data-go="enroute">🧭 Directions</button><button class="btn btn-blue sm" data-go="progress">Start Job</button></div></div>
-    </div></div>`).join('');
+      <div style="flex:1"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px;align-items:center"><div class="scirc ${catCls(cat)}" style="width:36px;height:36px;font-size:16px">${catIcon(cat)}</div><div class="h3" style="font-size:15px">${esc(b.service || 'Service')}</div></div><span class="pill ${pill}">${esc(label)}</span></div>
+        <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')} • ${esc(b.address || '—')}</div>
+        ${b.note ? `<div class="sec" style="font-size:12.5px;margin-top:2px">${esc(b.note)}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-blue sm" data-go="jobdetail">See Job ›</button></div></div>
+    </div></div>`;
+  }).join('');
 }
 const setTxt = (id, v) => { const el = $(id); if (el) el.textContent = v; };
 const amountOf = (b) => Number(b.amount ?? b.price ?? b.total ?? b.total_amount ?? 0) || 0;
@@ -976,12 +986,16 @@ function renderVerifyList() {
 /* ---------- job details ---------- */
 function renderJobDetail() {
   const el = $('jobDetailBody'); if (!el) return;
-  const j = currentJob || { cust: 'Customer', phone: '', service: 'Service', desc: '', addr: 'Ahmedabad', when: '' };
+  const j = currentJob || { cust: 'Customer', phone: '', service: 'Service', desc: '', addr: 'Ahmedabad', when: '', status: 'pending' };
   const addr = j.addr || 'Ahmedabad';
+  const bucket = jobBucket(j.status);
+  const pillCls = bucket === 'new' ? 'orange' : bucket === 'completed' ? 'green' : bucket === 'cancelled' ? 'grey' : 'blue';
+  const st = String(j.status || 'pending');
+  const pillTxt = bucket === 'new' ? 'New Request' : st[0].toUpperCase() + st.slice(1);
   el.innerHTML = `
     <div class="card">
       <div style="display:flex;gap:12px"><div class="scirc ${catCls(j.cat || catKeyFromLabel(j.service))}">${catIcon(j.cat || catKeyFromLabel(j.service))}</div>
-        <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h2">${esc(j.service)}</div><span class="pill green">New Request</span></div>
+        <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:start"><div class="h2">${esc(j.service)}</div><span class="pill ${pillCls}">${esc(pillTxt)}</span></div>
           ${j.desc ? `<div class="sec" style="margin-top:2px">${esc(j.desc)}</div>` : ''}</div></div>
       <div class="divide" style="margin:12px 0"></div>
       <div class="meta"><span class="mi">👤</span>${esc(j.cust)}</div>
@@ -992,7 +1006,10 @@ function renderJobDetail() {
     ${j.desc ? `<div class="h3" style="margin:18px 0 8px">Service Description</div><div class="sec">${esc(j.desc)}</div>` : ''}
     <div class="h3" style="margin:18px 0 8px">Location</div>
     <div id="jobDetailMap"></div>
-    <button class="btn btn-out sm" data-maps="${esc(addr)}" style="margin-top:8px">🧭 Open in Google Maps</button>`;
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-out" data-maps="${esc(addr)}">🧭 Directions</button>
+      <button class="btn btn-blue" data-go="progress">Start Job</button>
+    </div>`;
   liveMap($('jobDetailMap'), addr);
 }
 
