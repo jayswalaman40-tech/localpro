@@ -123,6 +123,31 @@ export async function setProviderVerification(id, { verified, kyc_status }) {
     .update({ verified, kyc_status, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) throw error;
 }
+// Create a provider listing manually (admin-curated, no login account).
+// Needs the 0019 migration: providers.user_id nullable + admin insert policy.
+export async function createProvider(fields) {
+  const row = {
+    name: (fields.name || '').trim(),
+    phone: (fields.phone || '').trim(),
+    category_id: fields.category_id || null,
+    service_area: fields.service_area || null,
+    starting_price: fields.starting_price != null && fields.starting_price !== '' ? Number(fields.starting_price) : null,
+    experience_yrs: fields.experience_yrs != null && fields.experience_yrs !== '' ? Number(fields.experience_yrs) : 0,
+    about: fields.about || null,
+    email: fields.email || null,
+    verified: !!fields.verified,
+    kyc_status: fields.verified ? 'verified' : 'none',
+    available: fields.available !== false,
+  };
+  const { data, error } = await supabase.from('providers').insert(row).select('*').single();
+  if (error) throw error;
+  return data;
+}
+// Permanently remove a provider (admin delete is allowed by RLS).
+export async function deleteProvider(id) {
+  const { error } = await supabase.from('providers').delete().eq('id', id);
+  if (error) throw error;
+}
 export async function setReviewStatus(id, status) {
   const { error } = await supabase.from('reviews').update({ status }).eq('id', id);
   if (error) throw error;

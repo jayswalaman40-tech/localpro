@@ -115,15 +115,73 @@ async function renderProviders(c) {
       <td class="num">${r.rating_avg} (${r.rating_count})</td>
       <td>${verifiedPill(r)}</td>
       <td>${kycPill(r.kyc_status)}</td>
-      <td>${r.available ? pill('On', 'ok') : pill('Off', 'grey')}</td></tr>`;
-  c.innerHTML = tableShell('providers', rows.length,
-    ['Name', 'Trade', 'Phone', 'Area', 'Rating', 'Verified', 'KYC', 'Avail'],
-    rows.map(rowHtml).join(''), 'No providers yet.');
+      <td>${r.available ? pill('On', 'ok') : pill('Off', 'grey')}</td>
+      <td><button class="btn btn-sm btn-danger" data-del="${r.id}" data-name="${esc(r.name)}">Remove</button></td></tr>`;
+  const catOptions = Object.entries(cats).map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join('');
+  c.innerHTML = `
+    <div class="section" id="addProvSection">
+      <h3 style="margin-top:0">Add a provider</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <label>Name *<br><input id="apName" placeholder="Aman Sharma" style="width:170px"></label>
+        <label>Phone *<br><input id="apPhone" placeholder="+91 98XXXXXXXX" style="width:150px"></label>
+        <label>Trade<br><select id="apCat" style="width:160px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;background:var(--card)"><option value="">— Select —</option>${catOptions}</select></label>
+        <label>Service area<br><input id="apArea" placeholder="Satellite, Ahmedabad" style="width:180px"></label>
+        <label>Starting ₹<br><input id="apPrice" type="number" placeholder="299" style="width:90px"></label>
+        <label>Exp (yrs)<br><input id="apExp" type="number" placeholder="3" style="width:80px"></label>
+        <label>Email<br><input id="apEmail" type="email" placeholder="optional" style="width:170px"></label>
+        <label style="display:flex;align-items:center;gap:6px;margin-bottom:11px"><input id="apVerified" type="checkbox" style="width:auto"> Verified</label>
+        <button class="btn btn-teal" id="apAdd">+ Add provider</button>
+      </div>
+      <label style="margin-top:8px">About<br><input id="apAbout" placeholder="Short description (optional)" style="width:100%;max-width:560px"></label>
+      <p class="muted" id="apMsg" style="font-size:12px;margin:10px 0 0">Manually added providers are listed to customers right away. Mark <b>Verified</b> so they can appear as verified and go live.</p>
+    </div>
+    ${tableShell('providers', rows.length,
+      ['Name', 'Trade', 'Phone', 'Area', 'Rating', 'Verified', 'KYC', 'Avail', ''],
+      rows.map(rowHtml).join(''), 'No providers yet — add one above.')}`;
+
   const tbody = c.querySelector('tbody');
-  tbody.addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) openProvider(tr.dataset.id); });
+  tbody.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-del]');
+    if (del) { e.stopPropagation(); return removeProvider(del.dataset.del, del.dataset.name); }
+    const tr = e.target.closest('tr[data-id]'); if (tr) openProvider(tr.dataset.id);
+  });
+
+  $('apAdd').addEventListener('click', async () => {
+    const name = $('apName').value.trim(), phone = $('apPhone').value.trim();
+    const msg = $('apMsg');
+    if (!name || !phone) { msg.textContent = 'Name and phone are required.'; msg.style.color = 'var(--danger)'; return; }
+    const btn = $('apAdd'); btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      await api.createProvider({
+        name, phone,
+        category_id: $('apCat').value || null,
+        service_area: $('apArea').value.trim(),
+        starting_price: $('apPrice').value,
+        experience_yrs: $('apExp').value,
+        email: $('apEmail').value.trim(),
+        about: $('apAbout').value.trim(),
+        verified: $('apVerified').checked,
+      });
+      cache.providers = null; cache.stats = null;
+      renderTab('providers');
+    } catch (e) {
+      msg.textContent = 'Could not add: ' + (e.message || e) + ' — did you run the 0019 SQL migration?';
+      msg.style.color = 'var(--danger)';
+      btn.disabled = false; btn.textContent = '+ Add provider';
+    }
+  });
+
   wireSearch('providers', rows, (r, q) =>
     r.name.toLowerCase().includes(q) || (r.phone || '').includes(q) || catName(r.category_id).toLowerCase().includes(q) || (r.service_area || '').toLowerCase().includes(q),
     (list) => list.map(rowHtml).join(''), true);
+}
+async function removeProvider(id, name) {
+  if (!confirm(`Remove provider "${name || ''}"?\n\nThis permanently deletes the listing and its services, reviews, leads and bookings.`)) return;
+  try {
+    await api.deleteProvider(id);
+    cache.providers = null; cache.stats = null;
+    renderTab('providers');
+  } catch (e) { alert('Could not remove: ' + (e.message || e)); }
 }
 
 /* ==================== BOOKINGS ==================== */
@@ -341,6 +399,7 @@ async function openProvider(id) {
         <button class="btn btn-sm btn-teal" id="btnVerify">Mark verified</button>
         <button class="btn btn-sm btn-danger" id="btnReject">Reject</button>
         <button class="btn btn-sm" id="btnPending">Set pending</button>
+        <button class="btn btn-sm btn-danger" id="btnDelete">🗑 Remove provider</button>
       </div>
     </div>
 
@@ -374,6 +433,7 @@ async function openProvider(id) {
   $('btnVerify').onclick = () => changeKyc(id, { verified: true, kyc_status: 'verified' });
   $('btnReject').onclick = () => changeKyc(id, { verified: false, kyc_status: 'rejected' });
   $('btnPending').onclick = () => changeKyc(id, { verified: false, kyc_status: 'pending' });
+  $('btnDelete').onclick = async () => { closeDrawer(); await removeProvider(id, p.name); };
 }
 const statusChip = s => s && s !== 'approved' ? pill(s, 'pending') : '';
 
@@ -409,9 +469,8 @@ function wireSearch(name, rows, match, renderRows, rowsClickable) {
     $('count-' + name).textContent = list.length;
     const tbody = $('tbody-' + name);
     tbody.innerHTML = list.length ? renderRows(list) : `<tr><td colspan="9"><div class="empty">No matches.</div></td></tr>`;
-    if (rowsClickable && currentTab === 'providers') {
-      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => openProvider(tr.dataset.id));
-    }
+    // Providers row open/remove is handled by a delegated listener on tbody,
+    // which keeps working after this innerHTML swap — no per-row wiring needed.
   });
 }
 

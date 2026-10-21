@@ -988,3 +988,30 @@ drop trigger if exists trg_providers_verify on public.providers;
 create trigger trg_providers_verify after update on public.providers
   for each row execute function public.providers_after_verify();
 notify pgrst, 'reload schema';
+
+-- ============ 0019 ADMIN-CREATED (MANUAL) PROVIDERS ============
+-- Let an admin add a provider listing from the Admin panel without that
+-- provider having a login account. Such rows have a NULL user_id.
+alter table public.providers alter column user_id drop not null;
+
+-- Admin may insert providers (in addition to a user inserting their own row).
+drop policy if exists "providers admin insert" on public.providers;
+create policy "providers admin insert" on public.providers
+  for insert with check (user_id = auth.uid() or public.is_admin());
+
+-- The verify notification must be skipped for manual providers (no user_id),
+-- otherwise verifying one would fail on the NOT NULL notifications.user_id.
+create or replace function public.providers_after_verify()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.user_id is not null
+     and ((coalesce(new.verified, false) = true and coalesce(old.verified, false) = false)
+          or (new.kyc_status = 'verified' and coalesce(old.kyc_status, 'none') <> 'verified')) then
+    insert into public.notifications (user_id, type, title, body)
+    values (new.user_id, 'system', 'You are verified! 🎉',
+      'Congratulations! HelpZo has verified your profile. Your verification certificate is ready — you can now go live and start receiving jobs.');
+  end if;
+  return new;
+end; $$;
+
+notify pgrst, 'reload schema';
