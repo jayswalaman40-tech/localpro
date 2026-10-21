@@ -510,97 +510,82 @@ function jobCard(j) {
     <div style="display:flex;gap:8px;margin-top:12px">${actions}</div></div>`;
 }
 function bookingCard(b) {
-  const st = b.status || 'pending';
-  const pill = (st === 'confirmed' || st === 'completed') ? 'green' : st === 'cancelled' ? 'grey' : 'orange';
+  const st = String(b.status || 'pending').toLowerCase();
+  const bucket = jobBucket(st);
+  const pill = bucket === 'active' ? 'green' : bucket === 'cancelled' ? 'grey' : 'orange';
+  const label = st[0].toUpperCase() + st.slice(1);
+  const cat = b.category || catKeyFromLabel(b.service);
   return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
-    <div style="display:flex;gap:12px"><div class="scirc c-more">🛠️</div><div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill ${pill}">${esc(st[0].toUpperCase() + st.slice(1))}</span></div>
+    <div style="display:flex;gap:12px"><div class="scirc ${catCls(cat)}">${catIcon(cat)}</div><div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill ${pill}">${esc(label)}</span></div>
       <div class="meta"><span class="mi">📍</span>${esc(b.address || '—')}</div>
       <div class="meta"><span class="mi">📅</span>${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</div>
       <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')}</div>
       <div class="meta"><span class="mi">📞</span><a href="${telHref(b.customer_phone)}" style="color:inherit;text-decoration:none">${esc(b.customer_phone || '')}</a></div>
+      ${b.note ? `<div class="sec" style="font-size:12.5px;margin-top:4px">${esc(b.note)}</div>` : ''}
     </div></div>
-    <div style="display:flex;gap:8px;margin-top:12px">${st === 'pending'
+    <div style="display:flex;gap:8px;margin-top:12px">${bucket === 'new'
       ? `<button class="btn btn-green sm" data-acceptbook="${b.id}">✓ Accept</button>
          <button class="btn btn-out-danger sm" data-rejectbook="${b.id}">Reject</button>`
       : `<button class="btn btn-out sm" data-maps="${esc(b.address || 'Ahmedabad')}">🧭 Directions</button>
-         <button class="btn btn-blue sm" data-book-next="${b.id}" data-book-status="${st}">Update Status</button>`}
+         <button class="btn btn-blue sm" data-go="jobdetail">View &amp; Update</button>`}
     </div></div>`;
 }
-let jobTab = 'active';
+let jobTab = 'new';
 let pendingJobTab = null;   // set by the "Jobs Done" tile to open the Completed tab
-let lastJobsRows = null;   // real bookings array, or null = use demo
+let lastJobsRows = null;   // real bookings array (null = not loaded yet)
+// Every tab is driven by the real `bookings` table — no demo data.
 function jobBucket(st) {
   const s = String(st || 'pending').toLowerCase();
   if (s === 'completed') return 'completed';
-  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
-  return 'active'; // pending / confirmed / on the way / in progress / scheduled
+  if (s === 'cancelled' || s === 'canceled' || s === 'rejected' || s === 'declined') return 'cancelled';
+  if (s === 'pending' || s === 'new' || s === 'requested') return 'new';
+  return 'active'; // confirmed / accepted / on the way / in progress / scheduled
 }
 async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
   jobTab = pendingJobTab || 'new';   // default to the New-requests tab ("Jobs Done" tile opens Completed)
   pendingJobTab = null;
   document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === jobTab));
-  loadLeadsForJobs();   // populate the "New" tab (incoming requests) in the background
-  if (hasSupabase && myProvider) {
-    if (jobTab !== 'new') list.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const rows = await api.getMyBookings();
-      if (rows && rows.length) { lastJobsRows = rows; updateJobCounts(); paintJobs(); return; }
-    } catch (e) {}
-  }
-  lastJobsRows = null;   // no real jobs yet → show demo so the screen looks populated
+  if (!(hasSupabase && myProvider)) { lastJobsRows = []; updateJobCounts(); paintJobs(); return; }
+  if (lastJobsRows === null) list.innerHTML = `<div class="empty">Loading…</div>`;
+  try { lastJobsRows = await api.getMyBookings(); } catch (e) { lastJobsRows = lastJobsRows || []; }
   updateJobCounts(); paintJobs();
 }
-// Load the incoming-request (leads) list that powers the "New" tab.
-async function loadLeadsForJobs() {
-  if (hasSupabase && myProvider) {
-    try { const rows = await api.getMyLeads(); lastLeadsRows = (rows && rows.length) ? rows : []; }
-    catch (e) { lastLeadsRows = []; }
-  } else {
-    lastLeadsRows = null;   // demo
-    // Show the incoming-request popup once in demo so the feature is visible.
-    if (!demoPopShown && DEMO_LEADS.length) { demoPopShown = true; setTimeout(() => showRequestPopup(DEMO_LEADS[0]), 1400); }
-  }
-  updateJobCounts();
-  if (jobTab === 'new') paintJobs();
-}
-function newRequestCount() {
-  if (lastLeadsRows === null) return DEMO_LEADS.length;   // demo
-  return lastLeadsRows.filter((l) => leadBucket(l.status) === 'pending').length;
-}
+function newRequestCount() { return (lastJobsRows || []).filter((b) => jobBucket(b.status) === 'new').length; }
 function updateNewBadge(n) {
   document.querySelectorAll('.tbadge').forEach((b) => { b.textContent = n > 9 ? '9+' : String(n); b.style.display = n > 0 ? 'flex' : 'none'; });
 }
 function updateJobCounts() {
   const c = { new: 0, active: 0, completed: 0, cancelled: 0 };
   (lastJobsRows || []).forEach((b) => { c[jobBucket(b.status)]++; });
-  c.new = newRequestCount();
   document.querySelectorAll('[data-jobtab]').forEach((ch) => {
     const k = ch.getAttribute('data-jobtab');
-    const showCount = k === 'new' ? true : !!lastJobsRows;
-    ch.textContent = k[0].toUpperCase() + k.slice(1) + (showCount ? ` (${c[k]})` : '');
+    ch.textContent = k[0].toUpperCase() + k.slice(1) + ` (${c[k]})`;
   });
   updateNewBadge(c.new);
 }
+function emptyJobsMsg(tab) {
+  if (tab === 'new') return 'No new requests right now. New customer bookings will appear here.';
+  if (tab === 'active') return 'No active jobs. Accept a new request to start working.';
+  if (tab === 'completed') return 'No completed jobs yet.';
+  return 'No cancelled jobs.';
+}
 function paintJobs() {
   const list = $('jobsList'); if (!list) return;
-  if (jobTab === 'new') {   // incoming requests (leads)
-    if (lastLeadsRows === null) {   // demo / not signed in
-      list.innerHTML = DEMO_LEADS.length ? DEMO_LEADS.map(leadCard).join('') : `<div class="empty">No new requests right now.</div>`;
-    } else {
-      const pend = lastLeadsRows.filter((l) => leadBucket(l.status) === 'pending');
-      list.innerHTML = pend.length ? pend.map(realLeadCard).join('') : `<div class="empty">No new requests right now.</div>`;
-    }
-    return;
-  }
-  if (lastJobsRows === null) {   // demo / not signed in
-    jobsView = DEMO_JOBS.filter((j) => jobBucket(j.status) === jobTab);
-    list.innerHTML = jobsView.length ? jobsView.map(jobCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
-    return;
-  }
-  jobsView = lastJobsRows.filter((b) => jobBucket(b.status) === jobTab);
-  list.innerHTML = jobsView.length ? jobsView.map(bookingCard).join('') : `<div class="empty">No ${jobTab} jobs.</div>`;
+  jobsView = (lastJobsRows || []).filter((b) => jobBucket(b.status) === jobTab);
+  if (!jobsView.length) { list.innerHTML = `<div class="empty">${emptyJobsMsg(jobTab)}</div>`; return; }
+  const render = jobTab === 'completed' ? completedCard : bookingCard;
+  list.innerHTML = jobsView.map(render).join('');
+}
+// Completed card: only the work done + customer name + address (tap for full details).
+function completedCard(b) {
+  return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
+    <div style="display:flex;gap:12px"><div class="scirc ${catCls(b.category || catKeyFromLabel(b.service))}">${catIcon(b.category || catKeyFromLabel(b.service))}</div><div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill green">Completed</span></div>
+      <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')}</div>
+      <div class="meta"><span class="mi">📍</span>${esc(b.address || '—')}</div>
+    </div></div></div>`;
 }
 function leadCard(l) {
   return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
@@ -745,33 +730,51 @@ function paintReviewSummary(rows) {
   if (chips) chips.innerHTML = `<div class="chip on">All (${n})</div>` + [5, 4, 3].map((k) => `<div class="chip">${k}★ (${c[k]})</div>`).join('');
 }
 const NOTIF_ICON = { lead: { cls: 'c-clean', icon: '📅' }, booking: { cls: 'c-plumb', icon: '🧭' }, payment: { cls: 'c-elec', icon: '💳' }, review: { cls: 'c-paint', icon: '★' }, system: { cls: 'c-more', icon: '🔔' } };
+let notifRows = [];
 async function renderNotif() {
   const list = $('notifList'); if (!list) return;
-  if (hasSupabase && session) {
-    list.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const rows = await api.getNotifications();
-      if (rows && rows.length) {
-        list.innerHTML = rows.map((n) => {
-          const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
-          const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-          return `<div class="card" style="display:flex;gap:12px;margin-bottom:10px">
-            <div class="scirc ${ic.cls}" style="width:42px;height:42px;font-size:18px">${ic.icon}</div>
-            <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
-              <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body || '')}</div></div></div>`;
-        }).join('');
-        return;
-      }
-      // else: fall through to demo notifications so the screen looks populated
-    } catch (e) {}
+  if (!(hasSupabase && session)) { list.innerHTML = `<div class="empty">Sign in to see your notifications.</div>`; return; }
+  list.innerHTML = `<div class="empty">Loading…</div>`;
+  try { notifRows = await api.getNotifications(); } catch (e) { notifRows = []; }
+  if (!notifRows.length) { list.innerHTML = `<div class="empty">No notifications yet.<br>Job, payment and review updates will show here.</div>`; return; }
+  list.innerHTML = notifRows.map((n, i) => {
+    const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
+    const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    const unread = !(n.is_read ?? n.read ?? false);
+    return `<div class="card" style="display:flex;gap:12px;margin-bottom:10px;cursor:pointer" data-notif="${i}">
+      <div class="scirc ${ic.cls}" style="width:42px;height:42px;font-size:18px">${ic.icon}</div>
+      <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title || 'Notification')}</div><span class="ter">${esc(ago)}</span></div>
+        <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body || '')}</div></div>
+      ${unread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px"></span>' : ''}
+    </div>`;
+  }).join('');
+  // Opening the screen clears the unread bell badge.
+  try { await api.markNotificationsRead(); const nb = $('notifBadge'); if (nb) nb.style.display = 'none'; } catch (e) {}
+}
+// Tapping a notification opens the thing it is about (job / payment / review),
+// so the provider sees the full work behind it.
+async function openNotification(i) {
+  const n = notifRows[i]; if (!n) return;
+  const t = String(n.type || '').toLowerCase();
+  if (n.ref_id && (t === 'booking' || t === 'lead' || t === 'payment' || t === 'job')) {
+    try { const b = await api.getBooking(n.ref_id); if (b) { currentJob = normalizeJob(b); show('jobdetail'); return; } } catch (e) {}
   }
-  list.innerHTML = DEMO_NOTIF.map((n) => `
-    <div class="card" style="display:flex;gap:12px;margin-bottom:10px">
-      <div class="scirc ${n.cls}" style="width:42px;height:42px;font-size:18px">${n.icon}</div>
-      <div style="flex:1"><div style="display:flex;justify-content:space-between"><div class="h3" style="font-size:14.5px">${esc(n.title)}</div><span class="ter">${esc(n.ago)}</span></div>
-        <div class="sec" style="font-size:12.5px;margin-top:2px">${esc(n.body)}</div></div>
-      ${n.unread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px"></span>' : ''}
-    </div>`).join('');
+  if (t === 'review') { show('reviews'); return; }
+  if (t === 'payment') { show('earnings'); return; }
+  if (t === 'booking' || t === 'lead' || t === 'job') { pendingJobTab = 'new'; show('jobs'); return; }
+  showNotifDetail(n);   // system / other → show the full text
+}
+function showNotifDetail(n) {
+  const ov = $('reqPopup'); if (!ov) { toast(n.body || n.title || ''); return; }
+  reqPopData = null;
+  if ($('reqPopTitle')) $('reqPopTitle').textContent = n.title || 'Notification';
+  if ($('reqPopSub')) $('reqPopSub').textContent = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  if ($('reqPopDesc')) $('reqPopDesc').textContent = n.body || '';
+  const fill = $('reqPopFill'); if (fill) fill.style.width = '100%';
+  const acc = $('reqPopAccept'); if (acc) acc.style.display = 'none';
+  const rej = $('reqPopReject'); if (rej) rej.textContent = 'Close';
+  ov.style.display = 'flex';
+  clearTimeout(reqPopTimer);
 }
 /* ---------- schedule (clickable week + month calendar) ---------- */
 let schedSel = new Date();          // selected date
@@ -894,32 +897,34 @@ async function renderProfile() {
     $('availToggle')?.classList.toggle('on', av);
     if ($('statusPill')) { $('statusPill').textContent = av ? '● Online' : '● Offline'; $('statusPill').className = 'pill ' + (av ? 'green' : 'grey'); }
     const s = await loadStats();
-    if (s) {
-      const rt = s.rating ? s.rating.toFixed(1) : '0.0';
-      setTxt('statJobs', s.jobs); setTxt('statRating', rt); setTxt('statHappy', s.happy);
-      setTxt('statEarn', Number(s.earn).toLocaleString('en-IN'));
-      setTxt('profRatingVal', rt); setTxt('profReviews', `(${s.ratingCount} review${s.ratingCount === 1 ? '' : 's'})`);
-    }
+    const rt = s && s.rating ? s.rating.toFixed(1) : '0.0';
+    setTxt('statJobs', s ? s.jobs : 0); setTxt('statRating', rt); setTxt('statHappy', s ? s.happy : 0);
+    setTxt('statEarn', Number(s ? s.earn : 0).toLocaleString('en-IN'));
+    setTxt('profRatingVal', rt); setTxt('profReviews', `(${s ? s.ratingCount : 0} review${(s ? s.ratingCount : 0) === 1 ? '' : 's'})`);
+  } else {
+    // Not signed in → show real zeros, never demo numbers.
+    ['statJobs', 'statHappy'].forEach((k) => setTxt(k, 0));
+    setTxt('statRating', '0.0'); setTxt('statEarn', '0');
+    setTxt('profRatingVal', '0.0'); setTxt('profReviews', '(0 reviews)');
   }
-  paintProvAvatar();   // also paints the saved photo in demo mode
+  paintProvAvatar();
   updateBadges();
 }
 
 // Notification + leads tab badges from real counts (demo keeps its numbers).
 async function updateBadges() {
-  if (!(hasSupabase && session)) return;
+  if (!(hasSupabase && session)) { updateNewBadge(0); const nb = $('notifBadge'); if (nb) nb.style.display = 'none'; return; }
   try {
     const notifs = await api.getNotifications().catch(() => []);
-    const unread = (notifs || []).filter((n) => n.read === false || n.is_read === false || n.seen === false).length;
+    const unread = (notifs || []).filter((n) => !(n.is_read ?? n.read ?? false)).length;
     const nb = $('notifBadge');
-    if (nb) { if (unread > 0) { nb.textContent = unread; nb.style.display = ''; } else { nb.style.display = 'none'; } }
+    if (nb) { if (unread > 0) { nb.textContent = unread > 9 ? '9+' : unread; nb.style.display = ''; } else nb.style.display = 'none'; }
   } catch (e) {}
   try {
-    const leads = (lastLeadsRows && lastLeadsRows.length) ? lastLeadsRows : await api.getMyLeads().catch(() => []);
-    const pending = (leads || []).filter((l) => leadBucket(l.status) === 'pending').length;
-    document.querySelectorAll('.tbadge').forEach((b) => {
-      if (pending > 0) { b.textContent = pending; b.style.display = ''; } else { b.style.display = 'none'; }
-    });
+    // The "New" badge reflects pending bookings (real new requests).
+    const rows = (lastJobsRows && lastJobsRows.length) ? lastJobsRows : await api.getMyBookings().catch(() => []);
+    const pending = (rows || []).filter((b) => jobBucket(b.status) === 'new').length;
+    updateNewBadge(pending);
   } catch (e) {}
 }
 
@@ -1060,7 +1065,7 @@ async function refreshInboxBadge() {
 }
 async function renderMessages() {
   const el = $('msgThreads'); if (!el) return;
-  let threads = DEMO_THREADS;
+  let threads = [];
   if (hasSupabase && myProvider) {
     try { threads = await api.getMessageThreads(); } catch (e) { threads = []; }
   }
@@ -1496,6 +1501,8 @@ document.addEventListener('click', (e) => {
   if (ab) { acceptBooking(ab.getAttribute('data-acceptbook'), ab.closest('.card')); return; }
   const rb = e.target.closest('[data-rejectbook]');
   if (rb) { rejectBooking(rb.getAttribute('data-rejectbook'), rb.closest('.card')); return; }
+  const nt = e.target.closest('[data-notif]');
+  if (nt) { openNotification(Number(nt.getAttribute('data-notif'))); return; }
   const go = e.target.closest('[data-go]');
   if (go) {
     // Opening a job/lead into the flow → remember which job it is.
@@ -1597,7 +1604,7 @@ function pickPhoto() {
 /* ---------- lead + booking actions ---------- */
 function refreshLeadViews() {
   if ($('leadsList')) renderLeads();        // legacy leads screen, if present
-  else loadLeadsForJobs();                  // the New tab inside Jobs
+  renderJobs();                             // keep the Jobs list in sync
 }
 async function acceptLead(id, cardEl) {
   if (hasSupabase && id) { try { await api.markLeadContacted(id); toast('Request accepted'); refreshLeadViews(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
@@ -1613,9 +1620,12 @@ let reqPopData = null, reqPopTimer = null, demoPopShown = false;
 function showRequestPopup(req) {
   const ov = $('reqPopup'); if (!ov || !req) return;
   reqPopData = req;
-  const title = req.title || req.service || req.customer_name || 'New service request';
-  const sub = req.area || req.customer_phone || '';
-  const desc = req.note || req.desc || (req.price ? ('Budget: ' + req.price) : 'A customer wants to book you. Accept to add it to your jobs.');
+  const acc = $('reqPopAccept'); if (acc) acc.style.display = '';
+  const rej = $('reqPopReject'); if (rej) rej.textContent = '✕ Cancel';
+  const title = req.service || req.title || 'New service request';
+  const sub = req.customer_name || req.name || '';
+  const when = `${req.scheduled_date || ''} ${req.scheduled_time || ''}`.trim();
+  const desc = [req.address || req.area, when].filter((x) => x && x.trim()).join(' • ') || req.note || 'A customer wants to book you. Accept to add it to your jobs.';
   if ($('reqPopTitle')) $('reqPopTitle').textContent = title;
   if ($('reqPopSub')) $('reqPopSub').textContent = sub;
   if ($('reqPopDesc')) $('reqPopDesc').textContent = desc;
@@ -1627,12 +1637,17 @@ function showRequestPopup(req) {
   reqPopTimer = setTimeout(hideRequestPopup, 8000);   // auto-dismiss after a few seconds
 }
 function hideRequestPopup() { const ov = $('reqPopup'); if (ov) ov.style.display = 'none'; clearTimeout(reqPopTimer); reqPopData = null; }
-function popupAccept() { const r = reqPopData; hideRequestPopup(); acceptLead(r && r.id, null); if (stack[stack.length - 1] !== 'jobs') { pendingJobTab = 'new'; show('jobs'); } }
-function popupReject() { const r = reqPopData; hideRequestPopup(); rejectLead(r && r.id, null); }
-let leadsSub = null;
+function popupAccept() {
+  const r = reqPopData; hideRequestPopup();
+  if (r && r.id) { acceptBooking(r.id, null); }      // acceptBooking opens the Active tab
+  if (stack[stack.length - 1] !== 'jobs') { pendingJobTab = 'active'; show('jobs'); }
+}
+function popupReject() { const r = reqPopData; hideRequestPopup(); if (r && r.id) rejectBooking(r.id, null); }
+let bookingsSub = null;
 async function watchIncomingRequests() {
-  if (!(hasSupabase && myProvider) || leadsSub) return;
-  try { leadsSub = await api.subscribeLeads((row) => { showRequestPopup(row); loadLeadsForJobs(); }); } catch (e) {}
+  if (!(hasSupabase && myProvider) || bookingsSub) return;
+  // Real-time: a new customer booking pops up instantly + refreshes the Jobs list.
+  try { bookingsSub = await api.subscribeBookings((row) => { showRequestPopup(row); renderJobs(); updateBadges(); }); } catch (e) {}
 }
 // Demo feedback: drop the acted-on lead card, show empty state if none left.
 function removeLeadCard(cardEl) {
@@ -1653,14 +1668,17 @@ function removeJobCard(cardEl) {
   if (list && list.id === 'jobsList' && !list.querySelector('.card')) list.innerHTML = `<div class="empty">No ${jobTab} jobs.</div>`;
 }
 async function acceptBooking(id, cardEl) {
-  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'confirmed'); toast('Booking accepted'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not accept'); return; } }
+  if (hasSupabase && id) {
+    try { await api.setBookingStatus(id, 'confirmed'); toast('Request accepted — moved to Active'); pendingJobTab = 'active'; renderJobs(); return; }
+    catch (e) { toast(e.message || 'Could not accept'); return; }
+  }
   if (cardEl) cardEl.style.opacity = '.55';
-  toast('Booking accepted');
+  toast('Request accepted');
 }
 async function rejectBooking(id, cardEl) {
-  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'cancelled'); toast('Booking rejected'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not reject'); return; } }
+  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'cancelled'); toast('Request declined'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not decline'); return; } }
   removeJobCard(cardEl);
-  toast('Booking rejected');
+  toast('Request declined');
 }
 
 /* ---------- KYC file picking ---------- */

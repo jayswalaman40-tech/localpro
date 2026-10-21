@@ -136,6 +136,12 @@ export async function setBookingStatus(id, status) {
   const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
   if (error) throw error;
 }
+// Single booking by id (used when opening a job from a notification).
+export async function getBooking(id) {
+  const { data, error } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
 // ---------------- BILL (job line-items + payment) ----------------
 export async function getJobItems(bookingId) {
@@ -378,4 +384,12 @@ export async function getNotifications() {
     .eq('user_id', id).order('created_at', { ascending: false }).limit(30);
   if (error) throw error;
   return data ?? [];
+}
+// Mark all of my unread notifications as read (clears the bell badge).
+export async function markNotificationsRead() {
+  const id = await uid();
+  if (!id) return;
+  const { error } = await supabase.from('notifications')
+    .update({ is_read: true }).eq('user_id', id).eq('is_read', false);
+  if (error) throw error;
 }
