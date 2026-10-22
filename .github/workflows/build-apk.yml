@@ -14,6 +14,13 @@ on:
       - 'provider-app/**'
       - '.github/workflows/build-apk.yml'
 
+# Only one APK build per branch at a time — a newer push cancels an older,
+# still-running build so two builds never commit the same download files at
+# once (which caused rebase conflicts in the publish step).
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -124,10 +131,16 @@ jobs:
             "$VER" "$BUILT" "$SIZE_MB" "${GITHUB_SHA::7}" > "$META"
           git add "$META"
           git commit -m "Auto-refresh ${APP} APK ${VER} (build ${GITHUB_SHA::7}) [skip ci]"
-          for i in 1 2 3 4 5 6; do
-            if git pull --rebase origin "${{ github.ref_name }}" && git push origin HEAD:"${{ github.ref_name }}"; then
-              echo "published"; exit 0
+          BR="${{ github.ref_name }}"
+          for i in 1 2 3 4 5 6 7 8; do
+            git fetch origin "$BR" || true
+            # Replay our one-file commit onto the latest branch; on a binary
+            # clash keep OUR freshly built APK ("-X theirs" = our replayed commit).
+            if git rebase -X theirs "origin/$BR"; then
+              if git push origin HEAD:"$BR"; then echo "published"; exit 0; fi
+            else
+              git rebase --abort || true
             fi
-            echo "push race — retry $i"; sleep $((RANDOM % 6 + 2))
+            echo "push race — retry $i"; sleep $((RANDOM % 6 + 3))
           done
           echo "failed to push APK after retries"; exit 1
