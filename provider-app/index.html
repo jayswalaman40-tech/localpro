@@ -315,12 +315,24 @@
         <div class="step"><div class="sc">3</div><div class="sl">Docs</div></div><div class="stepline"></div>
         <div class="step"><div class="sc">4</div><div class="sl">Done</div></div>
       </div>
+      <div id="regFormStep">
       <div class="h2" style="margin-bottom:14px">Personal Details</div>
-      <div class="field"><div class="ftile">&#128100;</div><div class="fmid"><div class="fl">Full Name</div><input id="regName" placeholder="Enter your full name"></div></div>
-      <div class="field" style="margin-top:12px"><div class="ftile">&#128241;</div><div class="fmid"><div class="fl">Mobile Number</div><input id="regPhone" placeholder="+91 -----" readonly></div></div>
-      <div class="field" style="margin-top:12px"><div class="ftile">&#9993;</div><div class="fmid"><div class="fl">Email Address</div><input id="regEmail" placeholder="Enter your email (optional)" inputmode="email"></div></div>
-      <button class="btn btn-blue" style="margin-top:20px" data-go="reg2">Next</button>
+      <label class="field"><div class="ftile">&#128100;</div><div class="fmid"><div class="fl">Full Name</div><input id="regName" placeholder="Enter your full name"></div></label>
+      <label class="field" style="margin-top:12px"><div class="ftile">&#128241;</div><div class="fmid"><div class="fl">Mobile Number</div><input id="regPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="Enter 10-digit number"></div></label>
+      <label class="field" style="margin-top:12px"><div class="ftile">&#9993;</div><div class="fmid"><div class="fl">Email Address</div><input id="regEmail" type="email" placeholder="Enter your email (optional)" inputmode="email"></div></label>
+      <button class="btn btn-blue" style="margin-top:20px" id="regNextBtn">Next</button>
       <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--tSecondary)">Already have an account? <span class="link" data-go="login">Login</span></div>
+      </div>
+      <div id="regOtpStep" style="display:none">
+        <div class="h2" style="margin-bottom:6px">Verify Your Number</div>
+        <div class="sec" style="margin-bottom:14px">Code sent to <b id="regOtpLabel"></b> &nbsp;&middot;&nbsp; <span class="link" id="regChangeBtn">Change</span></div>
+        <div class="otp-row">
+          <input inputmode="numeric" autocomplete="one-time-code" maxlength="6" data-rotp><input inputmode="numeric" maxlength="1" data-rotp><input inputmode="numeric" maxlength="1" data-rotp>
+          <input inputmode="numeric" maxlength="1" data-rotp><input inputmode="numeric" maxlength="1" data-rotp><input inputmode="numeric" maxlength="1" data-rotp>
+        </div>
+        <button class="btn btn-blue" style="margin-top:16px" id="regVerifyBtn">Verify &amp; Continue</button>
+        <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--tSecondary)">Didn't get it? <span class="link" id="regResendBtn">Resend OTP</span></div>
+      </div>
     </div></div>
   </div>
 

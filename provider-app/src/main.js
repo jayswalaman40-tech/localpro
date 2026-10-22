@@ -337,6 +337,7 @@ function onEnter(id) {
   if (id === 'schedule') renderSchedule();
   if (id === 'profile') renderProfile();
   if (id === 'lang') renderLangScreen();
+  if (id === 'reg1') resetRegStep();
   if (id === 'reg2') applyReg2Mode();
   if (id === 'certificate') renderCertificate();
   if (id === 'skills') renderSkillGrid();
@@ -1259,6 +1260,82 @@ async function doVerify() {
     toast(e.message || 'Invalid code');
   } finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
 }
+/* ---------- registration: phone + OTP on the first step (reg1) ---------- */
+function resetRegStep() {
+  // Show the form, hide the OTP sub-step, clear boxes.
+  if ($('regOtpStep')) $('regOtpStep').style.display = 'none';
+  if ($('regFormStep')) $('regFormStep').style.display = '';
+  document.querySelectorAll('#regOtpStep [data-rotp]').forEach((i) => (i.value = ''));
+  // If the phone is already verified in this session, prefill + lock it.
+  const rp = $('regPhone');
+  if (rp) {
+    if (session) { rp.value = pendingPhone || (session?.user?.phone ? '+' + session.user.phone : rp.value); rp.readOnly = true; }
+    else { rp.readOnly = false; }
+  }
+}
+async function regNext() {
+  // Already verified this session → straight to the next step.
+  if (session) { show('reg2'); return; }
+  const name = ($('regName')?.value || '').trim();
+  const raw = ($('regPhone')?.value || '').replace(/\D/g, '').slice(-10);
+  if (!name) { toast('Enter your full name'); return; }
+  if (raw.length !== 10) { toast('Enter a valid 10-digit mobile number'); return; }
+  const btn = $('regNextBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Sending OTP…'; }
+  try {
+    pendingPhone = hasSupabase ? await api.sendOtp(raw) : '+91' + raw;
+    if ($('regOtpLabel')) $('regOtpLabel').textContent = pendingPhone;
+    $('regFormStep').style.display = 'none';
+    $('regOtpStep').style.display = '';
+    document.querySelectorAll('#regOtpStep [data-rotp]')[0]?.focus();
+  } catch (e) { toast(e.message || 'Could not send OTP'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Next'; } }
+}
+async function regNextResend(raw) {
+  try { pendingPhone = hasSupabase ? await api.sendOtp(raw) : '+91' + raw; if ($('regOtpLabel')) $('regOtpLabel').textContent = pendingPhone; toast('OTP resent'); }
+  catch (e) { toast(e.message || 'Could not resend OTP'); }
+}
+async function verifyRegOtp() {
+  const code = Array.from(document.querySelectorAll('#regOtpStep [data-rotp]')).map((i) => i.value).join('');
+  if (code.length !== 6) { toast('Enter the 6-digit code'); return; }
+  const btn = $('regVerifyBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+  try {
+    if (hasSupabase) {
+      await api.verifyOtp(pendingPhone, code);
+      session = await api.getSession();
+      myProvider = await api.getMyProvider().catch(() => null);
+    }
+    if ($('regPhone')) $('regPhone').value = pendingPhone || '';
+    if (myProvider) { show('jobs'); return; }   // already registered → dashboard
+    show('reg2');                                // continue the registration wizard
+  } catch (e) { toast(e.message || 'Invalid code'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Verify & Continue'; } }
+}
+function wireRegOtp() {
+  const inputs = Array.from(document.querySelectorAll('#regOtpStep [data-rotp]'));
+  if (!inputs.length) return;
+  const fill = (code) => {
+    const d = String(code).replace(/\D/g, '').slice(0, inputs.length).split('');
+    if (!d.length) return;
+    inputs.forEach((x, j) => (x.value = d[j] || ''));
+    (inputs[Math.min(d.length, inputs.length - 1)] || inputs[0]).focus();
+    if (d.length >= inputs.length) setTimeout(verifyRegOtp, 180);
+  };
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('input', () => {
+      const v = inp.value.replace(/\D/g, '');
+      if (v.length > 1) { fill(v); return; }
+      inp.value = v.slice(0, 1);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+      else if (inp.value && inputs.every((x) => x.value)) setTimeout(verifyRegOtp, 180);
+    });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus(); });
+    inp.addEventListener('paste', (e) => {
+      const t = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+      if (/\d{2,}/.test(t)) { e.preventDefault(); fill(t); }
+    });
+  });
+}
+
 /* ---------- edit profile (Option A: reuse reg2 as "Edit Profile") ---------- */
 function openEditProfile() {
   editMode = true;
@@ -1764,6 +1841,13 @@ async function boot() {
   try { const l = localStorage.getItem('helpzo_lang'); if (l && LANGS[l]) curLang = l; } catch (e) {}
   try { applyTheme(localStorage.getItem('helpzo_theme') || 'light'); } catch (e) {}
   wireOtpInputs();
+  wireRegOtp();
+  // registration step-1 phone + OTP
+  $('regNextBtn')?.addEventListener('click', regNext);
+  $('regVerifyBtn')?.addEventListener('click', verifyRegOtp);
+  $('regResendBtn')?.addEventListener('click', () => { const raw = (pendingPhone || '').replace(/\D/g, '').slice(-10); if (raw.length === 10) regNextResend(raw); });
+  $('regChangeBtn')?.addEventListener('click', () => { if ($('regOtpStep')) $('regOtpStep').style.display = 'none'; if ($('regFormStep')) $('regFormStep').style.display = ''; });
+  $('regPhone')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') regNext(); });
   // datalist: Ahmedabad service areas (dedupe)
   const dl = $('ahmAreas');
   if (dl) dl.innerHTML = [...new Set(AHMEDABAD_AREAS)].sort().map((c) => `<option value="${esc(c)}"></option>`).join('');
