@@ -112,9 +112,9 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$DEST"
-          # Only publish when the APK actually changed (keeps the "last updated"
-          # time honest and avoids no-op commits).
-          if git diff --cached --quiet; then echo "APK unchanged — nothing to publish."; exit 0; fi
+          # Publish when the APK actually changed, or when its metadata file is
+          # missing (first run) — avoids no-op commits but always seeds version.
+          if git diff --cached --quiet && [ -f "$META" ]; then echo "APK unchanged — nothing to publish."; exit 0; fi
           # Per-app version (distinct per app + per build) and exact build time.
           LETTER=$([ "${{ matrix.app }}" = "customer-app" ] && echo C || echo P)
           BUILT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
