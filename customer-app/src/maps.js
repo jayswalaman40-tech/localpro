@@ -56,16 +56,26 @@ async function quickPos() {
     const Geolocation = mod.Geolocation || mod.default;
     if (Geolocation) {
       try { await Geolocation.requestPermissions(); } catch (e) {}
-      const p = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 7000 });
-      if (p && p.coords) return { lat: p.coords.latitude, lng: p.coords.longitude };
+      // Try high accuracy, then fall back to coarse (indoors / weak GPS).
+      for (const opt of [{ enableHighAccuracy: true, timeout: 8000 }, { enableHighAccuracy: false, timeout: 8000 }]) {
+        try { const p = await Geolocation.getCurrentPosition(opt); if (p && p.coords) return { lat: p.coords.latitude, lng: p.coords.longitude }; } catch (e) {}
+      }
     }
   } catch (e) { /* web — fall through */ }
   return new Promise((res) => {
     if (!navigator.geolocation) return res(null);
     navigator.geolocation.getCurrentPosition(
       (p) => res({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => res(null), { timeout: 7000, maximumAge: 30000 });
+      () => res(null), { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   });
+}
+// Brief message overlaid on a map (feedback for the "My location" button).
+function flashMsg(el, msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:absolute;left:50%;bottom:54px;transform:translateX(-50%);background:rgba(15,37,71,.92);color:#fff;font-size:12px;font-weight:600;padding:8px 12px;border-radius:10px;z-index:7;max-width:85%;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+  el.appendChild(t);
+  setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2600);
 }
 
 function placeholder(el, msg) {
@@ -158,7 +168,15 @@ export async function locationPicker(el, opts = {}) {
   const btn = document.createElement('button');
   btn.textContent = '◎ My location';
   btn.style.cssText = 'position:absolute;right:10px;bottom:10px;border:0;border-radius:999px;background:#fff;color:#1667E8;font-weight:700;font-size:12px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;z-index:6';
-  btn.onclick = async () => { const p = await quickPos(); if (p) { map.setCenter(p); map.setZoom(16); } };
+  btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = '◎ Locating…'; btn.style.opacity = '.75';
+    try {
+      const p = await quickPos();
+      if (p) { map.setCenter(p); map.setZoom(16); }   // idle → emit() fills address
+      else { flashMsg(el, 'Could not get location. Turn on GPS and allow location permission.'); }
+    } catch (e) { flashMsg(el, 'Could not get location.'); }
+    finally { btn.disabled = false; btn.textContent = '◎ My location'; btn.style.opacity = '1'; }
+  };
   el.appendChild(btn);
   return {
     map,
