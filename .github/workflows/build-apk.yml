@@ -104,14 +104,26 @@ jobs:
       # carries [skip ci], so it never re-triggers a build.
       - name: Publish APK to the download page
         run: |
-          DEST="admin-app/public/downloads/${{ matrix.artifact }}.apk"
+          APP="${{ matrix.artifact }}"
+          DEST="admin-app/public/downloads/${APP}.apk"
+          META="admin-app/public/downloads/${APP}.json"
           mkdir -p admin-app/public/downloads
-          cp "${{ matrix.app }}/out/${{ matrix.artifact }}-debug.apk" "$DEST"
+          cp "${{ matrix.app }}/out/${APP}-debug.apk" "$DEST"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$DEST"
+          # Only publish when the APK actually changed (keeps the "last updated"
+          # time honest and avoids no-op commits).
           if git diff --cached --quiet; then echo "APK unchanged — nothing to publish."; exit 0; fi
-          git commit -m "Auto-refresh ${{ matrix.artifact }} APK (build ${GITHUB_SHA::7}) [skip ci]"
+          # Per-app version (distinct per app + per build) and exact build time.
+          LETTER=$([ "${{ matrix.app }}" = "customer-app" ] && echo C || echo P)
+          BUILT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          VER="1.0.${GITHUB_SHA::7}-${LETTER}"
+          SIZE_MB="$(awk "BEGIN{printf \"%.1f\", $(stat -c%s "$DEST")/1048576}")"
+          printf '{"version":"%s","built_at":"%s","size_mb":"%s","sha":"%s"}\n' \
+            "$VER" "$BUILT" "$SIZE_MB" "${GITHUB_SHA::7}" > "$META"
+          git add "$META"
+          git commit -m "Auto-refresh ${APP} APK ${VER} (build ${GITHUB_SHA::7}) [skip ci]"
           for i in 1 2 3 4 5 6; do
             if git pull --rebase origin "${{ github.ref_name }}" && git push origin HEAD:"${{ github.ref_name }}"; then
               echo "published"; exit 0
