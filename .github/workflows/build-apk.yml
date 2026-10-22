@@ -26,9 +26,15 @@ jobs:
           - app: provider-app
             artifact: HelpZo-Provider
 
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -90,87 +96,26 @@ jobs:
           mkdir -p out
           cp android/app/build/outputs/apk/debug/app-debug.apk "out/${{ matrix.artifact }}-debug.apk"
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}-apk
-          path: ${{ matrix.app }}/out/${{ matrix.artifact }}-debug.apk
-          if-no-files-found: error
-          # These artifacts only pass the APK to the release / download-page
-          # jobs in the same run — keep them 1 day so they never pile up and
-          # exhaust the Actions artifact storage quota.
-          retention-days: 1
-          overwrite: true
-
-  # Publishes both APKs to a single "apk-latest" release so they can be
-  # downloaded directly (one tap, no zip) from the Releases page.
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download built APKs
-        uses: actions/download-artifact@v4
-        with:
-          pattern: '*-apk'
-          merge-multiple: true
-          path: apks
-
-      - name: List APKs
-        run: ls -la apks
-
-      - name: Publish to "apk-latest" release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: apk-latest
-          name: HelpZo APKs (latest build)
-          body: |
-            Latest debug APKs built from the feature branch.
-            - HelpZo-Customer-debug.apk
-            - HelpZo-Provider-debug.apk
-          prerelease: true
-          files: apks/*.apk
-
-  # Auto-refresh the public download page (admin-app/public/downloads) with the
-  # APKs that were just built, and commit them back to this branch. Vercel then
-  # redeploys the admin app, so helpzo-admin.vercel.app/download.html always
-  # serves the newest APK with no manual step. The commit touches only
-  # admin-app/** (outside this workflow's path filter) and carries [skip ci],
-  # so it never re-triggers a build.
-  refresh-download-page:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout the branch that triggered this run
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download built APKs
-        uses: actions/download-artifact@v4
-        with:
-          pattern: '*-apk'
-          merge-multiple: true
-          path: apks
-
-      - name: Copy APKs into the admin download page
+      # Publish this app's APK straight to the download page and push it back
+      # to the branch — no upload-artifact, so the Actions artifact storage
+      # quota can never block it. Each matrix job commits only its own file;
+      # a rebase-retry loop lets the two parallel jobs (customer + provider)
+      # push without conflicting. The commit touches only admin-app/** and
+      # carries [skip ci], so it never re-triggers a build.
+      - name: Publish APK to the download page
         run: |
+          DEST="admin-app/public/downloads/${{ matrix.artifact }}.apk"
           mkdir -p admin-app/public/downloads
-          cp apks/HelpZo-Customer-debug.apk admin-app/public/downloads/HelpZo-Customer.apk
-          cp apks/HelpZo-Provider-debug.apk admin-app/public/downloads/HelpZo-Provider.apk
-
-      - name: Commit & push if the APKs changed
-        run: |
+          cp "${{ matrix.app }}/out/${{ matrix.artifact }}-debug.apk" "$DEST"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add admin-app/public/downloads/HelpZo-Customer.apk admin-app/public/downloads/HelpZo-Provider.apk
-          if git diff --cached --quiet; then
-            echo "APKs unchanged — nothing to publish."
-          else
-            git commit -m "Auto-refresh hosted APKs (build ${GITHUB_SHA::7}) [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+          git add "$DEST"
+          if git diff --cached --quiet; then echo "APK unchanged — nothing to publish."; exit 0; fi
+          git commit -m "Auto-refresh ${{ matrix.artifact }} APK (build ${GITHUB_SHA::7}) [skip ci]"
+          for i in 1 2 3 4 5 6; do
+            if git pull --rebase origin "${{ github.ref_name }}" && git push origin HEAD:"${{ github.ref_name }}"; then
+              echo "published"; exit 0
+            fi
+            echo "push race — retry $i"; sleep $((RANDOM % 6 + 2))
+          done
+          echo "failed to push APK after retries"; exit 1
