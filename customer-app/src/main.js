@@ -498,7 +498,8 @@ function openSubcats(key) {
   if ($('subcatTitle')) $('subcatTitle').textContent = c.label;
   if ($('subcatSub')) $('subcatSub').textContent = 'Select one or more services';
   const grid = $('subcatGrid');
-  if (grid) grid.innerHTML = SUBCATS[key].map((s) => serviceRow(c, s)).join('');
+  if (grid) grid.innerHTML = SUBCATS[key].map((s) => serviceRow(c, s)).join('')
+    + `<div class="subrow svc" data-svc="__other__"><div class="subic" style="background:${c.color}22;color:${c.color}">&#10133;</div><div class="subtxt">Other — type your own</div><span class="svc-check">&#9675;</span></div>`;
   updateBookBar();
   show('subcats');
 }
@@ -743,6 +744,24 @@ async function setCityPrompt() {
   if (hasSupabase && session) { try { await api.updateMyProfile({ city: clean }); } catch (e) {} }
   if (myProfile) myProfile.city = clean; else myProfile = { city: clean };
 }
+let bookService = '';   // the specific service the customer picked (or '__other__')
+function catKeyForProvider(p) {
+  if (!p) return selectedCat || '';
+  if (p.cat && SUBCATS[p.cat]) return p.cat;
+  const t = String(p.trade || '').toLowerCase();
+  const m = CATS.find((c) => c.label.toLowerCase() === t);
+  return (m && m.key) || selectedCat || '';
+}
+// Service picker on the booking screen: the provider's category services + an
+// "Other" option so the customer can type exactly what work they need.
+function renderBookServices(p) {
+  const row = $('bookSvcRow'); if (!row) return;
+  bookService = '';
+  const other = $('bookSvcOther'); if (other) { other.style.display = 'none'; other.value = ''; }
+  const list = (SUBCATS[catKeyForProvider(p)] || []);
+  row.innerHTML = list.map((s) => `<div class="slot" data-booksvc="${esc(s)}">${esc(s)}</div>`).join('')
+    + `<div class="slot" data-booksvc="__other__">➕ Other</div>`;
+}
 function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
   const addrEl = $('bookAddr');
@@ -752,6 +771,7 @@ function renderBook() {
     <div><div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
     <div class="rating" style="font-size:12.5px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
     <div class="sec" style="font-size:12.5px">${esc(p.trade)} • ${inr(p.price)} onwards</div></div>`;
+  renderBookServices(p);
   // default date = today; default time already 10:00 (chip "Afternoon 3" is .on → keep input in sync)
   const today = new Date();
   bookDateIso = isoLocalDate(today);
@@ -1040,6 +1060,10 @@ async function confirmBooking() {
   if (!bookDateIso) { toast('Please select a date'); return; }
   const timeVal = $('bookTime')?.value || '';
   if (!timeVal) { toast('Please select a time'); return; }
+  // The customer must say WHICH service they need, so the provider knows the job.
+  const otherVal = ($('bookSvcOther')?.value || '').trim();
+  const service = bookService === '__other__' ? otherVal : bookService;
+  if (!service) { toast('Please select the service you need'); $('bookSvcRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
   try {
     const p = selectedProvider || DEMO_PROVIDERS[0];
@@ -1047,13 +1071,13 @@ async function confirmBooking() {
     const dateNice = new Date(bookDateIso + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     if (!isDemo) {
-      await api.createBooking(p.id, { service: p.trade, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng });
+      await api.createBooking(p.id, { service, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng });
     }
     localBookings.unshift({
-      service: selectedSub || p.trade || 'Service', provider: p.name || 'Provider',
+      service, provider: p.name || 'Provider',
       when: `${dateNice} • ${time}`, addr, status: 'Pending', _demo: isDemo,
     });
-    lastBooking = { name: p.name || 'Provider', trade: p.trade || 'Service', phone: p.phone || '+91 90000 00000', when: `${dateNice} • ${time}`, addr, verified: p.verified };
+    lastBooking = { name: p.name || 'Provider', trade: service, phone: p.phone || '+91 90000 00000', when: `${dateNice} • ${time}`, addr, verified: p.verified };
     show('booked');
   } catch (e) { toast(e.message || 'Could not book'); }
   finally { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
@@ -1173,6 +1197,11 @@ document.addEventListener('click', (e) => {
   }
   const svc = e.target.closest('[data-svc]'); if (svc) {
     const label = svc.getAttribute('data-svc');
+    if (label === '__other__') {
+      const custom = (window.prompt('What service do you need?') || '').trim();
+      if (custom && !selectedServices.includes(custom)) { selectedServices.push(custom); toast('Added: ' + custom); updateBookBar(); }
+      return;
+    }
     const i = selectedServices.indexOf(label);
     const chk = svc.querySelector('.svc-check');
     if (i >= 0) { selectedServices.splice(i, 1); svc.classList.remove('on'); if (chk) chk.textContent = '○'; }
@@ -1192,6 +1221,14 @@ document.addEventListener('click', (e) => {
   const sl = e.target.closest('#slotRow .slot'); if (sl) {
     document.querySelectorAll('#slotRow .slot').forEach((x) => x.classList.remove('on')); sl.classList.add('on');
     const t = sl.getAttribute('data-time'); if (t && $('bookTime')) $('bookTime').value = t; return;
+  }
+  const bsvc = e.target.closest('#bookSvcRow [data-booksvc]'); if (bsvc) {
+    document.querySelectorAll('#bookSvcRow [data-booksvc]').forEach((x) => x.classList.remove('on')); bsvc.classList.add('on');
+    bookService = bsvc.getAttribute('data-booksvc');
+    const other = $('bookSvcOther');
+    if (bookService === '__other__') { if (other) { other.style.display = ''; other.focus(); } }
+    else if (other) { other.style.display = 'none'; }
+    return;
   }
   const callEl = e.target.closest('[data-call]'); if (callEl) { const ph = callEl.getAttribute('data-call'); if (ph) window.location.href = telHref(ph); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
