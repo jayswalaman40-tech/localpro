@@ -250,6 +250,27 @@ export async function subscribeMessages(providerId, cb) {
   return ch;
 }
 
+// Realtime: fire cb() whenever any provider is added / updated / removed,
+// so new (admin-added) providers appear in the customer app without refresh.
+export async function subscribeProviders(cb) {
+  const ch = supabase.channel('providers-feed')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'providers' }, (payload) => cb(payload))
+    .subscribe();
+  return ch;
+}
+
+// Realtime: fire cb() when MY booking changes (provider accepts / completes),
+// so "My Bookings" updates live.
+export async function subscribeMyBookings(cb) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return null;
+  const ch = supabase.channel('mybk-' + u.user.id)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `customer_id=eq.${u.user.id}` },
+      (payload) => cb(payload))
+    .subscribe();
+  return ch;
+}
+
 // ---------------- SAVED PROVIDERS ----------------
 
 export async function getSavedIds() {

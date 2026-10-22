@@ -1015,3 +1015,52 @@ begin
 end; $$;
 
 notify pgrst, 'reload schema';
+
+-- ============ 0020 CUSTOMERS SEE MANUAL PROVIDERS + REALTIME ============
+-- Admin-added (manual) providers have no GPS coordinates. The old search
+-- excluded any provider without lat/lng, so they never showed to customers.
+-- Now they are included (with NULL distance, listed after the geo-located
+-- ones) so everything an admin adds is visible in the customer app.
+create or replace function public.nearby_providers(
+  in_lat      double precision,
+  in_lng      double precision,
+  radius_km   double precision default 10,
+  in_category uuid default null,
+  in_query    text default null
+)
+returns table (
+  id uuid, name text, phone text, category_id uuid, custom_category text,
+  about text, starting_price int, price_unit price_unit,
+  service_area text, experience_yrs int, verified boolean,
+  available boolean, rating_avg numeric, rating_count int,
+  response_rate int, distance_km numeric
+)
+language sql stable security definer set search_path = public as $$
+  select
+    p.id, p.name, p.phone, p.category_id, p.custom_category, p.about, p.starting_price,
+    p.price_unit, p.service_area, p.experience_yrs, p.verified,
+    p.available, p.rating_avg, p.rating_count, p.response_rate,
+    case when p.lat is null or p.lng is null then null else
+      round((6371 * acos(greatest(-1, least(1,
+        cos(radians(in_lat)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians(in_lng)) +
+        sin(radians(in_lat)) * sin(radians(p.lat))
+      ))))::numeric, 1) end as distance_km
+  from public.providers p
+  where p.available = true
+    and (in_category is null or p.category_id = in_category)
+    and (in_query is null or in_query = ''
+         or p.name ilike '%' || in_query || '%'
+         or p.custom_category ilike '%' || in_query || '%')
+    and (
+      p.lat is null or p.lng is null
+      or (6371 * acos(greatest(-1, least(1,
+            cos(radians(in_lat)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians(in_lng)) +
+            sin(radians(in_lat)) * sin(radians(p.lat))
+          )))) <= radius_km
+    )
+  order by distance_km asc nulls last, p.rating_avg desc;
+$$;
+
+-- Realtime: customers see newly added/updated providers without refreshing.
+do $$ begin alter publication supabase_realtime add table public.providers; exception when others then null; end $$;
+notify pgrst, 'reload schema';

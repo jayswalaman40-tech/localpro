@@ -344,6 +344,24 @@ function onEnter(id) {
   if (id === 'map') renderMapScreen();
 }
 
+/* ---------- realtime: live provider + booking updates ---------- */
+let provSub = null, bkSub = null;
+function curScreen() { return stack[stack.length - 1]; }
+function refreshProviderViews() {
+  const c = curScreen();
+  if (c === 'home') renderHome();
+  else if (c === 'list') renderList();
+  else if (c === 'map') renderMapScreen();
+}
+function refreshBookingViews() { if (curScreen() === 'bookings') renderBookings(); }
+async function startRealtime() {
+  if (!hasSupabase) return;
+  // New/updated providers (e.g. admin adds one) show up live.
+  if (!provSub) { try { provSub = await api.subscribeProviders(() => refreshProviderViews()); } catch (e) {} }
+  // My booking status changes (provider accepts/completes) update live.
+  if (session && !bkSub) { try { bkSub = await api.subscribeMyBookings(() => refreshBookingViews()); } catch (e) {} }
+}
+
 /* ---------- nearby providers map ---------- */
 let mapCat = null;   // category filter on the map screen
 async function renderMapScreen() {
@@ -368,7 +386,7 @@ async function renderMapScreen() {
       }));
     } catch (e) { provs = null; }
   }
-  if (!provs || !provs.length) provs = demoProviders(center);   // offline / none nearby
+  if (!provs) provs = [];   // real only — no demo scatter
   const catLabel = mapCat ? (CATS.find((c) => c.key === mapCat)?.label || 'Providers') : 'Providers';
   setMapText('mapSheetTitle', 'Nearby ' + catLabel);
   setMapText('mapCount', String(provs.length));
@@ -432,7 +450,7 @@ function topCard(p, badges) {
       <div style="flex:1">
         <div><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating || '—'}</b> <span class="sec">(${p.reviews} reviews)</span></div>
-        <div class="meta">📍 ${p.dist} km away</div>
+        <div class="meta">📍 ${p.dist === '—' ? esc(p.area || 'Nearby') : esc(p.dist) + ' km away'}</div>
         <div class="sec" style="margin-top:2px">${esc(p.trade)}${p.exp ? ' • ' + esc(p.exp) : ''}</div>
         ${badgeHtml(badges)}
       </div>
@@ -444,28 +462,18 @@ async function renderHome() {
   applyProfileCity();
   const grid = $('catGrid'); if (grid) grid.innerHTML = POPULAR.map(catCell).join('') + catCell(MORE_TILE);
   const top = $('homeTop'); if (!top) return;
-  const paintDemoTop = () => {
-    const d = DEMO_PROVIDERS.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
-    const b = computeBadges(d);
-    top.innerHTML = d.map((p) => topCard(p, b[p.id])).join('');
-  };
-  if (hasSupabase) {
-    // Signed in / live backend → show real nearby providers (loading first),
-    // never flash demo providers that then get replaced.
-    top.innerHTML = `<div class="empty">Loading…</div>`;
-    try {
-      const loc = await api.getCurrentLocation();
-      const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
-      if (live && live.length) {
-        const rows = live.slice(0, 3).map((r) => { const p = provFromRow(r); providerCache[p.id] = p; return p; });
-        const b = computeBadges(rows);
-        top.innerHTML = rows.map((p) => topCard(p, b[p.id])).join('');
-        return;
-      }
-    } catch (e) {}
-    paintDemoTop();   // backend reachable but nothing nearby → demo so it isn't empty
-  } else {
-    paintDemoTop();   // offline
+  // Real providers only (no demo). Empty state when there are none yet.
+  top.innerHTML = `<div class="empty">Loading…</div>`;
+  if (!hasSupabase) { top.innerHTML = `<div class="empty">No providers available right now.</div>`; return; }
+  try {
+    const loc = await api.getCurrentLocation();
+    const live = await api.searchProviders({ lat: loc.lat, lng: loc.lng, radiusKm: 50 });
+    const rows = (live || []).slice(0, 3).map((r) => { const p = provFromRow(r); providerCache[p.id] = p; return p; });
+    const b = computeBadges(rows);
+    top.innerHTML = rows.length ? rows.map((p) => topCard(p, b[p.id])).join('')
+      : `<div class="empty">No providers available yet. New providers will appear here.</div>`;
+  } catch (e) {
+    top.innerHTML = `<div class="empty">Could not load providers. Pull to refresh.</div>`;
   }
 }
 
@@ -520,7 +528,7 @@ function providerCard(p, badges) {
       <div style="flex:1">
         <div style="display:flex;align-items:center"><span class="h3">${esc(p.name)}</span> ${p.verified === true ? '<span class="verif">✔</span>' : ''}</div>
         <div class="rating" style="font-size:13px;margin-top:3px"><span class="st">★</span> <b>${p.rating}</b> <span class="sec">(${p.reviews} reviews)</span></div>
-        <div class="meta">📍 ${p.dist} km away</div>
+        <div class="meta">📍 ${p.dist === '—' ? esc(p.area || 'Nearby') : esc(p.dist) + ' km away'}</div>
         <div class="price" style="margin-top:2px">${inr(p.price)} <span style="font-weight:500;color:var(--tSecondary)">onwards</span></div>
         ${svcLine}
         ${badgeHtml(badges)}
@@ -550,7 +558,7 @@ async function renderList() {
       rows.forEach((p) => { providerCache[p.id] = p; });
     } catch (e) { rows = null; }
   }
-  if (!rows) rows = DEMO_PROVIDERS.slice();          // not signed in / offline
+  if (!rows) rows = [];          // real only — no demo
   lastListRows = filterRows(rows);
   paintList();
 }
@@ -837,10 +845,8 @@ function renderBookings() {
       paintBookings();
     }).catch(() => { paintBookings(); });
   } else {
-    // Offline / not signed in → demo data so the screen isn't blank.
-    lastBookings = localBookings.concat(DEMO_BOOKINGS.map((b) => ({
-      service: b.service, provider: b.provider, when: b.when, addr: b.addr, status: b.status,
-    })));
+    // Not signed in → no demo; real bookings need a signed-in customer.
+    lastBookings = localBookings.slice();
     paintBookings();
   }
 }
@@ -980,12 +986,7 @@ async function renderNotif() {
     } catch (e) { el.innerHTML = `<div class="empty">No notifications yet.</div>`; }
     return;
   }
-  el.innerHTML = DEMO_NOTIF.map((n, i) => `
-    <div class="row" style="align-items:flex-start;cursor:pointer;${i ? 'border-top:1px solid var(--cardBorder)' : ''}" data-notifgo="${n.go || 'bookings'}">
-      <div class="avatar" style="width:44px;height:44px;background:${n.color};color:#fff">${n.ic}</div>
-      <div class="mid"><div style="display:flex"><div class="h3" style="flex:1">${esc(n.title)}</div><span class="ter">${esc(n.ago)}</span></div>
-        <div class="sec" style="margin-top:2px">${esc(n.body)}</div><div class="ter" style="margin-top:4px;color:var(--primary)">Tap to view ›</div></div>
-    </div>`).join('');
+  el.innerHTML = `<div class="empty">Sign in to see your notifications.</div>`;
 }
 function renderAccount() {
   const name = (myProfile && myProfile.full_name) || 'Guest User';
@@ -1493,6 +1494,7 @@ async function boot() {
       myProfile = await api.getMyProfile().catch(() => null);
       loadLocalProfile();   // overlay locally-saved extras (email, gender, address)
     }
+    startRealtime();   // live provider + booking updates
   })();
 
   const route = () => { stack = ['splash']; show(session ? 'home' : 'login'); };
