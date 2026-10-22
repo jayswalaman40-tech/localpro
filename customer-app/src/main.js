@@ -761,6 +761,21 @@ function renderBookServices(p) {
   const list = (SUBCATS[catKeyForProvider(p)] || []);
   row.innerHTML = list.map((s) => `<div class="slot" data-booksvc="${esc(s)}">${esc(s)}</div>`).join('')
     + `<div class="slot" data-booksvc="__other__">➕ Other</div>`;
+  // Carry over the service(s) the customer picked while browsing the category,
+  // so category → service → profile → Book Now arrives pre-filled.
+  const chosen = selectedSub || (selectedServices && selectedServices.length ? selectedServices.join(', ') : '');
+  if (chosen) preselectBookService(chosen);
+}
+function preselectBookService(value) {
+  const row = $('bookSvcRow'); if (!row) return;
+  row.querySelectorAll('[data-booksvc]').forEach((x) => x.classList.remove('on'));
+  const exact = Array.from(row.querySelectorAll('[data-booksvc]')).find((x) => x.getAttribute('data-booksvc') === value);
+  if (exact) { exact.classList.add('on'); bookService = value; return; }
+  // not one of the category's standard services → use "Other" with the text
+  const otherChip = row.querySelector('[data-booksvc="__other__"]');
+  if (otherChip) otherChip.classList.add('on');
+  bookService = '__other__';
+  const other = $('bookSvcOther'); if (other) { other.style.display = ''; other.value = value; }
 }
 function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
