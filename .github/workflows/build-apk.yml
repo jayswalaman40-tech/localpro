@@ -96,6 +96,11 @@ jobs:
           name: ${{ matrix.artifact }}-apk
           path: ${{ matrix.app }}/out/${{ matrix.artifact }}-debug.apk
           if-no-files-found: error
+          # These artifacts only pass the APK to the release / download-page
+          # jobs in the same run — keep them 1 day so they never pile up and
+          # exhaust the Actions artifact storage quota.
+          retention-days: 1
+          overwrite: true
 
   # Publishes both APKs to a single "apk-latest" release so they can be
   # downloaded directly (one tap, no zip) from the Releases page.
