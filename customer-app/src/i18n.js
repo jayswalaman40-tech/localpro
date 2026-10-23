@@ -318,3 +318,32 @@ te:{
   r13:"సురక్షితమైన డ్రైవింగ్, సమయపాలన.", r14:"రుచికరమైన ఇంటి భోజనం.", r15:"తోట ఇప్పుడు చాలా బాగుంది.",
 },
 };
+
+// ---- Booking flow (M4). English only; other languages fall back. ----
+Object.assign(I18N.en, {
+  callNow: 'Call', bookNow: 'Book now',
+  whatWork: 'What do you need?', whatWorkPh: 'e.g. Tap leak repair',
+  when: 'When', now: 'Now', schedule: 'Schedule', pickTime: 'Pick date & time',
+  addressPh: 'House / area', noteOptional: 'Note (optional)', notePh: 'Any detail for the provider',
+  requestBooking: 'Request booking', yourBooking: 'Your booking',
+  callProvider: 'Call provider', trackLive: 'Track live location',
+  bkBannerTitle: 'You have an active booking',
+  st_searching: 'Finding a provider', st_offered: 'Waiting for provider',
+  st_accepted: 'Accepted', st_scheduled: 'Scheduled', st_active: 'On the way',
+  st_in_progress: 'Work in progress', st_completed: 'Completed',
+  bkSearching: 'Finding the best provider…', bkSearchingSub: 'We are offering your booking nearby.',
+  bkAccepted: 'Booking accepted', bkAcceptedSub: 'The provider has accepted your request.',
+  bkScheduled: 'Scheduled', bkScheduledSub: 'Confirmed for your chosen time.',
+  bkOnWay: 'Provider is on the way', bkOnWaySub: 'Track their live location below.',
+  bkInProgress: 'Work in progress', bkInProgressSub: 'Your provider is doing the job.',
+  bkCompleted: 'Job completed', bkCompletedSub: 'Hope it went well — please rate.',
+  bkUnfulfilled: 'No provider available', bkUnfulfilledSub: 'No one was free right now. Please try again.',
+  bkCancelled: 'Booking cancelled', bkCancelledSub: '',
+  cancelBooking: 'Cancel booking', billLabel: 'Bill', verifyClose: 'Verify & close',
+  workInProgress: 'Waiting for the provider to finish & send the bill.',
+  rateProvider: 'Rate your provider', submitFeedback: 'Submit feedback', tryAgain: 'Try again',
+  enterService: 'Tell us what you need', enterAddress: 'Enter an address',
+  pickTimeErr: 'Pick a date & time', bookingRequested: 'Booking requested!',
+  bookingCancelled: 'Booking cancelled', bookingVerified: 'Thanks — verified!',
+  pickRating: 'Tap the stars to rate', thanksFeedback: 'Thanks for your feedback!',
+});

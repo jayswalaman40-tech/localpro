@@ -106,7 +106,7 @@ function showScreen(key) {
   $('langPop').classList.toggle('low', !hasNav);
   document.querySelectorAll('.navitem[data-nav]').forEach(b =>
     b.classList.toggle('active', b.dataset.nav === key));
-  if (key === 'home') renderResults();
+  if (key === 'home') { renderResults(); renderHomeBanner(); }
   if (key === 'saved') renderSaved();
   if (key === 'history') renderHistory();
   if (key === 'profile') loadProfile();
@@ -196,6 +196,7 @@ $('otpRow').addEventListener('keydown', e => {
 async function afterLogin() {
   try { savedIds = await api.getSavedIds(); } catch (e) {}
   try { myLocation = await api.getCurrentLocation(); } catch (e) {}
+  try { await refreshActiveBooking(); } catch (e) {}
   goTo('home');
 }
 
@@ -408,12 +409,187 @@ if (searchInput) {
 }
 
 /* ==================== expose handlers to inline onclick ==================== */
+/* ==================== BOOKING (M4): request, track, verify, review ====== */
+let currentBooking = null;
+let bkProvider = null;
+let bookingChannel = null;
+let bookWhen = 'now';
+let selectedRating = 0;
+let homeActiveBooking = null;
+const inrC = n => '₹' + Number(n || 0).toLocaleString('en-IN');
+
+async function refreshActiveBooking() {
+  try { homeActiveBooking = await api.getMyActiveBooking(); } catch (e) { homeActiveBooking = null; }
+  renderHomeBanner();
+}
+function renderHomeBanner() {
+  const el = $('homeBanner'); if (!el) return;
+  if (!homeActiveBooking) { el.innerHTML = ''; return; }
+  const b = homeActiveBooking;
+  el.innerHTML = `<button class="card" style="width:100%;text-align:left;border:1px solid var(--teal);background:var(--teal-bg);border-radius:14px;padding:12px;cursor:pointer;font-family:inherit;margin-bottom:12px"
+    onclick="openTracking('${b.id}')">
+    <div style="font-weight:600;font-size:13.5px;color:var(--teal)">${esc(t('bkBannerTitle'))}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(b.service_name || '')} · ${esc(t('st_' + b.status) || b.status)}</div></button>`;
+}
+
+/* ---- request ---- */
+function startBooking() {
+  if (!selectedProvider) return;
+  $('bookProvName').textContent = selectedProvider.name || '';
+  $('bookProvCat').textContent = catNameById(selectedProvider.category_id);
+  $('bookService').value = ''; $('bookAddress').value = '';
+  $('bookNote').value = ''; $('bookTime').value = '';
+  setBookWhen('now');
+  goTo('book');
+}
+function setBookWhen(mode) {
+  bookWhen = mode;
+  $('bookNowOpt').className = 'btn' + (mode === 'now' ? ' btn-primary' : '');
+  $('bookLaterOpt').className = 'btn' + (mode === 'later' ? ' btn-primary' : '');
+  $('bookTimeWrap').hidden = (mode !== 'later');
+}
+async function submitBooking() {
+  if (!selectedProvider) return;
+  const service = $('bookService').value.trim();
+  const address = $('bookAddress').value.trim();
+  if (!service) { toast(t('enterService')); return; }
+  if (!address) { toast(t('enterAddress')); return; }
+  let scheduledFor = null;
+  if (bookWhen === 'later') {
+    const v = $('bookTime').value;
+    if (!v) { toast(t('pickTimeErr')); return; }
+    scheduledFor = new Date(v).toISOString();
+  }
+  const btn = $('bookSubmitBtn'); btn.disabled = true;
+  try {
+    const id = await api.requestBooking({
+      categoryId: selectedProvider.category_id,
+      service, note: $('bookNote').value.trim() || null,
+      address, lat: myLocation?.lat, lng: myLocation?.lng,
+      scheduledFor, preferred: selectedProvider.id,
+    });
+    toast(t('bookingRequested'));
+    await openTracking(id);
+  } catch (e) { toast(e.message || 'Error'); }
+  btn.disabled = false;
+}
+
+/* ---- tracking ---- */
+const BK = {
+  searching:   ['🔍', 'bkSearching',  'bkSearchingSub'],
+  offered:     ['🔍', 'bkSearching',  'bkSearchingSub'],
+  accepted:    ['✅', 'bkAccepted',   'bkAcceptedSub'],
+  scheduled:   ['📅', 'bkScheduled',  'bkScheduledSub'],
+  active:      ['🛵', 'bkOnWay',      'bkOnWaySub'],
+  in_progress: ['🔧', 'bkInProgress', 'bkInProgressSub'],
+  completed:   ['✅', 'bkCompleted',  'bkCompletedSub'],
+  unfulfilled: ['😕', 'bkUnfulfilled','bkUnfulfilledSub'],
+  cancelled:   ['✖',  'bkCancelled',  'bkCancelledSub'],
+};
+async function openTracking(id) {
+  try { currentBooking = await api.getBooking(id); } catch (e) { toast('Error'); return; }
+  if (!currentBooking) return;
+  bkProvider = null;
+  await renderBooking(currentBooking);
+  goTo('booking');
+  subscribeTracking(id);
+}
+async function subscribeTracking(id) {
+  try { if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; } } catch (e) {}
+  try {
+    bookingChannel = await api.subscribeBooking(id, async (row) => {
+      currentBooking = row; await renderBooking(row); refreshActiveBooking();
+    });
+  } catch (e) {}
+}
+async function renderBooking(b) {
+  const m = BK[b.status] || ['•', 'yourBooking', ''];
+  $('bkStatusIcon').textContent = m[0];
+  $('bkStatusText').textContent = t(m[1]) || b.status;
+  $('bkStatusSub').textContent = m[2] ? (t(m[2]) || '') : '';
+  const card = $('bkProviderCard');
+  if (b.provider_id) {
+    if (!bkProvider || bkProvider.id !== b.provider_id) {
+      try { bkProvider = await api.getProvider(b.provider_id); } catch (e) { bkProvider = null; }
+    }
+    if (bkProvider) {
+      card.hidden = false;
+      $('bkProvAvatar').textContent = (bkProvider.name || 'P').trim().charAt(0).toUpperCase();
+      $('bkProvName').textContent = bkProvider.name || '';
+      $('bkProvCat').textContent = catNameById(bkProvider.category_id);
+      $('bkCallBtn').href = telHref(bkProvider.phone || '');
+      const track = $('bkTrackBtn');
+      if (['active', 'in_progress'].includes(b.status)) await setTrackHref(b.provider_id);
+      else track.style.display = 'none';
+    }
+  } else { card.hidden = true; }
+  renderBkActions(b);
+}
+async function setTrackHref(providerId) {
+  const track = $('bkTrackBtn');
+  try {
+    const loc = await api.getProviderLocation(providerId);
+    if (loc) { track.href = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`; track.style.display = ''; }
+    else track.style.display = 'none';
+  } catch (e) { track.style.display = 'none'; }
+}
+function renderBkActions(b) {
+  const el = $('bkActions'); let h = '';
+  if (['searching', 'offered'].includes(b.status)) {
+    h = `<button class="btn btn-outline-danger btn-block" onclick="cancelBookingNow()">${esc(t('cancelBooking'))}</button>`;
+  } else if (b.status === 'in_progress') {
+    if (b.final_amount != null) h += `<div class="detail-card" style="margin-bottom:12px"><p style="margin:0;font-size:13px">${esc(t('billLabel'))}: <b>${inrC(b.final_amount)}</b> ${b.paid ? '✓' : ''}</p></div>`;
+    if (b.paid) h += `<button class="btn btn-primary btn-block" onclick="verifyBookingNow()">${esc(t('verifyClose'))}</button>`;
+    else h += `<p style="font-size:12.5px;color:var(--muted);text-align:center">${esc(t('workInProgress'))}</p>`;
+  } else if (b.status === 'completed') {
+    h = `<p class="section-label" style="text-align:center">${esc(t('rateProvider'))}</p>
+      <div style="display:flex;justify-content:center;gap:6px" id="starRow">${[1, 2, 3, 4, 5].map(n => `<button class="starbtn" data-n="${n}" onclick="setStars(${n})" style="font-size:30px;line-height:1;background:none;border:none;cursor:pointer;color:var(--line);padding:0">&#9733;</button>`).join('')}</div>
+      <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="submitFeedback()">${esc(t('submitFeedback'))}</button>`;
+  } else if (b.status === 'unfulfilled') {
+    h = `<button class="btn btn-primary btn-block" onclick="goHome()">${esc(t('tryAgain'))}</button>`;
+  }
+  el.innerHTML = h;
+  if (b.status === 'completed') setStars(selectedRating || 0);
+}
+function setStars(n) {
+  selectedRating = n;
+  document.querySelectorAll('#starRow .starbtn').forEach(btn => {
+    btn.style.color = (Number(btn.dataset.n) <= n) ? 'var(--amber)' : 'var(--line)';
+  });
+}
+async function cancelBookingNow() {
+  if (!currentBooking) return;
+  try { await api.cancelMyBooking(currentBooking.id, null); toast(t('bookingCancelled')); goHome(); }
+  catch (e) { toast(e.message || 'Error'); }
+}
+async function verifyBookingNow() {
+  if (!currentBooking) return;
+  try {
+    await api.verifyBooking(currentBooking.id); toast(t('bookingVerified'));
+    currentBooking = await api.getBooking(currentBooking.id); await renderBooking(currentBooking);
+  } catch (e) { toast(e.message || 'Error'); }
+}
+async function submitFeedback() {
+  if (!currentBooking || !currentBooking.provider_id) return;
+  if (!selectedRating) { toast(t('pickRating')); return; }
+  try { await api.submitReview(currentBooking.provider_id, selectedRating, null); toast(t('thanksFeedback')); goHome(); }
+  catch (e) { toast(e.message || 'Error'); }
+}
+function goHome() {
+  try { if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; } } catch (e) {}
+  currentBooking = null; bkProvider = null; selectedRating = 0;
+  refreshActiveBooking();
+  stack = ['home']; showScreen('home');
+}
+
 Object.assign(window, {
   goTo, goBack, openNotifications, logout,
   sendOtp, verifyOtp, validatePhone,
   clearSearch, setCategory, openDetail, toggleSave, toggleSaveById,
   logBooking, logBookingFor, saveProfile, toggleSwitch,
   toggleLangPop, setLang, renderResults,
+  startBooking, setBookWhen, submitBooking, openTracking, goHome,
+  cancelBookingNow, verifyBookingNow, submitFeedback, setStars,
 });
 
 /* ==================== BOOT ==================== */
