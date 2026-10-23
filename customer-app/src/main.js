@@ -5,6 +5,8 @@
 import { LANGS, I18N } from './i18n.js';
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 /* ==================== i18n ==================== */
 let lang = 'en';
@@ -490,6 +492,7 @@ async function openTracking(id) {
   try { currentBooking = await api.getBooking(id); } catch (e) { toast('Error'); return; }
   if (!currentBooking) return;
   bkProvider = null;
+  resetMapMarkers();
   await renderBooking(currentBooking);
   goTo('booking');
   subscribeTracking(id);
@@ -518,20 +521,53 @@ async function renderBooking(b) {
       $('bkProvName').textContent = bkProvider.name || '';
       $('bkProvCat').textContent = catNameById(bkProvider.category_id);
       $('bkCallBtn').href = telHref(bkProvider.phone || '');
-      const track = $('bkTrackBtn');
-      if (['active', 'in_progress'].includes(b.status)) await setTrackHref(b.provider_id);
-      else track.style.display = 'none';
+      if (['active', 'in_progress'].includes(b.status)) await showTrackingMap(b);
+      else hideTrackingMap();
     }
-  } else { card.hidden = true; }
+  } else { card.hidden = true; hideTrackingMap(); }
   renderBkActions(b);
 }
-async function setTrackHref(providerId) {
-  const track = $('bkTrackBtn');
-  try {
-    const loc = await api.getProviderLocation(providerId);
-    if (loc) { track.href = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`; track.style.display = ''; }
-    else track.style.display = 'none';
-  } catch (e) { track.style.display = 'none'; }
+/* ---- Rapido-style live map (Leaflet + OpenStreetMap, no API key) ---- */
+let map = null, provMarker = null, custMarker = null, routeLine = null, locChannel = null;
+function resetMapMarkers() {
+  [provMarker, custMarker, routeLine].forEach(l => { try { if (l && map) map.removeLayer(l); } catch (e) {} });
+  provMarker = custMarker = routeLine = null;
+}
+const pinIcon = (emoji, mid) => L.divIcon({
+  className: '',
+  html: `<div style="font-size:28px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${emoji}</div>`,
+  iconSize: [28, 28], iconAnchor: mid ? [14, 14] : [14, 28],
+});
+async function showTrackingMap(b) {
+  const el = $('bkMap'); if (!el) return;
+  el.style.display = 'block';
+  if (!map) {
+    map = L.map(el, { zoomControl: true, attributionControl: true }).setView([b.lat || 23.02, b.lng || 72.57], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  }
+  setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 220); // fix size after the screen is shown
+  if (b.lat != null && b.lng != null) {
+    if (!custMarker) custMarker = L.marker([b.lat, b.lng], { icon: pinIcon('📍', false) }).addTo(map);
+    else custMarker.setLatLng([b.lat, b.lng]);
+  }
+  try { const loc = await api.getProviderLocation(b.provider_id); if (loc) updateProvMarker(loc.lat, loc.lng); } catch (e) {}
+  try { if (locChannel) { locChannel.unsubscribe(); locChannel = null; } } catch (e) {}
+  try { locChannel = await api.subscribeProviderLocation(b.provider_id, (row) => { if (row) updateProvMarker(row.lat, row.lng); }); } catch (e) {}
+}
+function updateProvMarker(lat, lng) {
+  if (!map || lat == null || lng == null) return;
+  if (!provMarker) provMarker = L.marker([lat, lng], { icon: pinIcon('🛵', true) }).addTo(map);
+  else provMarker.setLatLng([lat, lng]);
+  if (custMarker) {
+    const pts = [provMarker.getLatLng(), custMarker.getLatLng()];
+    if (!routeLine) routeLine = L.polyline(pts, { color: '#1F8A70', weight: 3, opacity: .7, dashArray: '6 8' }).addTo(map);
+    else routeLine.setLatLngs(pts);
+    try { map.fitBounds(L.latLngBounds(pts).pad(0.4)); } catch (e) {}
+  } else { try { map.setView([lat, lng], 15); } catch (e) {} }
+}
+function hideTrackingMap() {
+  const el = $('bkMap'); if (el) el.style.display = 'none';
+  try { if (locChannel) { locChannel.unsubscribe(); locChannel = null; } } catch (e) {}
 }
 function renderBkActions(b) {
   const el = $('bkActions'); let h = '';
@@ -577,6 +613,7 @@ async function submitFeedback() {
 }
 function goHome() {
   try { if (bookingChannel) { bookingChannel.unsubscribe(); bookingChannel = null; } } catch (e) {}
+  hideTrackingMap(); resetMapMarkers();
   currentBooking = null; bkProvider = null; selectedRating = 0;
   refreshActiveBooking();
   stack = ['home']; showScreen('home');

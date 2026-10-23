@@ -12,7 +12,8 @@
     "cap:open": "cap open android"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4"
+    "@supabase/supabase-js": "^2.45.4",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@capacitor/android": "^6.1.2",

@@ -309,3 +309,53 @@ Object.assign(I18N.en, {
   enterAmount: 'Enter a valid amount',
   certSigned: 'Certificate signed',
 });
+
+// ---- Booking / dispatch — Hindi ----
+Object.assign(I18N.hi, {
+  certGateTitle: 'काम पाने के लिए अपना certificate साइन करें',
+  certGateSub: 'एक बार: ज़िम्मेदारी स्वीकारें, फिर बुकिंग मिलनी शुरू।',
+  newRequestsBanner: '{n} नई बुकिंग रिक्वेस्ट', tapToRespond: 'accept/reject के लिए टैप करें',
+  activeJobBanner: 'चालू काम', newRequest: 'नई रिक्वेस्ट', respondWithin: 'इतने में जवाब दें',
+  service: 'सेवा', address: 'पता', request: 'रिक्वेस्ट',
+  rejectReason: 'रिजेक्ट का कारण', rejectReasonPh: 'क्यों reject कर रहे हैं?',
+  rejectWarn: 'बिना सही कारण 3 बार reject = rank गिर सकती है।',
+  accept: 'स्वीकारें', reject: 'अस्वीकारें', job: 'काम', directions: 'रास्ता', callCustomer: 'ग्राहक को कॉल करें',
+  certificate: 'सर्टिफ़िकेट', responsibilityTitle: 'ज़िम्मेदारी घोषणा',
+  responsibilityBody: 'मैं पुष्टि करता हूँ कि Helpzo के ज़रिए लिया गया कोई भी काम पूरी तरह मेरी ज़िम्मेदारी है — गुणवत्ता, सुरक्षा और व्यवहार। ग़लत काम या misconduct पर मेरी listing हटाई जा सकती है।',
+  responsibilityAgree: 'हाँ, पूरी ज़िम्मेदारी मेरी है।', signContinue: 'साइन करें और आगे बढ़ें',
+  aCustomer: 'एक ग्राहक', offerAccepted: 'बुकिंग स्वीकार हुई', offerRejected: 'अस्वीकार किया',
+  offerExpired: 'offer का समय ख़त्म', newRequestToast: 'नई बुकिंग रिक्वेस्ट!',
+  st_scheduled: 'शेड्यूल्ड', st_active: 'चालू', st_in_progress: 'चल रहा है',
+  st_completed: 'पूरा हुआ', st_cancelled: 'रद्द',
+  jobScheduledMsg: 'आगे की तारीख़ के लिए शेड्यूल। उस दिन चालू होगा।',
+  startJob: 'काम शुरू करें', finalBill: 'फ़ाइनल बिल (₹)', sendBill: 'बिल भेजें',
+  collectAmount: '{amt} लें (cash/UPI)', waitCustomerVerify: 'पैसे मिले। ग्राहक के verify करने का इंतज़ार।',
+  cancelJob: 'काम रद्द करें', jobDone: 'काम पूरा हुआ ✓', jobStarted: 'काम शुरू हुआ',
+  billSent: 'बिल भेजा', paymentCollected: 'पैसे मिल गए', jobCancelled: 'काम रद्द हुआ',
+  enterAmount: 'सही रक़म डालें', certSigned: 'सर्टिफ़िकेट साइन हुआ',
+});
+
+// ---- Booking / dispatch — Gujarati ----
+Object.assign(I18N.gu, {
+  certGateTitle: 'કામ મેળવવા તમારું સર્ટિફિકેટ સાઇન કરો',
+  certGateSub: 'એક વાર: જવાબદારી સ્વીકારો, પછી બુકિંગ મળવાનું શરૂ.',
+  newRequestsBanner: '{n} નવી બુકિંગ રિક્વેસ્ટ', tapToRespond: 'સ્વીકાર/નકાર માટે ટૅપ કરો',
+  activeJobBanner: 'ચાલુ કામ', newRequest: 'નવી રિક્વેસ્ટ', respondWithin: 'આટલામાં જવાબ આપો',
+  service: 'સેવા', address: 'સરનામું', request: 'રિક્વેસ્ટ',
+  rejectReason: 'નકારનું કારણ', rejectReasonPh: 'કેમ નકારો છો?',
+  rejectWarn: 'યોગ્ય કારણ વગર 3 વાર નકાર = રૅંક ઘટી શકે.',
+  accept: 'સ્વીકારો', reject: 'નકારો', job: 'કામ', directions: 'રસ્તો', callCustomer: 'ગ્રાહકને કૉલ કરો',
+  certificate: 'સર્ટિફિકેટ', responsibilityTitle: 'જવાબદારી ઘોષણા',
+  responsibilityBody: 'હું પુષ્ટિ કરું છું કે Helpzo દ્વારા લીધેલું કોઈ પણ કામ સંપૂર્ણ મારી જવાબદારી છે — ગુણવત્તા, સલામતી અને વર્તન. ખોટું કામ કે ગેરવર્તન પર મારી લિસ્ટિંગ હટાવી શકાય.',
+  responsibilityAgree: 'હા, સંપૂર્ણ જવાબદારી મારી છે.', signContinue: 'સાઇન કરી આગળ વધો',
+  aCustomer: 'એક ગ્રાહક', offerAccepted: 'બુકિંગ સ્વીકારાઈ', offerRejected: 'નકારાયું',
+  offerExpired: 'ઓફરનો સમય પૂરો', newRequestToast: 'નવી બુકિંગ રિક્વેસ્ટ!',
+  st_scheduled: 'શેડ્યૂલ', st_active: 'ચાલુ', st_in_progress: 'ચાલી રહ્યું છે',
+  st_completed: 'પૂર્ણ', st_cancelled: 'રદ',
+  jobScheduledMsg: 'આગળની તારીખ માટે શેડ્યૂલ. તે દિવસે ચાલુ થશે.',
+  startJob: 'કામ શરૂ કરો', finalBill: 'ફાઇનલ બિલ (₹)', sendBill: 'બિલ મોકલો',
+  collectAmount: '{amt} લો (cash/UPI)', waitCustomerVerify: 'પૈસા મળ્યા. ગ્રાહકના વેરિફાય કરવાની રાહ.',
+  cancelJob: 'કામ રદ કરો', jobDone: 'કામ પૂર્ણ થયું ✓', jobStarted: 'કામ શરૂ થયું',
+  billSent: 'બિલ મોકલાયું', paymentCollected: 'પૈસા મળ્યા', jobCancelled: 'કામ રદ થયું',
+  enterAmount: 'યોગ્ય રકમ દાખલ કરો', certSigned: 'સર્ટિફિકેટ સાઇન થયું',
+});

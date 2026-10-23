@@ -439,6 +439,7 @@ async function loadBookingData() {
   try { offers = await api.getMyOffers(); } catch (e) { offers = []; }
   try { bookings = await api.getMyBookings(); } catch (e) { bookings = []; }
   try { myCert = await api.getMyCertificate(); } catch (e) { myCert = null; }
+  syncLocationLoop();
 }
 const activeBookings = () => bookings.filter(b => ['scheduled', 'active', 'in_progress'].includes(b.status));
 
@@ -576,8 +577,25 @@ async function cancelJob(id) { try { await api.cancelBooking(id, null); toast(t(
 function syncCertBtn() { $('certSignBtn').disabled = !$('certCheck').checked; }
 async function doSignCertificate() { try { await api.signCertificate(null); toast(t('certSigned')); await refreshBookingData(); goBack(); } catch (e) { toast(e.message || 'Error'); } }
 
+/* ---- live location loop (sends GPS while a job is active) ---- */
+let locWatch = null, lastLocSent = 0;
+function startLocationLoop() {
+  if (locWatch != null || !navigator.geolocation) return;
+  locWatch = navigator.geolocation.watchPosition((pos) => {
+    const now = Date.now();
+    if (now - lastLocSent < 8000) return;         // throttle to ~8s
+    lastLocSent = now;
+    api.updateLocation(pos.coords.latitude, pos.coords.longitude).catch(() => {});
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+}
+function stopLocationLoop() { if (locWatch != null) { navigator.geolocation.clearWatch(locWatch); locWatch = null; } }
+function syncLocationLoop() {
+  const live = activeBookings().some(b => ['active', 'in_progress'].includes(b.status));
+  if (live) startLocationLoop(); else stopLocationLoop();
+}
+
 /* ---- shared ---- */
-async function refreshBookingData() { await loadBookingData(); renderDashBanners(); }
+async function refreshBookingData() { await loadBookingData(); renderDashBanners(); syncLocationLoop(); }
 async function subscribeOffersRealtime() {
   try {
     if (offerChannel) { offerChannel.unsubscribe(); offerChannel = null; }

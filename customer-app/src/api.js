@@ -269,3 +269,12 @@ export async function subscribeBooking(id, cb) {
       (p) => cb(p.new))
     .subscribe();
 }
+
+// Realtime: provider's live location while the job is active (for the map).
+export async function subscribeProviderLocation(providerId, cb) {
+  return supabase.channel('ploc-' + providerId)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'provider_locations', filter: `provider_id=eq.${providerId}` },
+      (p) => cb(p.new))
+    .subscribe();
+}
