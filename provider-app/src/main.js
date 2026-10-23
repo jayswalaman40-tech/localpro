@@ -117,7 +117,7 @@ function showScreen(key) {
   $('langFab').classList.toggle('low', !hasNav);
   $('langPop').classList.toggle('low', !hasNav);
   document.querySelectorAll('.navitem[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === key));
-  if (key === 'dashboard') { renderDashboardStats(); refreshLeadLists(); }
+  if (key === 'dashboard') { renderDashboardStats(); refreshLeadLists(); renderDashBanners(); }
   if (key === 'leads') refreshLeadLists();
   if (key === 'earnings') renderEarnings();
   if (key === 'reviews') renderReviews();
@@ -186,8 +186,10 @@ async function loadMyData() {
   try { myProvider = await api.getMyProvider(); } catch (e) { myProvider = null; }
   try { leads = await api.getMyLeads(); } catch (e) { leads = []; }
   try { reviews = await api.getMyReviews(); } catch (e) { reviews = []; }
+  try { await loadBookingData(); } catch (e) {}
   applyLang();
   syncAvailabilityToggle();
+  renderDashBanners();
 }
 async function subscribeRealtime() {
   try {
@@ -199,6 +201,10 @@ async function subscribeRealtime() {
       toast(fill(t('newLeadToast') || 'New lead from {name}', { name: newLead.customer_name || 'a customer' }));
     });
   } catch (e) {}
+  await subscribeOffersRealtime();
+  try { await api.touchLastSeen(); } catch (e) {}
+  if (window.__hb) clearInterval(window.__hb);
+  window.__hb = setInterval(() => { api.touchLastSeen().catch(() => {}); }, 60000);
 }
 
 /* ==================== DASHBOARD STATS ==================== */
@@ -420,11 +426,178 @@ function toast(msg) {
 }
 
 /* ==================== expose handlers ==================== */
+/* ==================== BOOKING: offers, active jobs, certificate ========= */
+let offers = [];
+let bookings = [];
+let myCert = null;
+let offerChannel = null;
+let currentOfferId = null;
+let offerTimerInt = null;
+
+async function loadBookingData() {
+  if (!myProvider) { offers = []; bookings = []; myCert = null; return; }
+  try { offers = await api.getMyOffers(); } catch (e) { offers = []; }
+  try { bookings = await api.getMyBookings(); } catch (e) { bookings = []; }
+  try { myCert = await api.getMyCertificate(); } catch (e) { myCert = null; }
+}
+const activeBookings = () => bookings.filter(b => ['scheduled', 'active', 'in_progress'].includes(b.status));
+
+function renderDashBanners() {
+  const el = $('dashBanners'); if (!el) return;
+  let html = '';
+  if (myProvider && myCert && !myCert.signed) {
+    html += `<button class="card" style="width:100%;text-align:left;border-color:var(--amber);background:#FFF8EC;cursor:pointer;margin-bottom:12px;font-family:inherit"
+      onclick="goTo('certificate')">
+      <div style="font-weight:600;font-size:13.5px;color:var(--amber-ink)">${esc(t('certGateTitle'))}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(t('certGateSub'))}</div></button>`;
+  }
+  if (offers.length > 0) {
+    html += `<button class="card" style="width:100%;text-align:left;border-color:var(--teal);background:var(--teal-bg);cursor:pointer;margin-bottom:12px;font-family:inherit"
+      onclick="openFirstOffer()">
+      <div style="font-weight:600;font-size:13.5px;color:var(--teal)">${esc(fill(t('newRequestsBanner'), { n: offers.length }))}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(t('tapToRespond'))}</div></button>`;
+  }
+  const act = activeBookings();
+  if (act.length > 0) {
+    const b = act[0];
+    html += `<button class="card" style="width:100%;text-align:left;cursor:pointer;margin-bottom:12px;font-family:inherit"
+      onclick="openJob('${b.id}')">
+      <div style="font-weight:600;font-size:13.5px">${esc(t('activeJobBanner'))}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(b.service_name || '')} · ${esc(b.customer_name || '')}</div></button>`;
+  }
+  el.innerHTML = html;
+}
+
+/* ---- offers ---- */
+function openFirstOffer() { if (offers[0]) openOffer(offers[0].id); }
+function openOffer(offerId) {
+  const o = offers.find(x => x.id === offerId); if (!o) return;
+  currentOfferId = offerId;
+  const b = o.booking || {};
+  $('offerAvatar').textContent = (b.customer_name || 'C').trim().charAt(0).toUpperCase();
+  $('offerCustomer').textContent = b.customer_name || t('aCustomer');
+  $('offerWhen').textContent = b.scheduled_for ? new Date(b.scheduled_for).toLocaleString() : '';
+  $('offerService').textContent = b.service_name || '—';
+  $('offerAddress').textContent = b.address || '—';
+  $('offerNote').textContent = b.note || '—';
+  $('offerReasonWrap').hidden = true;
+  $('offerReason').value = '';
+  $('offerAcceptBtn').disabled = false; $('offerRejectBtn').disabled = false;
+  startOfferTimer(o.expires_at);
+  goTo('offer');
+}
+function startOfferTimer(expiresAt) {
+  stopOfferTimer();
+  const end = new Date(expiresAt).getTime();
+  const tick = () => {
+    const el = $('offerTimer'); if (!el) return;
+    const ms = end - Date.now();
+    if (ms <= 0) { el.textContent = '0:00'; stopOfferTimer(); toast(t('offerExpired')); goBack(); refreshBookingData(); return; }
+    const s = Math.floor(ms / 1000);
+    el.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  };
+  tick();
+  offerTimerInt = setInterval(tick, 1000);
+}
+function stopOfferTimer() { if (offerTimerInt) { clearInterval(offerTimerInt); offerTimerInt = null; } }
+
+async function acceptOffer() {
+  if (!currentOfferId) return;
+  const btn = $('offerAcceptBtn'); btn.disabled = true;
+  try {
+    const r = await api.respondToOffer(currentOfferId, 'accept');
+    stopOfferTimer();
+    toast(r === 'accepted' ? t('offerAccepted') : t('offerExpired'));
+    await refreshBookingData(); goBack();
+  } catch (e) { toast(e.message || 'Error'); btn.disabled = false; }
+}
+async function rejectOffer() {
+  if (!currentOfferId) return;
+  const wrap = $('offerReasonWrap');
+  if (wrap.hidden) { wrap.hidden = false; $('offerReason').focus(); return; } // first tap reveals the reason box
+  const btn = $('offerRejectBtn'); btn.disabled = true;
+  try {
+    await api.respondToOffer(currentOfferId, 'reject', $('offerReason').value.trim() || null);
+    stopOfferTimer();
+    toast(t('offerRejected'));
+    await refreshBookingData(); goBack();
+  } catch (e) { toast(e.message || 'Error'); btn.disabled = false; }
+}
+
+/* ---- active job (buttons depend on status — no stale accept/reject) ---- */
+function openJob(bookingId) { const b = bookings.find(x => x.id === bookingId); if (b) { renderJob(b); goTo('job'); } }
+function renderJob(b) {
+  $('jobAvatar').textContent = (b.customer_name || 'C').trim().charAt(0).toUpperCase();
+  $('jobCustomer').textContent = b.customer_name || t('aCustomer');
+  $('jobWhen').textContent = b.scheduled_for ? new Date(b.scheduled_for).toLocaleString() : '';
+  $('jobBadge').textContent = t('st_' + b.status) || b.status;
+  $('jobBadge').className = 'badge ' + (b.status === 'completed' ? 'contacted' : 'new');
+  $('jobService').textContent = b.service_name || '—';
+  $('jobAddress').textContent = b.address || '—';
+  const dir = $('jobDirBtn');
+  if (b.lat != null && b.lng != null) { dir.href = `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`; dir.style.display = ''; }
+  else dir.style.display = 'none';
+  const call = $('jobCallBtn');
+  if (b.customer_phone) { call.href = telHref(b.customer_phone); call.style.display = ''; } else call.style.display = 'none';
+  renderJobActions(b);
+}
+function renderJobActions(b) {
+  const el = $('jobActions'); let h = '';
+  if (b.status === 'scheduled') {
+    h = `<div class="card"><p style="font-size:13px;color:var(--ink-soft);margin:0">${esc(t('jobScheduledMsg'))}</p></div>`;
+  } else if (b.status === 'active') {
+    h = `<button class="btn btn-primary btn-block" onclick="startJobNow('${b.id}')">${esc(t('startJob'))}</button>`;
+  } else if (b.status === 'in_progress') {
+    const billed = b.final_amount != null, paid = b.paid;
+    h += `<div class="field"><label>${esc(t('finalBill'))}</label>
+      <input id="jobBillInput" type="number" inputmode="numeric" placeholder="₹" value="${billed ? b.final_amount : ''}" ${paid ? 'readonly' : ''}></div>`;
+    if (!billed) h += `<button class="btn btn-block" style="margin-bottom:10px" onclick="sendBillNow('${b.id}')">${esc(t('sendBill'))}</button>`;
+    if (billed && !paid) h += `<button class="btn btn-primary btn-block" onclick="collectNow('${b.id}')">${esc(fill(t('collectAmount'), { amt: inr(b.final_amount) }))}</button>`;
+    if (paid) h += `<div class="card" style="background:var(--teal-bg);border-color:var(--teal)"><p style="font-size:13px;color:var(--teal);margin:0;font-weight:600">${esc(t('waitCustomerVerify'))}</p></div>`;
+    h += `<button class="btn btn-outline-danger" style="margin-top:12px" onclick="cancelJob('${b.id}')">${esc(t('cancelJob'))}</button>`;
+  } else if (b.status === 'completed') {
+    h = `<div class="card" style="background:var(--teal-bg);border-color:var(--teal)"><p style="font-size:13px;color:var(--teal);margin:0;font-weight:600">${esc(t('jobDone'))}</p></div>`;
+  } else {
+    h = `<div class="card"><p style="font-size:13px;color:var(--ink-soft);margin:0">${esc(b.status)}</p></div>`;
+  }
+  el.innerHTML = h;
+}
+function reopenJob(id) { const b = bookings.find(x => x.id === id); if (b) renderJob(b); else goBack(); }
+async function startJobNow(id) { try { await api.startJob(id); toast(t('jobStarted')); await refreshBookingData(); reopenJob(id); } catch (e) { toast(e.message || 'Error'); } }
+async function sendBillNow(id) {
+  const v = parseInt($('jobBillInput')?.value || '', 10);
+  if (!v || v <= 0) { toast(t('enterAmount')); return; }
+  try { await api.sendBill(id, v, 'cash'); toast(t('billSent')); await refreshBookingData(); reopenJob(id); } catch (e) { toast(e.message || 'Error'); }
+}
+async function collectNow(id) { try { await api.collectPayment(id); toast(t('paymentCollected')); await refreshBookingData(); reopenJob(id); } catch (e) { toast(e.message || 'Error'); } }
+async function cancelJob(id) { try { await api.cancelBooking(id, null); toast(t('jobCancelled')); await refreshBookingData(); goBack(); } catch (e) { toast(e.message || 'Error'); } }
+
+/* ---- certificate ---- */
+function syncCertBtn() { $('certSignBtn').disabled = !$('certCheck').checked; }
+async function doSignCertificate() { try { await api.signCertificate(null); toast(t('certSigned')); await refreshBookingData(); goBack(); } catch (e) { toast(e.message || 'Error'); } }
+
+/* ---- shared ---- */
+async function refreshBookingData() { await loadBookingData(); renderDashBanners(); }
+async function subscribeOffersRealtime() {
+  try {
+    if (offerChannel) { offerChannel.unsubscribe(); offerChannel = null; }
+    offerChannel = await api.subscribeOffers(async () => {
+      await loadBookingData();
+      renderDashBanners();
+      $('notifDot').classList.remove('hidden');
+      toast(t('newRequestToast'));
+    });
+  } catch (e) {}
+}
+
 Object.assign(window, {
   goTo, goBack, openNotifications, logout,
   sendOtp, verifyOtp, validatePhone,
   openLead, markContacted, markContactedCurrent,
   saveListing, toggleSwitch, toggleLangPop, setLang,
+  openOffer, openFirstOffer, acceptOffer, rejectOffer,
+  openJob, startJobNow, sendBillNow, collectNow, cancelJob,
+  syncCertBtn, doSignCertificate,
 });
 
 /* ==================== BOOT ==================== */

@@ -217,6 +217,7 @@
         <div class="spacer"></div>
         <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
       </div>
+      <div id="dashBanners"></div>
       <div class="stat-grid">
         <button class="stat-card" onclick="goTo('leads')"><div class="num" id="statLeads">18</div><div class="lbl" data-i18n="leadsThisWeek">Leads this week</div></button>
         <button class="stat-card" onclick="goTo('reviews')"><div class="num">4.8</div><div class="lbl" id="ratingLbl">Rating (120 reviews)</div></button>
@@ -254,6 +255,82 @@
       <div class="field"><label for="leadPhone" data-i18n="customerNumber">Customer number</label><input id="leadPhone" readonly></div>
       <button class="btn btn-primary btn-block" id="leadMarkBtn" style="margin-bottom:10px" onclick="markContactedCurrent()">Mark as contacted</button>
       <a class="btn btn-block" style="text-decoration:none" id="leadCallBtn" href="#">Call customer</a>
+    </div>
+
+    <!-- INCOMING REQUEST (booking offer, 10-min timer) -->
+    <div class="screen nonav" id="screen-offer">
+      <div class="topbar">
+        <button class="iconbtn" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="newRequest">New request</span>
+      </div>
+      <div style="text-align:center;margin:4px 0 14px">
+        <div style="font-size:12px;color:var(--muted)" data-i18n="respondWithin">Respond within</div>
+        <div id="offerTimer" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;color:var(--teal)">10:00</div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="profile-head" style="margin-bottom:10px">
+          <div class="avatar-lg" id="offerAvatar">C</div>
+          <div>
+            <p style="font-weight:600;font-size:14.5px;margin:0" id="offerCustomer"></p>
+            <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="offerWhen"></p>
+          </div>
+        </div>
+        <p class="section-label" data-i18n="service">Service</p>
+        <p style="font-size:13px;margin:0 0 10px" id="offerService"></p>
+        <p class="section-label" data-i18n="address">Address</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px" id="offerAddress"></p>
+        <p class="section-label" data-i18n="request">Request</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0" id="offerNote"></p>
+      </div>
+      <div class="field" id="offerReasonWrap" hidden>
+        <label for="offerReason" data-i18n="rejectReason">Reject reason</label>
+        <textarea id="offerReason" data-i18n-ph="rejectReasonPh" placeholder="Kyun reject kar rahe ho?"></textarea>
+        <p style="font-size:11px;color:var(--muted);margin:6px 0 0" data-i18n="rejectWarn">Bina sahi reason 3 baar reject = rank gir sakti hai.</p>
+      </div>
+      <button class="btn btn-primary btn-block" id="offerAcceptBtn" style="margin-bottom:10px" onclick="acceptOffer()" data-i18n="accept">Accept</button>
+      <button class="btn btn-outline-danger" id="offerRejectBtn" onclick="rejectOffer()" data-i18n="reject">Reject</button>
+    </div>
+
+    <!-- ACTIVE JOB (status-driven buttons) -->
+    <div class="screen nonav" id="screen-job">
+      <div class="topbar">
+        <button class="iconbtn" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="job">Job</span>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="profile-head" style="margin-bottom:10px">
+          <div class="avatar-lg" id="jobAvatar">C</div>
+          <div>
+            <p style="font-weight:600;font-size:14.5px;margin:0" id="jobCustomer"></p>
+            <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="jobWhen"></p>
+          </div>
+        </div>
+        <div style="margin-bottom:10px"><span class="badge" id="jobBadge"></span></div>
+        <p class="section-label" data-i18n="service">Service</p>
+        <p style="font-size:13px;margin:0 0 10px" id="jobService"></p>
+        <p class="section-label" data-i18n="address">Address</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0 0 12px" id="jobAddress"></p>
+        <a class="btn btn-block" style="text-decoration:none;margin-bottom:8px" id="jobDirBtn" href="#" target="_blank" rel="noopener" data-i18n="directions">Directions</a>
+        <a class="btn btn-block" style="text-decoration:none" id="jobCallBtn" href="#" data-i18n="callCustomer">Call customer</a>
+      </div>
+      <div id="jobActions"></div>
+    </div>
+
+    <!-- LIABILITY CERTIFICATE (sign before getting work) -->
+    <div class="screen nonav" id="screen-certificate">
+      <div class="topbar">
+        <button class="iconbtn" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="certificate">Certificate</span>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <p style="font-weight:600;margin:0 0 8px" data-i18n="responsibilityTitle">Responsibility declaration</p>
+        <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0" data-i18n="responsibilityBody">Main confirm karta hoon ki jo kaam main Helpzo ke through lunga, uski poori zimmedari meri hai — quality, safety aur behaviour. Galat kaam ya misconduct par meri listing hata di ja sakti hai.</p>
+      </div>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;margin-bottom:14px;cursor:pointer">
+        <input type="checkbox" id="certCheck" style="margin-top:2px;width:18px;height:18px;flex-shrink:0" onchange="syncCertBtn()">
+        <span data-i18n="responsibilityAgree">Haan, poori responsibility meri hai.</span>
+      </label>
+      <button class="btn btn-primary btn-block" id="certSignBtn" disabled onclick="doSignCertificate()" data-i18n="signContinue">Sign &amp; continue</button>
     </div>
 
     <!-- LISTING EDIT -->
