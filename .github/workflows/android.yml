@@ -25,7 +25,14 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest ships the Android SDK preinstalled. The old
+      # android-actions/setup-android step failed trying to fetch the obsolete
+      # 'tools' package, so instead just accept the SDK licenses here.
+      - name: Accept Android SDK licenses
+        run: |
+          SDKMANAGER=$(ls "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          echo "Using: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
       - name: Install web deps + build
         working-directory: ${{ matrix.app }}
