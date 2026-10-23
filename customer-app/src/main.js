@@ -521,7 +521,9 @@ async function renderBooking(b) {
       $('bkProvName').textContent = bkProvider.name || '';
       $('bkProvCat').textContent = catNameById(bkProvider.category_id);
       $('bkCallBtn').href = telHref(bkProvider.phone || '');
-      if (['active', 'in_progress'].includes(b.status)) await showTrackingMap(b);
+      // Map only while the provider is ON THE WAY (active). Once work starts
+      // (in_progress) they've arrived, so hide the map.
+      if (b.status === 'active') await showTrackingMap(b);
       else hideTrackingMap();
     }
   } else { card.hidden = true; hideTrackingMap(); }

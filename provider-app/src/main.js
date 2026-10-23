@@ -590,8 +590,10 @@ function startLocationLoop() {
 }
 function stopLocationLoop() { if (locWatch != null) { navigator.geolocation.clearWatch(locWatch); locWatch = null; } }
 function syncLocationLoop() {
-  const live = activeBookings().some(b => ['active', 'in_progress'].includes(b.status));
-  if (live) startLocationLoop(); else stopLocationLoop();
+  // Only share live location while ON THE WAY (active). Once the job starts
+  // (in_progress) the provider has arrived, so stop tracking.
+  const enRoute = activeBookings().some(b => b.status === 'active');
+  if (enRoute) startLocationLoop(); else stopLocationLoop();
 }
 
 /* ---- shared ---- */

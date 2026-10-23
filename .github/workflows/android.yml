@@ -53,3 +53,35 @@ jobs:
         with:
           name: ${{ matrix.app }}-debug-apk
           path: ${{ matrix.app }}/android/app/build/outputs/apk/debug/*.apk
+
+  # Publish both APKs to a rolling "latest" GitHub Release so the download
+  # website has stable public URLs:
+  #   releases/latest/download/Helpzo-Customer-debug.apk
+  #   releases/latest/download/Helpzo-Provider-debug.apk
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename APKs to stable names
+        run: |
+          mkdir -p out
+          cp artifacts/customer-app-debug-apk/*.apk out/Helpzo-Customer-debug.apk
+          cp artifacts/provider-app-debug-apk/*.apk out/Helpzo-Provider-debug.apk
+
+      - name: Publish rolling "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Helpzo — latest debug build
+          body: |
+            Latest debug APKs, rebuilt from `main`.
+            - Customer app: Helpzo-Customer-debug.apk
+            - Provider app: Helpzo-Provider-debug.apk
+          files: out/*.apk
+          fail_on_unmatched_files: true
