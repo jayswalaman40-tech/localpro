@@ -199,3 +199,82 @@ export function getCurrentLocation() {
     );
   });
 }
+
+// =====================================================================
+// BOOKINGS (M4) — request a provider, track status, verify, review
+// =====================================================================
+
+export async function requestBooking({ categoryId, service, note, address, lat, lng, scheduledFor = null, preferred = null }) {
+  const { data, error } = await supabase.rpc('request_booking', {
+    in_category: categoryId, in_service: service, in_note: note,
+    in_address: address, in_lat: lat, in_lng: lng,
+    in_scheduled_for: scheduledFor, in_preferred: preferred,
+  });
+  if (error) throw error;
+  return data; // booking id
+}
+
+export async function getBooking(id) {
+  const { data, error } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// The customer's current live booking (if any), newest first.
+export async function getMyActiveBooking() {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return null;
+  const { data, error } = await supabase.from('bookings').select('*')
+    .eq('customer_id', u.user.id)
+    .in('status', ['searching', 'offered', 'accepted', 'scheduled', 'active', 'in_progress'])
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function verifyBooking(id) {
+  const { error } = await supabase.rpc('customer_verify_complete', { p_booking: id });
+  if (error) throw error;
+}
+
+export async function cancelMyBooking(id, reason = null) {
+  const { error } = await supabase.rpc('cancel_booking', { p_booking: id, in_reason: reason });
+  if (error) throw error;
+}
+
+// Live location of the provider on this booking (RLS allows while active).
+export async function getProviderLocation(providerId) {
+  const { data, error } = await supabase.from('provider_locations')
+    .select('lat, lng, updated_at').eq('provider_id', providerId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function submitReview(providerId, rating, body = null) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  let me = null; try { me = await getMyProfile(); } catch (e) {}
+  const { error } = await supabase.from('reviews').upsert({
+    provider_id: providerId, customer_id: u.user.id, rating, body,
+    reviewer_name: me?.full_name || null,
+  }, { onConflict: 'provider_id,customer_id' });
+  if (error) throw error;
+}
+
+// Realtime: fire cb(newRow) whenever this booking updates (status etc.).
+export async function subscribeBooking(id, cb) {
+  return supabase.channel('booking-' + id)
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${id}` },
+      (p) => cb(p.new))
+    .subscribe();
+}
+
+// Realtime: provider's live location while the job is active (for the map).
+export async function subscribeProviderLocation(providerId, cb) {
+  return supabase.channel('ploc-' + providerId)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'provider_locations', filter: `provider_id=eq.${providerId}` },
+      (p) => cb(p.new))
+    .subscribe();
+}

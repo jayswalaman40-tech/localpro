@@ -174,3 +174,92 @@ export async function getNotifications() {
   if (error) throw error;
   return data ?? [];
 }
+
+// =====================================================================
+// BOOKING / DISPATCH (M2 + M3) — new booking marketplace flow
+// =====================================================================
+
+// ---------------- CERTIFICATE (liability — must sign before getting work) ----
+export async function getMyCertificate() {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const { data, error } = await supabase.from('certificates')
+    .select('*').eq('provider_id', prov.id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function signCertificate(signatureUrl = null) {
+  const { error } = await supabase.rpc('sign_certificate', { in_signature_url: signatureUrl });
+  if (error) throw error;
+}
+
+// ---------------- OFFERS (incoming booking requests, 10-min timer) --------
+export async function getMyOffers() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase.from('booking_offers')
+    .select('*, booking:bookings(*)')
+    .eq('provider_id', prov.id).eq('status', 'pending')
+    .order('offered_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// action = 'accept' | 'reject'. Returns 'accepted' | 'rejected' | 'expired'.
+export async function respondToOffer(offerId, action, reason = null) {
+  const { data, error } = await supabase.rpc('respond_to_offer',
+    { p_offer: offerId, p_action: action, p_reason: reason });
+  if (error) throw error;
+  return data;
+}
+
+export async function subscribeOffers(cb) {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  return supabase.channel('offers-' + prov.id)
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'booking_offers', filter: `provider_id=eq.${prov.id}` },
+      (p) => cb(p.new))
+    .subscribe();
+}
+
+// ---------------- BOOKINGS / ACTIVE JOBS ----------------
+// Customer name/phone are denormalized onto the booking (0009), so no join.
+export async function getMyBookings() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase.from('bookings')
+    .select('*').eq('provider_id', prov.id)
+    .order('scheduled_for', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function startJob(bookingId) {
+  const { error } = await supabase.rpc('provider_start_job', { p_booking: bookingId });
+  if (error) throw error;
+}
+export async function sendBill(bookingId, amount, mode = 'cash') {
+  const { error } = await supabase.rpc('provider_send_bill',
+    { p_booking: bookingId, in_amount: amount, in_mode: mode });
+  if (error) throw error;
+}
+export async function collectPayment(bookingId) {
+  const { error } = await supabase.rpc('provider_collect_payment', { p_booking: bookingId });
+  if (error) throw error;
+}
+export async function cancelBooking(bookingId, reason = null) {
+  const { error } = await supabase.rpc('cancel_booking', { p_booking: bookingId, in_reason: reason });
+  if (error) throw error;
+}
+
+// ---------------- LIVE LOCATION / PRESENCE ----------------
+export async function updateLocation(lat, lng) {
+  const { error } = await supabase.rpc('update_provider_location', { in_lat: lat, in_lng: lng });
+  if (error) throw error;
+}
+export async function touchLastSeen() {
+  const { error } = await supabase.rpc('touch_last_seen');
+  if (error) throw error;
+}

@@ -1,18 +1,19 @@
 name: Build Android APKs
 
-# Builds debug APKs for both apps in the cloud (fast network, reproducible).
-# Download them from the run's "Artifacts" once it finishes.
+# Builds debug APKs for both apps and publishes them to a rolling "latest"
+# GitHub Release (stable public download URLs). Uploads straight to the
+# Release — NOT to Actions artifacts — so it doesn't touch the artifact
+# storage quota.
 on:
-  workflow_dispatch:        # run manually from the Actions tab
+  workflow_dispatch:
   push:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [ customer-app, provider-app ]
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -25,31 +26,52 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest ships the Android SDK; just accept the licenses.
+      - name: Accept Android SDK licenses
+        run: |
+          SDKMANAGER=$(ls "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          echo "Using: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
-      - name: Install web deps + build
-        working-directory: ${{ matrix.app }}
+      - name: Build Customer APK
+        working-directory: customer-app
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm install
           npm run build
-
-      - name: Add Android platform + sync
-        working-directory: ${{ matrix.app }}
-        run: |
           npx cap add android || true
           npx cap sync android
+          cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
 
-      - name: Build debug APK
-        working-directory: ${{ matrix.app }}/android
+      - name: Build Provider APK
+        working-directory: provider-app
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          npm install
+          npm run build
+          npx cap add android || true
+          npx cap sync android
+          cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Collect APKs with stable names
+        run: |
+          mkdir -p out
+          cp customer-app/android/app/build/outputs/apk/debug/*.apk out/Helpzo-Customer-debug.apk
+          cp provider-app/android/app/build/outputs/apk/debug/*.apk out/Helpzo-Provider-debug.apk
+          ls -lh out
+
+      - name: Publish rolling "latest" release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.app }}-debug-apk
-          path: ${{ matrix.app }}/android/app/build/outputs/apk/debug/*.apk
+          tag_name: latest
+          name: Helpzo — latest debug build
+          body: |
+            Latest debug APKs, rebuilt automatically.
+            - Customer app: Helpzo-Customer-debug.apk
+            - Provider app: Helpzo-Provider-debug.apk
+          files: out/*.apk
+          fail_on_unmatched_files: true

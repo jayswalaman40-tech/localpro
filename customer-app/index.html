@@ -249,6 +249,7 @@
         <div class="spacer"></div>
         <button class="iconbtn" data-i18n-aria="notifications" aria-label="Notifications" onclick="openNotifications()"><span class="dot" id="notifDot"></span>&#128276;</button>
       </div>
+      <div id="homeBanner"></div>
       <div class="searchbar">
         <span>&#128269;</span>
         <input id="searchInput" type="search" data-i18n-ph="searchPlaceholder" placeholder="Search plumber, electrician..." oninput="renderResults()">
@@ -290,10 +291,63 @@
         <div id="detailReviewsList"></div>
 
         <div class="sticky-cta">
-          <button class="btn btn-ghost" onclick="toast(t('whatsappToast'))">&#128172; WhatsApp</button>
-          <a class="btn btn-primary" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()">Call now</a>
+          <a class="btn btn-ghost" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center" id="detailCallBtn" href="#" onclick="logBooking()" data-i18n="callNow">Call</a>
+          <button class="btn btn-primary" onclick="startBooking()" data-i18n="bookNow">Book now</button>
         </div>
       </div>
+    </div>
+
+    <!-- BOOKING REQUEST -->
+    <div class="screen nonav" id="screen-book">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goBack()">&#8592;</button>
+        <span class="title" data-i18n="bookNow">Book now</span>
+      </div>
+      <div class="detail-card" style="margin-top:8px">
+        <p style="font-weight:600;font-size:15px;margin:0 0 2px" id="bookProvName"></p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px" id="bookProvCat"></p>
+
+        <div class="field"><label for="bookService" data-i18n="whatWork">What do you need?</label>
+          <input id="bookService" data-i18n-ph="whatWorkPh" placeholder="e.g. Tap leak repair"></div>
+
+        <p class="section-label" data-i18n="when">When</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-primary" id="bookNowOpt" style="flex:1" onclick="setBookWhen('now')" data-i18n="now">Now</button>
+          <button class="btn" id="bookLaterOpt" style="flex:1" onclick="setBookWhen('later')" data-i18n="schedule">Schedule</button>
+        </div>
+        <div class="field" id="bookTimeWrap" hidden><label for="bookTime" data-i18n="pickTime">Pick date &amp; time</label>
+          <input id="bookTime" type="datetime-local"></div>
+
+        <div class="field"><label for="bookAddress" data-i18n="address">Address</label>
+          <input id="bookAddress" data-i18n-ph="addressPh" placeholder="House / area"></div>
+        <div class="field"><label for="bookNote" data-i18n="noteOptional">Note (optional)</label>
+          <textarea id="bookNote" data-i18n-ph="notePh" placeholder="Any detail for the provider"></textarea></div>
+
+        <button class="btn btn-primary btn-block" id="bookSubmitBtn" onclick="submitBooking()" data-i18n="requestBooking">Request booking</button>
+      </div>
+    </div>
+
+    <!-- BOOKING TRACKING -->
+    <div class="screen nonav" id="screen-booking">
+      <div class="topbar">
+        <button class="iconbtn" data-i18n-aria="back" aria-label="Back" onclick="goHome()">&#8592;</button>
+        <span class="title" data-i18n="yourBooking">Your booking</span>
+      </div>
+      <div style="text-align:center;margin:10px 0 16px">
+        <div id="bkStatusIcon" style="font-size:34px">&#128269;</div>
+        <div id="bkStatusText" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;margin-top:6px"></div>
+        <div id="bkStatusSub" style="font-size:12.5px;color:var(--muted);margin-top:4px"></div>
+      </div>
+      <div class="detail-card" id="bkProviderCard" hidden>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="bkProvAvatar" style="width:46px;height:46px;border-radius:12px;background:var(--teal-bg);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:var(--teal);flex-shrink:0">P</div>
+          <div><p style="font-weight:600;font-size:15px;margin:0" id="bkProvName"></p>
+          <p style="font-size:12px;color:var(--muted);margin:2px 0 0" id="bkProvCat"></p></div>
+        </div>
+        <a class="btn btn-block" style="text-decoration:none;margin-top:12px" id="bkCallBtn" href="#" data-i18n="callProvider">Call provider</a>
+        <div id="bkMap" style="height:260px;border-radius:14px;overflow:hidden;margin-top:12px;display:none;border:1px solid var(--line)"></div>
+      </div>
+      <div id="bkActions" style="margin-top:14px"></div>
     </div>
 
     <!-- SAVED -->
