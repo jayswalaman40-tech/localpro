@@ -82,6 +82,15 @@ async function renderOverview(c) {
       <div class="stat"><div class="n">${s.reviews}</div><div class="l">Reviews</div></div>
       <div class="stat"><div class="n">${s.pendingKyc}</div><div class="l">KYC pending</div></div>
     </div>
+    <div class="section"><h3>Download apps (APK)</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:13px">Latest debug builds. Share the link or install on a phone (allow install from unknown sources).</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <a class="btn btn-teal" style="text-decoration:none" href="https://github.com/jayswalaman40-tech/localpro/releases/download/latest/Helpzo-Customer-debug.apk">&#8595;&nbsp; Customer app</a>
+        <a class="btn btn-teal" style="text-decoration:none" href="https://github.com/jayswalaman40-tech/localpro/releases/download/latest/Helpzo-Provider-debug.apk">&#8595;&nbsp; Provider app</a>
+        <a class="btn" style="text-decoration:none" href="https://github.com/jayswalaman40-tech/localpro/releases/tag/latest" target="_blank" rel="noopener">All releases</a>
+      </div>
+      <p class="muted" style="margin:12px 0 0;font-size:12px">Note: the repo is private, so these links open only for logged-in users with repo access. Make the repo public (or move the APKs to a public repo) to share with everyone.</p>
+    </div>
     <div class="section"><h3>Tip</h3><p class="muted" style="margin:0;font-size:13px">Click a provider in the <b>Providers</b> tab to see services, reviews, leads and KYC documents — and to verify or reject them.</p></div>`;
 }
 
