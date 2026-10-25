@@ -846,12 +846,30 @@ function timeLabel(hhmm) {
   const ap = h < 12 ? 'AM' : 'PM'; const h12 = ((h + 11) % 12) + 1;
   return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
 }
-// Buckets a raw status into one of the three filter chips.
+// Friendly label for a raw dispatch booking_status.
+function bookStatusLabel(st) {
+  switch (String(st || '').toLowerCase()) {
+    case 'searching':
+    case 'offered':      return 'Finding a pro';
+    case 'accepted':
+    case 'scheduled':    return 'Confirmed';
+    case 'active':       return 'On the way';
+    case 'in_progress':  return 'In progress';
+    case 'completed':    return 'Completed';
+    case 'cancelled':
+    case 'canceled':     return 'Cancelled';
+    case 'unfulfilled':  return 'No pro found';
+    case 'pending':      return 'Finding a pro';
+    case 'confirmed':    return 'Confirmed';
+    default:             return st ? (st[0].toUpperCase() + st.slice(1)) : 'Pending';
+  }
+}
+// Buckets a status (raw or friendly label) into one of the three filter chips.
 function bookBucket(st) {
   const s = String(st || 'pending').toLowerCase();
   if (s === 'completed') return 'completed';
-  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
-  return 'upcoming'; // pending / confirmed / anything else
+  if (s.startsWith('cancel') || s === 'no pro found' || s === 'unfulfilled') return 'cancelled';
+  return 'upcoming'; // finding a pro / confirmed / on the way / in progress
 }
 function renderBookings() {
   const el = $('bookRows'); if (!el) return;
@@ -867,12 +885,18 @@ function renderBookings() {
     api.getMyBookingList().then((live) => {
       const liveRows = (live || []).map((b) => {
         const pv = b.provider || {};
-        const st = (b.status || 'pending');
+        const when = b.scheduled_for
+          ? new Date(b.scheduled_for).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : '';
+        // A bill is "sent" once the provider sets a final amount and it isn't paid.
+        const bill = b.paid ? 'paid' : (b.final_amount != null ? 'sent' : 'none');
         return {
-          id: b.id, service: b.service || 'Service', provider: pv.name || 'Provider',
-          when: `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim(), addr: b.address || '',
-          status: st[0].toUpperCase() + st.slice(1),
-          bill: b.bill_status || 'none', total: b.total_amount, paid: !!b.paid,
+          id: b.id, service: b.service_name || 'Service',
+          provider: pv.name || (bookStatusLabel(b.status) === 'Finding a pro' ? 'Finding a pro…' : 'Provider'),
+          providerId: pv.id, phone: pv.phone,
+          when, addr: b.address || '', rawStatus: b.status,
+          status: bookStatusLabel(b.status),
+          bill, total: b.final_amount, paid: !!b.paid,
         };
       });
       // Keep demo-provider bookings made this session (not persisted server-side).
@@ -893,7 +917,7 @@ function paintBookings() {
   if (!rows.length) { el.innerHTML = `<div class="empty">No ${esc(bookFilter)} bookings.</div>`; return; }
   el.innerHTML = rows.map((b, i) => {
     const s = String(b.status).toLowerCase();
-    const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : s.startsWith('cancel') ? 'grey' : 'orange';
+    const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : (s.startsWith('cancel') || s.includes('no pro')) ? 'grey' : 'orange';
     return `<div class="row" style="cursor:pointer;${i ? 'border-top:1px solid var(--cardBorder)' : ''}" data-bookdetail="${i}">
       <div class="avatar" style="width:52px;height:52px">${initials(b.provider)}</div>
       <div class="mid"><div class="h3">${esc(b.service)}</div><div class="sec">${esc(b.provider)}</div>
@@ -912,7 +936,7 @@ function openBookingDetail(b) {
   // best-effort provider object for Call / Chat
   b._prov = providerCache[b.providerId] || DEMO_PROVIDERS.find((p) => p.name === b.provider) || { id: b.providerId || 'd1', name: b.provider, phone: b.phone };
   const s = String(b.status || '').toLowerCase();
-  const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : s.startsWith('cancel') ? 'grey' : 'orange';
+  const pill = s.startsWith('confirm') || s.startsWith('complet') ? 'green' : (s.startsWith('cancel') || s.includes('no pro')) ? 'grey' : 'orange';
   const field = (ic, lbl, val) => `<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--cardBorder)">
     <div style="font-size:18px">${ic}</div><div style="flex:1"><div class="ter">${lbl}</div><div style="font-weight:600;color:var(--tPrimary);margin-top:2px">${esc(val || '—')}</div></div></div>`;
   const body = $('bookDetailBody');
@@ -959,9 +983,7 @@ function rescheduleBookingDetail() {
 function billLine(b) {
   if (!b.id) return '';
   if (b.paid) return `<div class="meta" style="color:var(--success)">✓ Paid${b.total ? ' • ' + inr(b.total) : ''}</div>`;
-  if (b.bill === 'sent') return `<button class="btn btn-green pill" style="margin-top:8px;padding:8px 14px" data-bill="${b.id}">Review &amp; Pay${b.total ? ' ' + inr(b.total) : ''}</button>`;
-  if (b.bill === 'approved') return `<button class="btn btn-green pill" style="margin-top:8px;padding:8px 14px" data-bill="${b.id}">Pay Now${b.total ? ' ' + inr(b.total) : ''}</button>`;
-  if (b.bill === 'disputed') return `<div class="meta" style="color:var(--danger)">⚠ Bill disputed — support will contact you</div>`;
+  if (b.bill === 'sent') return `<button class="btn btn-green pill" style="margin-top:8px;padding:8px 14px" data-bill="${b.id}">Pay cash &amp; finish${b.total ? ' ' + inr(b.total) : ''}</button>`;
   return '';
 }
 let billBooking = null;   // booking id currently shown on the bill screen
@@ -969,32 +991,31 @@ async function openBill(id) {
   billBooking = id;
   if (!(hasSupabase && session)) { show('bill'); return; }
   try {
-    const { booking, items } = await api.getBill(id);
-    const total = items.reduce((s, it) => s + (it.amount || 0), 0) || booking.total_amount || 0;
+    const { booking } = await api.getBill(id);
+    const total = booking.final_amount || 0;
     const prov = booking.provider || {};
-    if ($('billHead')) $('billHead').innerHTML = `<div class="h3">${esc(booking.service || 'Service')}</div>
+    const mode = booking.payment_mode === 'upi' ? 'UPI (pay the provider directly)' : 'Cash (pay the provider directly)';
+    if ($('billHead')) $('billHead').innerHTML = `<div class="h3">${esc(booking.service_name || 'Service')}</div>
       <div class="sec" style="margin-top:2px">${esc(prov.name || 'Provider')}</div>`;
-    if ($('billBody')) $('billBody').innerHTML = (items.length ? items.map((it) =>
-      `<div style="display:flex;justify-content:space-between;padding:6px 0"><span>${esc(it.label)}</span><span>${inr(it.amount)}</span></div>`).join('')
-      : `<div class="sec" style="font-size:13px">No extra charges — base price applies.</div>`)
-      + `<div class="divide" style="margin:10px 0"></div><div style="display:flex;justify-content:space-between"><b>Total</b><b style="font-size:17px">${inr(total)}</b></div>`;
+    if ($('billBody')) $('billBody').innerHTML =
+      `<div class="sec" style="font-size:13px">Pay the provider directly — HelpZo takes no commission.</div>`
+      + `<div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:6px"><span>Payment</span><span>${esc(mode)}</span></div>`
+      + `<div class="divide" style="margin:10px 0"></div><div style="display:flex;justify-content:space-between"><b>Amount</b><b style="font-size:17px">${inr(total)}</b></div>`;
     const act = $('billActions');
     if (act) {
       if (booking.paid) act.innerHTML = `<button class="btn btn-out" data-go="bookings">Done</button>`;
-      else act.innerHTML = `<button class="btn btn-out-danger" data-billdispute="${id}">Dispute</button>
-        <button class="btn btn-green" data-billpay="${id}" data-amt="${total}">✓ Approve &amp; Pay</button>`;
+      else act.innerHTML = `<button class="btn btn-green" data-billpay="${id}" data-amt="${total}">✓ I've paid — finish job</button>`;
     }
   } catch (e) { toast(e.message || 'Could not load bill'); return; }
   show('bill');
 }
 async function approveAndPay(id, amount) {
-  if (!(hasSupabase && session)) { toast('Payment demo — approved'); show('bookings'); return; }
+  if (!(hasSupabase && session)) { toast('Marked done (demo)'); show('bookings'); return; }
   try {
-    await api.approveBill(id);
-    await api.payBooking(id, amount, 'online');
-    toast('Payment successful 🎉');
+    await api.payBooking(id);
+    toast('Job completed 🎉');
     show('bookings'); renderBookings();
-  } catch (e) { toast(e.message || 'Payment failed'); }
+  } catch (e) { toast(e.message || 'Could not finish job'); }
 }
 async function disputeBill(id) {
   if (hasSupabase && session) { try { await api.disputeBill(id); } catch (e) {} }
@@ -1085,12 +1106,14 @@ async function confirmBooking() {
     const time = timeLabel(timeVal);
     const dateNice = new Date(bookDateIso + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
+    let newId = null;
     if (!isDemo) {
-      await api.createBooking(p.id, { service, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng });
+      const res = await api.createBooking(p.id, { service, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng, categoryId: p.category_id });
+      newId = res?.id || null;
     }
     localBookings.unshift({
-      service, provider: p.name || 'Provider',
-      when: `${dateNice} • ${time}`, addr, status: 'Pending', _demo: isDemo,
+      id: newId, service, provider: p.name || 'Provider', providerId: p.id,
+      when: `${dateNice} • ${time}`, addr, status: 'Finding a pro', _demo: isDemo,
     });
     lastBooking = { name: p.name || 'Provider', trade: service, phone: p.phone || '+91 90000 00000', when: `${dateNice} • ${time}`, addr, verified: p.verified };
     show('booked');

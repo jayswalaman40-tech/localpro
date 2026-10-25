@@ -345,6 +345,7 @@ function onEnter(id) {
   if (id === 'verify') renderVerifyList();
   if (id === 'jobdetail') renderJobDetail();
   if (id === 'enroute' || id === 'progress' || id === 'completed') fillJob(currentJob);
+  if (id === 'enroute' || id === 'progress') pushLocationOnce();
   if (id === 'enroute') {
     const m = $('enrouteMap');
     const dest = (currentJob && currentJob.addr) || 'Bodakdev, Ahmedabad';
@@ -367,17 +368,24 @@ let leadsView = [];    // array currently shown on the Leads screen
 let schedView = [];    // rows currently shown on the Schedule screen
 function normalizeJob(src) {
   if (!src) return null;
-  const real = ('service' in src) || ('customer_name' in src) || ('scheduled_date' in src) || ('customer_phone' in src);
-  if (real) return {
-    rawId: src.id || null, bill_status: src.bill_status || 'none', paid: !!src.paid,
-    status: src.status || 'pending',
-    cat: src.category || catKeyFromLabel(src.service),
-    cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
-    service: src.service || 'Service', desc: src.note || src.description || '',
-    addr: src.address || 'Ahmedabad',
-    id: src.id ? '#' + String(src.id).replace(/-/g, '').slice(0, 6).toUpperCase() : '#SRV',
-    when: `${src.scheduled_date || ''} ${src.scheduled_time || ''}`.trim(),
-  };
+  const real = ('service' in src) || ('service_name' in src) || ('customer_name' in src) || ('scheduled_for' in src) || ('customer_phone' in src);
+  if (real) {
+    const svc = src.service || src.service_name || 'Service';
+    const when = src.scheduled_for
+      ? new Date(src.scheduled_for).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : `${src.scheduled_date || ''} ${src.scheduled_time || ''}`.trim();
+    return {
+      rawId: src.id || null, offerId: src.offerId || null, paid: !!src.paid,
+      status: src.status || 'pending',
+      finalAmount: src.final_amount ?? null, payMode: src.payment_mode || 'cash',
+      cat: src.category || catKeyFromLabel(svc),
+      cust: src.customer_name || 'Customer', phone: src.customer_phone || '',
+      service: svc, desc: src.note || src.description || '',
+      addr: src.address || 'Ahmedabad', lat: src.lat ?? null, lng: src.lng ?? null,
+      id: src.id ? '#' + String(src.id).replace(/-/g, '').slice(0, 6).toUpperCase() : '#SRV',
+      when,
+    };
+  }
   return {
     rawId: null, bill_status: 'none', paid: false,
     cat: src.cat || catKeyFromLabel(src.title),
@@ -413,12 +421,17 @@ function rateFor(label) {
   const l = String(label || '').trim().toLowerCase();
   return rateCard.find((r) => String(r.item).trim().toLowerCase() === l) || null;
 }
+// Move an accepted job to in_progress (provider_start_job), then open the work screen.
+async function startJobAndGo() {
+  if (hasSupabase && currentJob && currentJob.rawId) {
+    try { await api.startJob(currentJob.rawId); currentJob.status = 'in_progress'; }
+    catch (e) { toast(e.message || 'Could not start — is the job active yet?'); return; }
+  }
+  show('progress');
+}
 async function initBill() {
   billItems = [];
   await loadRateCard();
-  if (hasSupabase && currentJob && currentJob.rawId) {
-    try { billItems = (await api.getJobItems(currentJob.rawId)).map((it) => ({ id: it.id, label: it.label, amount: it.amount })); } catch (e) {}
-  }
   renderBillEditor();
 }
 function billSum() { return billItems.reduce((s, it) => s + (Number(it.amount) || 0), 0); }
@@ -441,29 +454,29 @@ async function addBillItem() {
   const rc = rateFor(label);
   const cap = rc && (rc.max_cap ?? rc.rate);
   if (cap && amount > cap) { amount = cap; toast(`Max for "${label}" is ${inr(cap)} — capped`); }
-  const item = { label, amount };
-  if (hasSupabase && currentJob && currentJob.rawId) {
-    try { const row = await api.addJobItem(currentJob.rawId, label, amount); item.id = row.id; } catch (e) { toast(e.message || 'Could not add'); return; }
-  }
-  billItems.push(item);
+  billItems.push({ label, amount });
   $('billLabel').value = ''; $('billAmt').value = '';
   renderBillEditor();
 }
 async function removeBillItem(i) {
-  const it = billItems[i]; if (!it) return;
-  if (hasSupabase && it.id) { try { await api.deleteJobItem(it.id); } catch (e) {} }
+  if (!billItems[i]) return;
   billItems.splice(i, 1); renderBillEditor();
 }
-// "Send Bill & Complete": send the bill to the customer for approval.
+// "Send Bill & Complete": set the final amount (provider_send_bill) and record the
+// cash/UPI payment (provider_collect_payment). The customer then confirms in their app.
 async function completeJob() {
   const btn = $('completeBtn');
+  const total = billSum();
   if (hasSupabase && currentJob && currentJob.rawId) {
-    if (!billItems.length) { toast('Add at least one charge, or use the base price'); }
+    if (!total) { toast('Add at least one charge first'); return; }
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
-    try { await api.sendBill(currentJob.rawId); toast('Bill sent to customer for approval'); }
-    catch (e) { toast(e.message || 'Could not send bill'); }
+    try {
+      await api.sendBill(currentJob.rawId, total, 'cash');
+      await api.recordPayment(currentJob.rawId);
+      currentJob.finalAmount = total; currentJob.paid = true;
+      toast('Bill sent & payment recorded');
+    } catch (e) { toast(e.message || 'Could not complete'); if (btn) { btn.disabled = false; btn.textContent = '✓ Send Bill & Complete'; } return; }
     finally { if (btn) { btn.disabled = false; btn.textContent = '✓ Send Bill & Complete'; } }
-    if (currentJob) currentJob.bill_status = 'sent';
   }
   show('completed');
 }
@@ -478,17 +491,12 @@ function renderCompleted() {
   }
   const pay = $('compPay');
   if (pay) {
-    const st = (currentJob && currentJob.bill_status) || (hasSupabase ? 'sent' : 'none');
     const paid = currentJob && currentJob.paid;
-    let label, cls;
-    if (paid) { label = 'Paid'; cls = 'green'; }
-    else if (st === 'approved') { label = 'Approved — awaiting payment'; cls = 'blue'; }
-    else if (st === 'disputed') { label = 'Disputed'; cls = 'grey'; }
-    else if (st === 'sent') { label = 'Sent — awaiting customer approval'; cls = 'orange'; }
-    else { label = 'Not billed'; cls = 'grey'; }
+    const label = paid ? 'Paid (cash/UPI)' : 'Awaiting payment';
+    const cls = paid ? 'green' : 'orange';
     pay.innerHTML = `<div class="panel" style="display:flex;align-items:center"><span style="font-size:22px">💰</span>
       <div style="flex:1;margin-left:10px"><div style="font-weight:700;font-size:13.5px">Payment Status</div>
-      <div class="sec" style="font-size:12px">Customer approves the bill in their app before paying.</div></div>
+      <div class="sec" style="font-size:12px">Paid directly to you — HelpZo takes no commission. The customer confirms in their app.</div></div>
       <span class="pill ${cls}">${esc(label)}</span></div>`;
   }
 }
@@ -515,20 +523,30 @@ function bookingCard(b) {
   const st = String(b.status || 'pending').toLowerCase();
   const bucket = jobBucket(st);
   const pill = bucket === 'active' ? 'green' : bucket === 'cancelled' ? 'grey' : 'orange';
-  const label = st[0].toUpperCase() + st.slice(1);
+  const label = b._offer ? 'New offer' : (st[0].toUpperCase() + st.slice(1).replace('_', ' '));
   const cat = b.category || catKeyFromLabel(b.service);
+  const when = b.scheduled_for
+    ? new Date(b.scheduled_for).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : `${b.scheduled_date || ''} ${b.scheduled_time || ''}`.trim();
+  // Minutes left on the 10-min offer timer (offers only).
+  let timerLine = '';
+  if (b._offer && b.expires_at) {
+    const mins = Math.max(0, Math.round((new Date(b.expires_at).getTime() - Date.now()) / 60000));
+    timerLine = `<div class="meta" style="color:var(--warning,#F5A623)"><span class="mi">⏱️</span>${mins} min left to respond</div>`;
+  }
   return `<div class="card" style="margin-bottom:12px" data-go="jobdetail">
     <div style="display:flex;gap:12px"><div class="scirc ${catCls(cat)}">${catIcon(cat)}</div><div style="flex:1">
       <div style="display:flex;justify-content:space-between;align-items:start"><div class="h3">${esc(b.service || 'Service')}</div><span class="pill ${pill}">${esc(label)}</span></div>
       <div class="meta"><span class="mi">📍</span>${esc(b.address || '—')}</div>
-      <div class="meta"><span class="mi">📅</span>${esc(b.scheduled_date || '')} ${esc(b.scheduled_time || '')}</div>
+      ${when ? `<div class="meta"><span class="mi">📅</span>${esc(when)}</div>` : ''}
       <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')}</div>
       <div class="meta"><span class="mi">📞</span><a href="${telHref(b.customer_phone)}" style="color:inherit;text-decoration:none">${esc(b.customer_phone || '')}</a></div>
       ${b.note ? `<div class="sec" style="font-size:12.5px;margin-top:4px">${esc(b.note)}</div>` : ''}
+      ${timerLine}
     </div></div>
-    <div style="display:flex;gap:8px;margin-top:12px">${bucket === 'new'
-      ? `<button class="btn btn-green sm" data-acceptbook="${b.id}">✓ Accept</button>
-         <button class="btn btn-out-danger sm" data-rejectbook="${b.id}">Reject</button>`
+    <div style="display:flex;gap:8px;margin-top:12px">${b._offer
+      ? `<button class="btn btn-green sm" data-acceptoffer="${b.offerId}">✓ Accept</button>
+         <button class="btn btn-out-danger sm" data-rejectoffer="${b.offerId}">Reject</button>`
       : `<button class="btn btn-out sm" data-maps="${esc(b.address || 'Ahmedabad')}">🧭 Directions</button>
          <button class="btn btn-blue sm" data-go="jobdetail">View &amp; Update</button>`}
     </div></div>`;
@@ -540,9 +558,9 @@ let lastJobsRows = null;   // real bookings array (null = not loaded yet)
 function jobBucket(st) {
   const s = String(st || 'pending').toLowerCase();
   if (s === 'completed') return 'completed';
-  if (s === 'cancelled' || s === 'canceled' || s === 'rejected' || s === 'declined') return 'cancelled';
-  if (s === 'pending' || s === 'new' || s === 'requested') return 'new';
-  return 'active'; // confirmed / accepted / on the way / in progress / scheduled
+  if (s === 'cancelled' || s === 'canceled' || s === 'rejected' || s === 'declined' || s === 'unfulfilled' || s === 'expired') return 'cancelled';
+  if (s === 'pending' || s === 'new' || s === 'requested' || s === 'offered' || s === 'searching') return 'new';
+  return 'active'; // accepted / scheduled / active / in_progress
 }
 async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
@@ -551,7 +569,27 @@ async function renderJobs() {
   document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === jobTab));
   if (!(hasSupabase && myProvider)) { lastJobsRows = []; updateJobCounts(); paintJobs(); return; }
   if (lastJobsRows === null) list.innerHTML = `<div class="empty">Loading…</div>`;
-  try { lastJobsRows = await api.getMyBookings(); } catch (e) { lastJobsRows = lastJobsRows || []; }
+  try {
+    const [bookings, offers] = await Promise.all([
+      api.getMyBookings().catch(() => []),
+      api.getMyOffers().catch(() => []),
+    ]);
+    // Pending offers become "new" job cards (carry the offer id for accept/reject).
+    const offerRows = (offers || []).map((o) => {
+      const b = o.booking || {};
+      return {
+        _offer: true, offerId: o.id, id: b.id, status: 'new',
+        service: b.service_name || 'Service', service_name: b.service_name,
+        address: b.address, note: b.note, scheduled_for: b.scheduled_for,
+        lat: b.lat, lng: b.lng, category_id: b.category_id,
+        customer_name: b.customer_name, customer_phone: b.customer_phone,
+        expires_at: o.expires_at,
+      };
+    });
+    // Assigned bookings keep their real status; normalize service_name -> service.
+    const bookRows = (bookings || []).map((b) => ({ ...b, service: b.service_name || 'Service' }));
+    lastJobsRows = offerRows.concat(bookRows);
+  } catch (e) { lastJobsRows = lastJobsRows || []; }
   updateJobCounts(); paintJobs();
 }
 function newRequestCount() { return (lastJobsRows || []).filter((b) => jobBucket(b.status) === 'new').length; }
@@ -1009,7 +1047,11 @@ function renderJobDetail() {
     <div id="jobDetailMap"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-out" data-maps="${esc(addr)}">🧭 Directions</button>
-      <button class="btn btn-blue" data-go="progress">Start Job</button>
+      ${bucket === 'completed' || bucket === 'cancelled'
+        ? ''
+        : (st === 'in_progress'
+            ? `<button class="btn btn-blue" data-go="progress">Continue Job</button>`
+            : `<button class="btn btn-blue" data-startjob>Start Job</button>`)}
     </div>`;
   liveMap($('jobDetailMap'), addr);
 }
@@ -1221,6 +1263,8 @@ async function saveCertSignature() {
       const path = await api.uploadKyc(file, 'signature');
       await api.saveMyProvider({ signature_path: path });
       myProvider.signature_path = path;
+      // Record the signed liability certificate so dispatch can offer jobs to me.
+      try { await api.signCertificate(path); } catch (e) {}
     }
     toast('Certificate issued');
   } catch (e) { toast(e.message || 'Could not save'); }
@@ -1595,6 +1639,13 @@ document.addEventListener('click', (e) => {
   if (ab) { acceptBooking(ab.getAttribute('data-acceptbook'), ab.closest('.card')); return; }
   const rb = e.target.closest('[data-rejectbook]');
   if (rb) { rejectBooking(rb.getAttribute('data-rejectbook'), rb.closest('.card')); return; }
+  // Dispatch offer: Accept / Reject (10-min timer) -> respond_to_offer RPC.
+  const ao = e.target.closest('[data-acceptoffer]');
+  if (ao) { acceptOffer(ao.getAttribute('data-acceptoffer')); return; }
+  const ro = e.target.closest('[data-rejectoffer]');
+  if (ro) { rejectOffer(ro.getAttribute('data-rejectoffer')); return; }
+  const sjb = e.target.closest('[data-startjob]');
+  if (sjb) { startJobAndGo(); return; }
   const nt = e.target.closest('[data-notif]');
   if (nt) { openNotification(Number(nt.getAttribute('data-notif'))); return; }
   const go = e.target.closest('[data-go]');
@@ -1711,37 +1762,72 @@ async function rejectLead(id, cardEl) {
 
 /* ---------- incoming new-request popup (shows for a few seconds on the Jobs page) ---------- */
 let reqPopData = null, reqPopTimer = null, demoPopShown = false;
+// req carries a dispatch offer: { offerId, service, customer_name, address, scheduled_for, note }.
 function showRequestPopup(req) {
   const ov = $('reqPopup'); if (!ov || !req) return;
   reqPopData = req;
   const acc = $('reqPopAccept'); if (acc) acc.style.display = '';
-  const rej = $('reqPopReject'); if (rej) rej.textContent = '✕ Cancel';
+  const rej = $('reqPopReject'); if (rej) rej.textContent = '✕ Reject';
   const title = req.service || req.title || 'New service request';
   const sub = req.customer_name || req.name || '';
-  const when = `${req.scheduled_date || ''} ${req.scheduled_time || ''}`.trim();
-  const desc = [req.address || req.area, when].filter((x) => x && x.trim()).join(' • ') || req.note || 'A customer wants to book you. Accept to add it to your jobs.';
+  const when = req.scheduled_for
+    ? new Date(req.scheduled_for).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : `${req.scheduled_date || ''} ${req.scheduled_time || ''}`.trim();
+  const desc = [req.address || req.area, when].filter((x) => x && x.trim()).join(' • ') || req.note || 'A customer wants to book you — accept within 10 minutes.';
   if ($('reqPopTitle')) $('reqPopTitle').textContent = title;
   if ($('reqPopSub')) $('reqPopSub').textContent = sub;
   if ($('reqPopDesc')) $('reqPopDesc').textContent = desc;
   ov.style.display = 'flex';
   const fill = $('reqPopFill');
   if (fill) { fill.style.transition = 'none'; fill.style.width = '100%';
-    requestAnimationFrame(() => { fill.style.transition = 'width 8s linear'; fill.style.width = '0%'; }); }
+    requestAnimationFrame(() => { fill.style.transition = 'width 12s linear'; fill.style.width = '0%'; }); }
   clearTimeout(reqPopTimer);
-  reqPopTimer = setTimeout(hideRequestPopup, 8000);   // auto-dismiss after a few seconds
+  reqPopTimer = setTimeout(hideRequestPopup, 12000);   // auto-dismiss the banner (offer stays in New tab)
 }
 function hideRequestPopup() { const ov = $('reqPopup'); if (ov) ov.style.display = 'none'; clearTimeout(reqPopTimer); reqPopData = null; }
 function popupAccept() {
   const r = reqPopData; hideRequestPopup();
-  if (r && r.id) { acceptBooking(r.id, null); }      // acceptBooking opens the Active tab
+  if (r && r.offerId) acceptOffer(r.offerId);
   if (stack[stack.length - 1] !== 'jobs') { pendingJobTab = 'active'; show('jobs'); }
 }
-function popupReject() { const r = reqPopData; hideRequestPopup(); if (r && r.id) rejectBooking(r.id, null); }
-let bookingsSub = null;
+function popupReject() { const r = reqPopData; hideRequestPopup(); if (r && r.offerId) rejectOffer(r.offerId); }
+// Presence heartbeat: keeps "online now" + response freshness accurate.
+let heartbeatTimer = null;
+function startHeartbeat() {
+  if (!(hasSupabase && myProvider) || heartbeatTimer) return;
+  api.touchLastSeen();
+  heartbeatTimer = setInterval(() => { api.touchLastSeen(); }, 120000); // every 2 min
+}
+// Push the provider's live location once (for the customer's "on the way" map).
+async function pushLocationOnce() {
+  if (!(hasSupabase && myProvider) || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { api.updateLocation(pos.coords.latitude, pos.coords.longitude).catch(() => {}); },
+    () => {}, { timeout: 8000, maximumAge: 30000 });
+}
+let bookingsSub = null, offersSub = null;
 async function watchIncomingRequests() {
-  if (!(hasSupabase && myProvider) || bookingsSub) return;
-  // Real-time: a new customer booking pops up instantly + refreshes the Jobs list.
-  try { bookingsSub = await api.subscribeBookings((row) => { showRequestPopup(row); renderJobs(); updateBadges(); }); } catch (e) {}
+  if (!(hasSupabase && myProvider)) return;
+  startHeartbeat();
+  // Real-time: a new dispatch offer pops up instantly + refreshes the Jobs list.
+  if (!offersSub) {
+    try {
+      offersSub = await api.subscribeOffers(async (row) => {
+        if (!row || row.status !== 'pending') { renderJobs(); updateBadges(); return; }
+        // Pull the booking details for the banner, then refresh the list.
+        try {
+          const b = await api.getBooking(row.booking_id);
+          showRequestPopup({ offerId: row.id, service: b?.service_name, customer_name: b?.customer_name,
+            address: b?.address, scheduled_for: b?.scheduled_for, note: b?.note });
+        } catch (e) { showRequestPopup({ offerId: row.id, service: 'New service request' }); }
+        renderJobs(); updateBadges();
+      });
+    } catch (e) {}
+  }
+  // Also refresh when one of my assigned bookings changes status.
+  if (!bookingsSub) {
+    try { bookingsSub = await api.subscribeBookings(() => { renderJobs(); updateBadges(); }); } catch (e) {}
+  }
 }
 // Demo feedback: drop the acted-on lead card, show empty state if none left.
 function removeLeadCard(cardEl) {
@@ -1750,10 +1836,25 @@ function removeLeadCard(cardEl) {
   cardEl.remove();
   if (list && !list.querySelector('.card')) list.innerHTML = `<div class="empty">No new leads right now.</div>`;
 }
-async function advanceBooking(id, cur) {
-  const next = { pending: 'confirmed', confirmed: 'completed', completed: 'completed', cancelled: 'cancelled' }[cur] || 'confirmed';
-  if (hasSupabase && id) { try { await api.setBookingStatus(id, next); toast('Marked ' + next); renderJobs(); return; } catch (e) { toast(e.message || 'Failed'); return; } }
-  toast('Status updated');
+// Legacy no-op kept for any stray data-book-next buttons (dispatch uses RPCs).
+async function advanceBooking() { renderJobs(); }
+// Accept / reject a dispatch offer (the heart of the provider inbox).
+async function acceptOffer(offerId) {
+  if (!(hasSupabase && offerId)) { toast('Offer accepted'); return; }
+  try {
+    const res = await api.respondToOffer(offerId, 'accept');
+    if (res === 'expired') toast('This offer expired — it moved to the next provider');
+    else { toast('Job accepted — moved to Active'); pendingJobTab = 'active'; }
+    renderJobs(); updateBadges();
+  } catch (e) { toast(e.message || 'Could not accept'); }
+}
+async function rejectOffer(offerId, reason = null) {
+  if (!(hasSupabase && offerId)) { toast('Offer declined'); return; }
+  try {
+    await api.respondToOffer(offerId, 'reject', reason);
+    toast('Offer declined');
+    renderJobs(); updateBadges();
+  } catch (e) { toast(e.message || 'Could not decline'); }
 }
 function removeJobCard(cardEl) {
   if (!cardEl) return;
@@ -1761,19 +1862,9 @@ function removeJobCard(cardEl) {
   cardEl.remove();
   if (list && list.id === 'jobsList' && !list.querySelector('.card')) list.innerHTML = `<div class="empty">No ${jobTab} jobs.</div>`;
 }
-async function acceptBooking(id, cardEl) {
-  if (hasSupabase && id) {
-    try { await api.setBookingStatus(id, 'confirmed'); toast('Request accepted — moved to Active'); pendingJobTab = 'active'; renderJobs(); return; }
-    catch (e) { toast(e.message || 'Could not accept'); return; }
-  }
-  if (cardEl) cardEl.style.opacity = '.55';
-  toast('Request accepted');
-}
-async function rejectBooking(id, cardEl) {
-  if (hasSupabase && id) { try { await api.setBookingStatus(id, 'cancelled'); toast('Request declined'); renderJobs(); return; } catch (e) { toast(e.message || 'Could not decline'); return; } }
-  removeJobCard(cardEl);
-  toast('Request declined');
-}
+// Older direct-booking accept/reject kept as thin wrappers (unused in dispatch).
+async function acceptBooking(id, cardEl) { if (cardEl) cardEl.style.opacity = '.55'; toast('Request accepted'); }
+async function rejectBooking(id, cardEl) { removeJobCard(cardEl); toast('Request declined'); }
 
 /* ---------- KYC file picking ---------- */
 function pickKyc(kind) {

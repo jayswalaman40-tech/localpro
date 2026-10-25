@@ -155,71 +155,83 @@ export async function getMyBookings() {
   return data ?? [];
 }
 
-// ---------------- BOOKINGS (scheduled) ----------------
-export async function createBooking(providerId, { service, date, time, address, note, lat, lng }) {
+// ---------------- BOOKINGS (dispatch marketplace) ----------------
+// Customer requests a booking. The backend's request_booking RPC runs the
+// dispatch algorithm: the chosen provider (if any) is offered first, then it
+// rolls to the next best on reject/timeout. Returns the new booking id.
+export async function createBooking(providerId, { service, date, time, address, note, lat, lng, categoryId } = {}) {
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) throw new Error('Not signed in');
-  let me = null;
-  try { me = await getMyProfile(); } catch (e) {}
-  const row = {
-    customer_id: u.user.id,
-    provider_id: providerId,
-    service: service || null,
-    scheduled_date: date || null,
-    scheduled_time: time || null,
-    address: address || null,
-    note: note || null,
-    customer_name: me?.full_name || null,
-    customer_phone: me?.phone || u.user.phone || null,
-  };
-  if (lat != null && lng != null) { row.customer_lat = lat; row.customer_lng = lng; }
-  const { data, error } = await supabase.from('bookings').insert(row).select().single();
+  // Build a timestamp for the requested slot (falls back to "now" server-side).
+  let scheduledFor = null;
+  if (date) {
+    const t = String(time || '').match(/(\d{1,2}):(\d{2})/);
+    const hh = t ? t[1].padStart(2, '0') : '09';
+    const mm = t ? t[2] : '00';
+    const d = new Date(`${date}T${hh}:${mm}:00`);
+    if (!isNaN(d.getTime())) scheduledFor = d.toISOString();
+  }
+  const { data, error } = await supabase.rpc('request_booking', {
+    in_category: categoryId || null,
+    in_service: service || null,
+    in_note: note || null,
+    in_address: address || null,
+    in_lat: lat ?? null,
+    in_lng: lng ?? null,
+    in_scheduled_for: scheduledFor,   // null => now() in the RPC
+    in_preferred: providerId || null,
+  });
   if (error) throw error;
-  return data;
+  return { id: data };
 }
 export async function getMyBookingList() {
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return [];
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, service, scheduled_date, scheduled_time, address, note, status, created_at, total_amount, bill_status, paid, payment_method, provider:providers(name, phone, category_id, custom_category)')
+    .select('id, service_name, address, note, status, created_at, scheduled_for, final_amount, payment_mode, paid, provider:providers(name, phone, category_id, custom_category)')
     .eq('customer_id', u.user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
-export async function cancelBooking(id) {
-  const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+// One booking (with its assigned provider + live offer, if any) for the detail view.
+export async function getBooking(id) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('id, service_name, address, note, status, created_at, scheduled_for, final_amount, payment_mode, paid, lat, lng, provider:providers(id, name, phone, category_id, custom_category)')
+    .eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+export async function cancelBooking(id, reason = null) {
+  const { error } = await supabase.rpc('cancel_booking', { p_booking: id, in_reason: reason });
   if (error) throw error;
 }
 
-// ---------------- BILL approval + payment ----------------
+// ---------------- BILL + cash payment (dispatch) ----------------
+// In dispatch there is no itemised bill: the provider sets a final amount and
+// payment is cash/UPI direct. The customer confirms the work is done (+paid).
 export async function getBill(bookingId) {
-  const { data: b, error: be } = await supabase.from('bookings')
-    .select('id, service, total_amount, bill_status, paid, payment_method, provider:providers(name)')
+  const { data: b, error } = await supabase.from('bookings')
+    .select('id, service_name, final_amount, payment_mode, paid, status, provider:providers(name)')
     .eq('id', bookingId).single();
-  if (be) throw be;
-  const { data: items, error: ie } = await supabase.from('job_items')
-    .select('*').eq('booking_id', bookingId).order('created_at');
-  if (ie) throw ie;
-  return { booking: b, items: items ?? [] };
+  if (error) throw error;
+  return { booking: b, items: [] };
 }
-export async function approveBill(bookingId) {
-  const { error } = await supabase.from('bookings')
-    .update({ bill_status: 'approved', approved_at: new Date().toISOString() }).eq('id', bookingId);
+export async function approveBill() { /* no-op in the cash/dispatch model */ }
+export async function disputeBill() { /* no-op; customer can call support/feedback */ }
+// Customer confirms the job is complete (cash handed over) -> booking completed.
+export async function payBooking(bookingId) {
+  const { error } = await supabase.rpc('customer_verify_complete', { p_booking: bookingId });
   if (error) throw error;
 }
-export async function disputeBill(bookingId) {
-  const { error } = await supabase.from('bookings').update({ bill_status: 'disputed' }).eq('id', bookingId);
-  if (error) throw error;
-}
-// Customer pays (online/UPI) and the job is closed.
-export async function payBooking(bookingId, amount, method = 'online') {
-  await supabase.from('payments').insert({ booking_id: bookingId, amount: Math.round(Number(amount) || 0), method, status: 'paid' });
-  const { error } = await supabase.from('bookings')
-    .update({ paid: true, paid_at: new Date().toISOString(), payment_method: method, bill_status: 'paid', status: 'completed' })
-    .eq('id', bookingId);
-  if (error) throw error;
+// Live location of the provider on an active booking (for the "on the way" map).
+export async function getProviderLocation(providerId) {
+  const { data, error } = await supabase.from('provider_locations')
+    .select('lat, lng, updated_at').eq('provider_id', providerId).maybeSingle();
+  if (error) return null;
+  return data;
 }
 
 // ---------------- CHAT ----------------

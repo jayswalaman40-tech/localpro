@@ -27,6 +27,16 @@ export async function getSession() {
 }
 export async function signOut() { await supabase.auth.signOut(); }
 
+// Update the signed-in user's profile row (e.g. preferred language). Safe no-op
+// if there is no profile yet.
+export async function updateMyProfile(fields) {
+  const id = await uid();
+  if (!id) return;
+  const { error } = await supabase.from('profiles')
+    .update({ ...fields, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+}
+
 async function uid() {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id ?? null;
@@ -122,77 +132,127 @@ export async function subscribeLeads(cb) {
   return channel;
 }
 
-// ---------------- BOOKINGS (scheduled requests) ----------------
+// ---------------- DISPATCH: OFFERS ----------------
+// Pending offers currently on the table for MY listing, newest first, with the
+// booking details embedded (customer, service, address, slot).
+export async function getMyOffers() {
+  const prov = await getMyProvider();
+  if (!prov) return [];
+  const { data, error } = await supabase
+    .from('booking_offers')
+    .select('id, status, score, rank, offered_at, expires_at, booking:bookings(id, service_name, note, address, lat, lng, scheduled_for, status, customer_name, customer_phone, category_id)')
+    .eq('provider_id', prov.id).eq('status', 'pending')
+    .order('offered_at', { ascending: false });
+  if (error) throw error;
+  // Hide offers whose 10-min timer already lapsed (cron will expire them).
+  const now = Date.now();
+  return (data ?? []).filter((o) => new Date(o.expires_at).getTime() > now);
+}
+// Provider accepts or rejects an offer. action = 'accept' | 'reject'.
+export async function respondToOffer(offerId, action, reason = null) {
+  const { data, error } = await supabase.rpc('respond_to_offer', {
+    p_offer: offerId, p_action: action, p_reason: reason,
+  });
+  if (error) throw error;
+  return data; // 'accepted' | 'rejected' | 'expired'
+}
+
+// ---------------- BOOKINGS (jobs assigned to me) ----------------
 export async function getMyBookings() {
   const prov = await getMyProvider();
   if (!prov) return [];
   const { data, error } = await supabase
-    .from('bookings').select('*').eq('provider_id', prov.id)
+    .from('bookings')
+    .select('id, service_name, note, address, lat, lng, scheduled_for, status, final_amount, payment_mode, paid, customer_name, customer_phone, category_id, created_at')
+    .eq('provider_id', prov.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
-export async function setBookingStatus(id, status) {
-  const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
-  if (error) throw error;
-}
 // Single booking by id (used when opening a job from a notification).
 export async function getBooking(id) {
-  const { data, error } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('bookings')
+    .select('id, service_name, note, address, lat, lng, scheduled_for, status, final_amount, payment_mode, paid, customer_name, customer_phone, category_id, created_at')
+    .eq('id', id).maybeSingle();
   if (error) throw error;
   return data;
 }
 
-// ---------------- BILL (job line-items + payment) ----------------
-export async function getJobItems(bookingId) {
-  const { data, error } = await supabase.from('job_items')
-    .select('*').eq('booking_id', bookingId).order('created_at');
-  if (error) throw error;
-  return data ?? [];
-}
-export async function addJobItem(bookingId, label, amount) {
-  const { data, error } = await supabase.from('job_items')
-    .insert({ booking_id: bookingId, label, amount: Math.round(Number(amount) || 0) })
-    .select('*').single();
-  if (error) throw error;
-  return data;
-}
-export async function deleteJobItem(id) {
-  const { error } = await supabase.from('job_items').delete().eq('id', id);
+// ---------------- JOB LIFECYCLE (dispatch RPCs) ----------------
+export async function startJob(bookingId) {
+  const { error } = await supabase.rpc('provider_start_job', { p_booking: bookingId });
   if (error) throw error;
 }
-// Provider sends the itemised bill to the customer for approval.
-export async function sendBill(bookingId) {
-  const items = await getJobItems(bookingId);
-  const total = items.reduce((s, it) => s + (it.amount || 0), 0);
-  const { error } = await supabase.from('bookings')
-    .update({ total_amount: total, bill_status: 'sent' }).eq('id', bookingId);
+// Provider sets the final amount + pay mode and the customer is notified.
+export async function sendBill(bookingId, amount, mode = 'cash') {
+  const { error } = await supabase.rpc('provider_send_bill', {
+    p_booking: bookingId, in_amount: Math.round(Number(amount) || 0), in_mode: mode,
+  });
   if (error) throw error;
-  return total;
+  return Math.round(Number(amount) || 0);
 }
-// Admin-maintained rate card (items + caps) the provider bills from.
+// Provider marks cash/UPI received.
+export async function recordPayment(bookingId) {
+  const { error } = await supabase.rpc('provider_collect_payment', { p_booking: bookingId });
+  if (error) throw error;
+}
+export async function cancelJob(bookingId, reason = null) {
+  const { error } = await supabase.rpc('cancel_booking', { p_booking: bookingId, in_reason: reason });
+  if (error) throw error;
+}
+// Admin-maintained rate card (items + caps) the provider can refer to.
 export async function getRateCard() {
   const { data, error } = await supabase.from('rate_card')
     .select('item, rate, max_cap, unit, category_key').eq('active', true).order('item');
-  if (error) throw error;
+  if (error) return [];
   return data ?? [];
 }
 
-// Provider records a cash payment and closes the job.
-export async function recordPayment(bookingId, amount, method = 'cash') {
-  await supabase.from('payments').insert({ booking_id: bookingId, amount: Math.round(Number(amount) || 0), method, status: 'paid' });
-  const { error } = await supabase.from('bookings')
-    .update({ paid: true, paid_at: new Date().toISOString(), payment_method: method, bill_status: 'paid', status: 'completed' })
-    .eq('id', bookingId);
+// ---------------- PRESENCE + LIVE LOCATION ----------------
+// Heartbeat so "online now" and response freshness stay accurate.
+export async function touchLastSeen() {
+  try { await supabase.rpc('touch_last_seen'); } catch (e) {}
+}
+// Push the provider's live location while a job is active (for the customer map).
+export async function updateLocation(lat, lng) {
+  const { error } = await supabase.rpc('update_provider_location', { in_lat: lat, in_lng: lng });
   if (error) throw error;
 }
+
+// ---------------- CERTIFICATE (liability sign-off) ----------------
+export async function getMyCertificate() {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const { data, error } = await supabase.from('certificates')
+    .select('*').eq('provider_id', prov.id).maybeSingle();
+  if (error) return null;
+  return data;
+}
+export async function signCertificate(signatureUrl = null) {
+  const { error } = await supabase.rpc('sign_certificate', { in_signature_url: signatureUrl });
+  if (error) throw error;
+}
+
+// ---------------- REALTIME ----------------
+// New offers landing for my listing (the heart of the provider inbox).
+export async function subscribeOffers(cb) {
+  const prov = await getMyProvider();
+  if (!prov) return null;
+  const channel = supabase.channel('offers-' + prov.id)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'booking_offers', filter: `provider_id=eq.${prov.id}` },
+      (payload) => cb(payload.new || payload.old))
+    .subscribe();
+  return channel;
+}
+// Status changes on bookings assigned to me (accepted -> active -> completed).
 export async function subscribeBookings(cb) {
   const prov = await getMyProvider();
   if (!prov) return null;
   const channel = supabase.channel('bk-' + prov.id)
     .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'bookings', filter: `provider_id=eq.${prov.id}` },
-      (payload) => cb(payload.new))
+      { event: '*', schema: 'public', table: 'bookings', filter: `provider_id=eq.${prov.id}` },
+      (payload) => cb(payload.new || payload.old))
     .subscribe();
   return channel;
 }
