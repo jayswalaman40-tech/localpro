@@ -1529,6 +1529,8 @@ function afterLogin() {
 
 /* ---------- registration submit ---------- */
 async function submitRegistration() {
+  // Safety net: never create a provider without a service category.
+  if (!selectedCatId) { toast('Please select your service category first'); show('skills'); return; }
   const btn = $('submitRegBtn'); btn.disabled = true; btn.textContent = 'Submitting…';
   try {
     if (hasSupabase && session) {
@@ -2012,7 +2014,12 @@ async function boot() {
   $('skillsDoneBtn')?.addEventListener('click', () => { if ($('regCatLabel') && selectedCatLabel) $('regCatLabel').textContent = selectedCatLabel; show('reg2'); });
   $('submitRegBtn')?.addEventListener('click', submitRegistration);
   $('reg2Back')?.addEventListener('click', () => { if (editMode) { editMode = false; show('profile'); } else show('reg1'); });
-  $('reg2NextBtn')?.addEventListener('click', () => { if (editMode) saveProfileEdits(); else show('reg3'); });
+  $('reg2NextBtn')?.addEventListener('click', () => {
+    if (editMode) { saveProfileEdits(); return; }
+    // A provider must pick a service category, or dispatch can never match them.
+    if (!selectedCatId) { toast('Please select your service category'); show('skills'); return; }
+    show('reg3');
+  });
   $('earnPeriodBtn')?.addEventListener('click', () => { const order = ['today', 'week', 'month', 'year']; setEarnPeriod(order[(order.indexOf(earnPeriod) + 1) % order.length]); });
   $('earnViewAll')?.addEventListener('click', () => { txnsExpanded = !txnsExpanded; renderTxns(); $('earnViewAll').textContent = txnsExpanded ? 'Show Less ‹' : 'View All ›'; });
   $('schedCalBtn')?.addEventListener('click', toggleCalendar);
