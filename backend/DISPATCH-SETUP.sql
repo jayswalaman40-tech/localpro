@@ -209,7 +209,7 @@ begin
   from (
     select pr.id,
       round((
-        ( 0.35 * greatest(0, 1 - d.dkm / 15.0)
+        ( 0.35 * greatest(0, 1 - coalesce(d.dkm, 15) / 15.0)   -- no booking location -> distance term 0
         + 0.25 * (((5 * 4.3 + pr.rating_avg * pr.rating_count) / (5 + pr.rating_count)) / 5.0)
         + 0.15 * ( 0.7 * (least(100, greatest(0, pr.response_rate)) / 100.0)
                  + 0.3 * (case when pr.last_seen_at > now() - interval '30 minutes' then 1 else 0 end) )
@@ -222,15 +222,16 @@ begin
       )::numeric, 4) as score, d.dkm
     from public.providers pr
     cross join lateral (
-      select (6371 * acos(greatest(-1, least(1,
+      select case when b.lat is null or b.lng is null then null else
+      (6371 * acos(greatest(-1, least(1,
         cos(radians(b.lat)) * cos(radians(pr.lat)) * cos(radians(pr.lng) - radians(b.lng))
-        + sin(radians(b.lat)) * sin(radians(pr.lat)))))) as dkm ) d
+        + sin(radians(b.lat)) * sin(radians(pr.lat)))))) end as dkm ) d
     where pr.available = true and pr.verified = true
       and pr.lat is not null and pr.lng is not null
       and exists (select 1 from public.certificates ct
                   where ct.provider_id = pr.id and ct.signed and ct.responsibility_accepted)
       and (b.category_id is null or pr.category_id = b.category_id)
-      and d.dkm <= 15
+      and (b.lat is null or b.lng is null or d.dkm <= 15)   -- no location -> skip distance filter
       and not exists (select 1 from public.booking_offers o
                       where o.booking_id = p_booking and o.provider_id = pr.id)
       and not exists (select 1 from public.provider_schedule s
@@ -238,7 +239,7 @@ begin
                         and tstzrange(s.start_at, s.end_at)
                             && tstzrange(b.scheduled_for, b.scheduled_for + interval '2 hours'))
     order by (case when v_rank = 0 and pr.id = b.preferred_provider_id then 0 else 1 end),
-             score desc, d.dkm asc
+             score desc, d.dkm asc nulls last
     limit 1
   ) c;
   if v_pid is null then

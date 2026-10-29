@@ -82,18 +82,29 @@ let timerHandle = null;
 let toastTimer = null;
 
 /* ---------- service categories (icon + color, matches design) ---------- */
+// Full category list — matches the customer app so a provider can list under
+// any service a customer can book. The last tile ("More") is a custom trade.
 const CATS = [
-  { key: 'plumber',     label: 'Plumber',     icon: '🚰', cls: 'c-plumb' },
-  { key: 'electrician', label: 'Electrician', icon: '⚡', cls: 'c-elec' },
-  { key: 'ac_repair',   label: 'AC Repair',   icon: '❄️', cls: 'c-ac' },
-  { key: 'carpenter',   label: 'Carpenter',   icon: '🔧', cls: 'c-carp' },
-  { key: 'painter',     label: 'Painter',     icon: '🎨', cls: 'c-paint' },
-  { key: 'cleaning',    label: 'Cleaning',    icon: '🧹', cls: 'c-clean' },
-  { key: 'home_repair', label: 'Home Repair', icon: '🏠', cls: 'c-home' },
-  { key: 'other',       label: 'More',        icon: '⋯',  cls: 'c-more' },
+  { key: 'plumber',      label: 'Plumber',            icon: '🚰', cls: 'c-plumb' },
+  { key: 'electrician',  label: 'Electrician',        icon: '⚡', cls: 'c-elec' },
+  { key: 'ac_repair',    label: 'AC Repair',          icon: '❄️', cls: 'c-ac' },
+  { key: 'carpenter',    label: 'Carpenter',          icon: '🔧', cls: 'c-carp' },
+  { key: 'painter',      label: 'Painter',            icon: '🎨', cls: 'c-paint' },
+  { key: 'cleaning',     label: 'Cleaning',           icon: '🧹', cls: 'c-clean' },
+  { key: 'home_repair',  label: 'Home Repair',        icon: '🏠', cls: 'c-home' },
+  { key: 'appliance',    label: 'Appliance Repair',   icon: '🔌', cls: 'c-elec' },
+  { key: 'pest_control', label: 'Pest Control',       icon: '🐜', cls: 'c-home' },
+  { key: 'salon',        label: 'Salon at Home',      icon: '💇', cls: 'c-paint' },
+  { key: 'cctv',         label: 'CCTV & Security',    icon: '📹', cls: 'c-more' },
+  { key: 'geyser',       label: 'Geyser Repair',      icon: '🔥', cls: 'c-ac' },
+  { key: 'ro',           label: 'RO / Water Purifier',icon: '💧', cls: 'c-ac' },
+  { key: 'gardening',    label: 'Gardening',          icon: '🌱', cls: 'c-clean' },
+  { key: 'movers',       label: 'Packers & Movers',   icon: '📦', cls: 'c-home' },
+  { key: 'other',        label: 'More',               icon: '⋯',  cls: 'c-more' },
 ];
-const catCls = (key) => (CATS.find((c) => c.key === key) || CATS[7]).cls;
-const catIcon = (key) => (CATS.find((c) => c.key === key) || CATS[7]).icon;
+const catFallback = CATS[CATS.length - 1];
+const catCls = (key) => (CATS.find((c) => c.key === key) || catFallback).cls;
+const catIcon = (key) => (CATS.find((c) => c.key === key) || catFallback).icon;
 // Map a free-text service label (e.g. "Plumbing", "Electrical") to a category key.
 function catKeyFromLabel(label) {
   const l = String(label || '').trim().toLowerCase();
@@ -801,7 +812,8 @@ async function openNotification(i) {
   }
   if (t === 'review') { show('reviews'); return; }
   if (t === 'payment') { show('earnings'); return; }
-  if (t === 'booking' || t === 'lead' || t === 'job') { pendingJobTab = 'new'; show('jobs'); return; }
+  if (t === 'offer') { pendingJobTab = 'new'; show('jobs'); return; }   // dispatch offer -> New tab
+  if (t === 'booking' || t === 'lead' || t === 'job') { pendingJobTab = 'active'; show('jobs'); return; }
   showNotifDetail(n);   // system / other → show the full text
 }
 function showNotifDetail(n) {
@@ -1298,7 +1310,7 @@ async function doVerify() {
       session = await api.getSession();
       myProvider = await api.getMyProvider().catch(() => null);
     }
-    if ($('regPhone')) $('regPhone').value = pendingPhone || '';
+    if ($('regPhone')) $('regPhone').value = (pendingPhone||'').replace(/\D/g,'').slice(-10);
     afterLogin();
   } catch (e) {
     toast(e.message || 'Invalid code');
@@ -1313,7 +1325,7 @@ function resetRegStep() {
   // If the phone is already verified in this session, prefill + lock it.
   const rp = $('regPhone');
   if (rp) {
-    if (session) { rp.value = pendingPhone || (session?.user?.phone ? '+' + session.user.phone : rp.value); rp.readOnly = true; }
+    if (session) { rp.value = (pendingPhone || (session?.user?.phone || '')).replace(/\D/g, '').slice(-10) || rp.value; rp.readOnly = true; }
     else { rp.readOnly = false; }
   }
 }
@@ -1348,7 +1360,7 @@ async function verifyRegOtp() {
       session = await api.getSession();
       myProvider = await api.getMyProvider().catch(() => null);
     }
-    if ($('regPhone')) $('regPhone').value = pendingPhone || '';
+    if ($('regPhone')) $('regPhone').value = (pendingPhone||'').replace(/\D/g,'').slice(-10);
     if (myProvider) { show('jobs'); return; }   // already registered → dashboard
     show('reg2');                                // continue the registration wizard
   } catch (e) { toast(e.message || 'Invalid code'); }
@@ -1473,7 +1485,8 @@ async function submitRegistration() {
   const btn = $('submitRegBtn'); btn.disabled = true; btn.textContent = 'Submitting…';
   try {
     if (hasSupabase && session) {
-      const regPhone = ($('regPhone')?.value || '').trim() || (session?.user?.phone ? '+' + session.user.phone : (pendingPhone || ''));
+      const rpDigits = ($('regPhone')?.value || '').replace(/\D/g, '').slice(-10);
+      const regPhone = rpDigits ? '+91' + rpDigits : (session?.user?.phone ? '+' + session.user.phone : (pendingPhone || ''));
       const fields = {
         name: $('regName').value.trim() || 'Provider',
         phone: regPhone,                                  // providers.phone is NOT NULL
@@ -1995,7 +2008,7 @@ async function boot() {
   const route = () => {
     stack = ['splash'];
     if (session && myProvider) show('jobs');
-    else if (session) { show('reg1'); if ($('regPhone')) $('regPhone').value = session?.user?.phone ? '+' + session.user.phone : ''; }
+    else if (session) { show('reg1'); if ($('regPhone')) $('regPhone').value = (session?.user?.phone || '').replace(/\D/g, '').slice(-10); }
     else show('login');
   };
   Promise.race([ready, new Promise((r) => setTimeout(r, 2600))]).then(() => setTimeout(route, 400));

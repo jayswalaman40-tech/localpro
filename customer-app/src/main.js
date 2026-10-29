@@ -177,7 +177,7 @@ const DEMO_NOTIF = [
 ];
 // Where a notification should take the customer when tapped.
 function notifTarget(type) {
-  return ({ booking:'bookings', lead:'bookings', review:'bookings', offer:'home', system:'home' })[type] || 'bookings';
+  return ({ booking:'bookings', lead:'bookings', review:'bookings', offer:'bookings', system:'home' })[type] || 'bookings';
 }
 
 /* ---------- toast ---------- */
