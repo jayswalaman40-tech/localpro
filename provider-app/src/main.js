@@ -907,7 +907,11 @@ async function renderSchedList() {
     if (schedRows === null) { list.innerHTML = `<div class="empty">Loading…</div>`; try { schedRows = await api.getMyBookings(); } catch (e) { schedRows = []; } }
   } else { schedRows = []; }
   const dayIso = iso(schedSel);
-  const rows = (schedRows || []).filter((b) => b.scheduled_date === dayIso && jobBucket(b.status) !== 'cancelled');
+  const bookDay = (b) => {
+    const d = b.scheduled_for ? new Date(b.scheduled_for) : (b.scheduled_date ? new Date(b.scheduled_date + 'T00:00:00') : null);
+    return d ? iso(d) : null;
+  };
+  const rows = (schedRows || []).filter((b) => bookDay(b) === dayIso && jobBucket(b.status) !== 'cancelled');
   schedView = rows;   // remember so "See Job" opens the right booking
   if ($('schedCount')) $('schedCount').textContent = rows.length + (rows.length === 1 ? ' Job Scheduled' : ' Jobs Scheduled');
   if (!rows.length) { list.innerHTML = `<div class="empty">No jobs scheduled for this day.</div>`; return; }
@@ -917,7 +921,7 @@ async function renderSchedList() {
     const pill = bucket === 'new' ? 'orange' : bucket === 'completed' ? 'green' : 'blue';
     const st = String(b.status || 'pending'); const label = bucket === 'new' ? 'New' : st[0].toUpperCase() + st.slice(1);
     return `<div class="card" style="margin-bottom:12px" data-go="jobdetail"><div style="display:flex;gap:10px">
-      <div style="text-align:center;flex-shrink:0;min-width:40px"><div style="font-weight:700;font-size:12px">${esc(b.scheduled_time || '—')}</div></div>
+      <div style="text-align:center;flex-shrink:0;min-width:40px"><div style="font-weight:700;font-size:12px">${esc(b.scheduled_for ? new Date(b.scheduled_for).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (b.scheduled_time || '—'))}</div></div>
       <div style="width:1px;background:var(--cardBorder)"></div>
       <div style="flex:1"><div style="display:flex;justify-content:space-between"><div style="display:flex;gap:8px;align-items:center"><div class="scirc ${catCls(cat)}" style="width:36px;height:36px;font-size:16px">${catIcon(cat)}</div><div class="h3" style="font-size:15px">${esc(b.service || 'Service')}</div></div><span class="pill ${pill}">${esc(label)}</span></div>
         <div class="meta"><span class="mi">👤</span>${esc(b.customer_name || 'Customer')} • ${esc(b.address || '—')}</div>
@@ -927,7 +931,7 @@ async function renderSchedList() {
   }).join('');
 }
 const setTxt = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-const amountOf = (b) => Number(b.amount ?? b.price ?? b.total ?? b.total_amount ?? 0) || 0;
+const amountOf = (b) => Number(b.amount ?? b.price ?? b.total ?? b.final_amount ?? b.total_amount ?? 0) || 0;
 let myStats = null;
 
 // Compute real stats (jobs done, rating, happy customers, earnings) from the
