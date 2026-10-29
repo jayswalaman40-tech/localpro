@@ -1108,7 +1108,12 @@ async function confirmBooking() {
     const isDemo = !(hasSupabase && session && p.id && !String(p.id).startsWith('d'));
     let newId = null;
     if (!isDemo) {
-      const res = await api.createBooking(p.id, { service, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: bookLatLng?.lat, lng: bookLatLng?.lng, categoryId: p.category_id });
+      // Always send a location so dispatch can rank providers by distance.
+      // Priority: map pin -> saved profile location -> live device location.
+      let loc = (bookLatLng && bookLatLng.lat != null) ? bookLatLng : null;
+      if (!loc && myProfile && myProfile.lat != null && myProfile.lng != null) loc = { lat: myProfile.lat, lng: myProfile.lng };
+      if (!loc) { try { loc = await api.getCurrentLocation(); } catch (e) { loc = null; } }
+      const res = await api.createBooking(p.id, { service, date: bookDateIso, time, address: addr, note: $('bookNote')?.value || '', lat: loc?.lat, lng: loc?.lng, categoryId: p.category_id });
       newId = res?.id || null;
     }
     localBookings.unshift({
