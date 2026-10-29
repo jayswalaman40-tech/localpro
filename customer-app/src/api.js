@@ -110,6 +110,43 @@ export async function getProviderReviews(providerId) {
   return data ?? [];
 }
 
+// Customer rates a provider after a completed job. One review per customer per
+// provider (upsert), which keeps the provider's rating_avg honest.
+export async function createReview(providerId, rating, body = null) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) throw new Error('Not signed in');
+  let me = null; try { me = await getMyProfile(); } catch (e) {}
+  const row = {
+    provider_id: providerId,
+    customer_id: u.user.id,
+    rating: Math.max(1, Math.min(5, Math.round(Number(rating) || 0))),
+    body: body || null,
+    reviewer_name: me?.full_name || null,
+    status: 'approved',
+  };
+  // One review per customer+provider: update the existing one, else insert.
+  const { data: existing } = await supabase.from('reviews')
+    .select('id').eq('provider_id', providerId).eq('customer_id', u.user.id).maybeSingle();
+  if (existing?.id) {
+    const { error } = await supabase.from('reviews')
+      .update({ rating: row.rating, body: row.body, reviewer_name: row.reviewer_name })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('reviews').insert(row);
+    if (error) throw error;
+  }
+}
+// Has the signed-in customer already reviewed this provider?
+export async function myReviewFor(providerId) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u?.user) return null;
+  const { data, error } = await supabase.from('reviews')
+    .select('rating, body').eq('provider_id', providerId).eq('customer_id', u.user.id).maybeSingle();
+  if (error) return null;
+  return data;
+}
+
 // Work photos shown on a provider's profile (public 'portfolio' bucket).
 export async function getProviderPhotos(providerId) {
   const { data, error } = await supabase

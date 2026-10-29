@@ -962,7 +962,8 @@ function openBookingDetail(b) {
     <button class="btn btn-out-green" style="flex:1" data-call="${esc((b._prov && b._prov.phone) || '')}">📞 Call</button>
     <button class="btn btn-out" style="flex:1" id="bdChatBtn">💬 Chat</button>
     ${canChange ? `<button class="btn btn-green" style="flex:1" id="bdReschedBtn">Reschedule</button>` : ''}
-    ${canChange ? `<button class="btn btn-out-danger" style="flex:1" id="bdCancelBtn">Cancel</button>` : ''}`;
+    ${canChange ? `<button class="btn btn-out-danger" style="flex:1" id="bdCancelBtn">Cancel</button>` : ''}
+    ${s.startsWith('complet') ? `<button class="btn btn-green" style="flex:1" data-rateprov="${esc(b.providerId || (b._prov && b._prov.id) || '')}" data-ratename="${esc(b.provider || '')}">⭐ Rate</button>` : ''}`;
   show('bookingdetail');
 }
 async function cancelBookingDetail() {
@@ -1015,7 +1016,41 @@ async function approveAndPay(id, amount) {
     await api.payBooking(id);
     toast('Job completed 🎉');
     show('bookings'); renderBookings();
+    // Invite the customer to rate the provider they just used.
+    const row = (lastBookings || []).find((x) => x.id === id);
+    if (row && row.providerId) setTimeout(() => openRating(row.providerId, row.provider), 500);
   } catch (e) { toast(e.message || 'Could not finish job'); }
+}
+// Lightweight rating modal (built in JS so it needs no extra markup).
+async function openRating(providerId, providerName) {
+  if (!providerId || String(providerId).startsWith('d')) return;
+  let picked = 5;
+  const prev = (await (hasSupabase && session ? api.myReviewFor(providerId).catch(() => null) : null)) || null;
+  if (prev && prev.rating) picked = prev.rating;
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9999';
+  const star = (n) => `<span data-star="${n}" style="font-size:34px;cursor:pointer">${n <= picked ? '★' : '☆'}</span>`;
+  ov.innerHTML = `<div style="background:var(--cardBg,#fff);width:100%;max-width:480px;border-radius:18px 18px 0 0;padding:20px">
+    <div class="h2" style="margin-bottom:4px">Rate ${esc(providerName || 'your provider')}</div>
+    <div class="sec" style="font-size:13px">Your rating helps other customers.</div>
+    <div id="rateStars" style="display:flex;gap:10px;justify-content:center;margin:16px 0;color:#F6B01E">${[1,2,3,4,5].map(star).join('')}</div>
+    <textarea id="rateBody" placeholder="Add a comment (optional)" style="width:100%;min-height:72px;border:1px solid var(--cardBorder);border-radius:12px;padding:10px;font:inherit;box-sizing:border-box">${esc(prev?.body || '')}</textarea>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-out" id="rateCancel" style="flex:1">Later</button>
+      <button class="btn btn-green" id="rateSave" style="flex:2">Submit rating</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const paint = () => { ov.querySelector('#rateStars').innerHTML = [1,2,3,4,5].map(star).join(''); };
+  ov.querySelector('#rateStars').addEventListener('click', (e) => { const s = e.target.closest('[data-star]'); if (s) { picked = Number(s.getAttribute('data-star')); paint(); } });
+  const close = () => ov.remove();
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  ov.querySelector('#rateCancel').onclick = close;
+  ov.querySelector('#rateSave').onclick = async () => {
+    const body = (ov.querySelector('#rateBody').value || '').trim();
+    try { await api.createReview(providerId, picked, body); toast('Thanks for your rating! ⭐'); }
+    catch (e) { toast(e.message || 'Could not submit rating'); }
+    close();
+  };
 }
 async function disputeBill(id) {
   if (hasSupabase && session) { try { await api.disputeBill(id); } catch (e) {} }
@@ -1303,6 +1338,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#bdCancelBtn')) { cancelBookingDetail(); return; }
   if (e.target.closest('#bdReschedBtn')) { rescheduleBookingDetail(); return; }
   if (e.target.closest('#bdChatBtn')) { openChatWith(detailBooking && detailBooking._prov); return; }
+  const rp = e.target.closest('[data-rateprov]'); if (rp) { openRating(rp.getAttribute('data-rateprov'), rp.getAttribute('data-ratename')); return; }
   const ng = e.target.closest('[data-notifgo]'); if (ng) { const t = ng.getAttribute('data-notifgo'); stack = [t]; show(t, false); return; }
   const doc = e.target.closest('[data-doc]'); if (doc) { openDoc(doc.getAttribute('data-doc')); return; }
   if (e.target.closest('[data-back]')) { back(); return; }
