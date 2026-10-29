@@ -791,21 +791,22 @@ function reviewCard(r) {
 }
 async function renderReviews() {
   const list = $('reviewsList'); if (!list) return;
-  let rows = DEMO_REVIEWS;
-  let real = false;
+  // Signed in → always show REAL reviews (even zero); never fake demo numbers.
   if (hasSupabase && myProvider) {
+    let rows = [];
     try {
       const live = await api.getMyReviews();
-      if (live && live.length) {
-        rows = live.map((r) => ({ name: r.reviewer_name || 'Customer', rating: r.rating, body: r.body,
-          ago: r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
-          provider_reply: r.provider_reply, tags: [] }));
-        real = true;
-      }
+      rows = (live || []).map((r) => ({ name: r.reviewer_name || 'Customer', rating: r.rating, body: r.body,
+        ago: r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
+        provider_reply: r.provider_reply, tags: [] }));
     } catch (e) {}
+    paintReviewSummary(rows);
+    list.innerHTML = rows.length ? rows.map(reviewCard).join('')
+      : `<div class="empty" style="padding:18px">No reviews yet.<br>Complete jobs and your customers' ratings will show here.</div>`;
+    return;
   }
-  if (real) paintReviewSummary(rows);   // real → recompute the summary; demo keeps its static numbers
-  list.innerHTML = rows.map(reviewCard).join('');
+  // Not signed in → demo preview so the screen isn't blank.
+  list.innerHTML = DEMO_REVIEWS.map(reviewCard).join('');
 }
 
 // Rebuild the average / count / bars / chips from real review rows.
