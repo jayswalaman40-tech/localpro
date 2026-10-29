@@ -702,37 +702,79 @@ function paintLeads() {
   leadsView = leadTab === 'all' ? lastLeadsRows : lastLeadsRows.filter((l) => leadBucket(l.status) === leadTab);
   list.innerHTML = leadsView.length ? leadsView.map(realLeadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
 }
-/* ---------- earnings ---------- */
-const EARN_DATA = {
-  today: { label: 'Today',      total: 850,  jobs: 2,  bars: [['9a', 30], ['12p', 65], ['3p', 90], ['6p', 55]] },
-  week:  { label: 'This Week',  total: 3300, jobs: 6,  bars: [['M', 40], ['T', 70], ['W', 55], ['T', 85], ['F', 60], ['S', 95]] },
-  month: { label: 'This Month', total: 12480, jobs: 24, bars: [['W1', 52], ['W2', 88], ['W3', 66], ['W4', 76]] },
-  year:  { label: 'This Year',  total: 148600, jobs: 286, bars: [['Q1', 48], ['Q2', 72], ['Q3', 90], ['Q4', 64]] },
-};
+/* ---------- earnings (real — from completed bookings) ---------- */
 let earnPeriod = 'month';
 let txnsExpanded = false;
-function setEarnPeriod(p) {
-  earnPeriod = p; const d = EARN_DATA[p] || EARN_DATA.month;
-  if ($('earnTotal')) $('earnTotal').textContent = inr(d.total);
-  if ($('earnJobs')) $('earnJobs').textContent = d.jobs;
-  const btn = $('earnPeriodBtn'); if (btn) btn.innerHTML = d.label + ' ▾';
-  document.querySelectorAll('[data-earnseg]').forEach((s) => s.classList.toggle('on', s.getAttribute('data-earnseg') === p));
-  const bars = $('earnBars');
-  if (bars) bars.innerHTML = d.bars.map(([l, h]) => `<div class="barcol"><div class="bv"></div><div class="bar" style="height:${h}%"></div><div class="bl">${l}</div></div>`).join('');
+let earnRows = null;   // completed bookings
+async function loadEarnRows() {
+  if (!(hasSupabase && myProvider)) { earnRows = []; return; }
+  try {
+    const all = (lastJobsRows && lastJobsRows.length) ? lastJobsRows : await api.getMyBookings();
+    earnRows = (all || []).filter((b) => String(b.status || '').toLowerCase() === 'completed');
+  } catch (e) { earnRows = []; }
 }
-function renderEarnings() {
+const periodLabel = (p) => ({ today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year' })[p] || 'This Month';
+function earnBuckets(period) {
+  const now = new Date(); const b = [];
+  const mk = (label, from, to) => ({ label, from, to, sum: 0 });
+  if (period === 'today') {
+    ['12a', '6a', '12p', '6p'].forEach((l, i) => b.push(mk(l,
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), i * 6),
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), i * 6 + 6))));
+  } else if (period === 'week') {
+    for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0, 0, 0, 0); const e = new Date(d); e.setDate(d.getDate() + 1); b.push(mk(['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()], d, e)); }
+  } else if (period === 'year') {
+    for (let i = 5; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); const e = new Date(now.getFullYear(), now.getMonth() - i + 1, 1); b.push(mk(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()], d, e)); }
+  } else { // month: last 4 weeks
+    for (let i = 3; i >= 0; i--) { const e = new Date(now); e.setDate(now.getDate() - i * 7); e.setHours(23, 59, 59, 0); const s = new Date(e); s.setDate(e.getDate() - 7); b.push(mk('W' + (4 - i), s, e)); }
+  }
+  (earnRows || []).forEach((row) => {
+    const t = new Date(row.completed_at || row.created_at); const amt = Number(row.final_amount) || 0;
+    b.forEach((k) => { if (t >= k.from && t < k.to) k.sum += amt; });
+  });
+  return b;
+}
+function setEarnPeriod(p) {
+  earnPeriod = p;
+  const rows = earnRows || [];
+  const buckets = earnBuckets(p);
+  const from = buckets[0].from, to = buckets[buckets.length - 1].to;
+  const inRange = rows.filter((b) => { const t = new Date(b.completed_at || b.created_at); return t >= from && t < to; });
+  const total = inRange.reduce((s, b) => s + (Number(b.final_amount) || 0), 0);
+  const jobs = inRange.length;
+  const avg = jobs ? Math.round(total / jobs) : 0;
+  const counts = {}; rows.forEach((b) => { if (b.customer_id) counts[b.customer_id] = (counts[b.customer_id] || 0) + 1; });
+  const repeat = Object.values(counts).filter((c) => c > 1).length;
+  setTxt('earnTotal', inr(total)); setTxt('earnJobs', jobs); setTxt('earnAvg', avg ? inr(avg) : '0');
+  setTxt('earnPeriodLbl', periodLabel(p)); setTxt('earnRepeat', repeat);
+  setTxt('earnRate', (myProvider && myProvider.rating_avg ? Number(myProvider.rating_avg).toFixed(1) : '0.0'));
+  const btn = $('earnPeriodBtn'); if (btn) btn.innerHTML = periodLabel(p) + ' ▾';
+  document.querySelectorAll('[data-earnseg]').forEach((s) => s.classList.toggle('on', s.getAttribute('data-earnseg') === p));
+  const max = Math.max(1, ...buckets.map((k) => k.sum));
+  const bars = $('earnBars');
+  if (bars) bars.innerHTML = buckets.map((k) => `<div class="barcol"><div class="bv">${k.sum ? '₹' + (Math.round(k.sum / 100) / 10) + 'K' : ''}</div><div class="bar" style="height:${Math.round(k.sum / max * 100)}%"></div><div class="bl">${esc(k.label)}</div></div>`).join('');
+}
+async function renderEarnings() {
+  await loadEarnRows();
   setEarnPeriod(earnPeriod);
   renderTxns();
 }
 function renderTxns() {
   const el = $('txnList'); if (!el) return;
-  const rows = txnsExpanded ? DEMO_TXN.concat(DEMO_TXN) : DEMO_TXN; // demo: "View All" shows more
-  el.innerHTML = rows.map((x, i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < rows.length - 1 ? 'border-bottom:1px solid var(--cardBorder)' : ''}">
-      <div class="scirc ${catCls(x.cat)}" style="width:40px;height:40px;font-size:17px">${catIcon(x.cat)}</div>
-      <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(x.t)}</div><div class="ter">${esc(x.d || txnDate(x.daysAgo))}</div></div>
-      <div style="text-align:right"><div class="green-t">+ ${inr(x.amt)}</div><div class="ter">Completed</div></div>
-    </div>`).join('');
+  const rows = (earnRows || []).slice().sort((a, b) => new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at));
+  const show = txnsExpanded ? rows : rows.slice(0, 5);
+  if (!show.length) { el.innerHTML = `<div class="empty" style="padding:18px">No completed jobs yet. Your earnings will appear here.</div>`; return; }
+  el.innerHTML = show.map((x, i) => {
+    const svc = x.service_name || x.service || 'Service';
+    const cat = x.category || catKeyFromLabel(svc);
+    const amt = Number(x.final_amount) || 0;
+    const d = x.completed_at || x.created_at;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < show.length - 1 ? 'border-bottom:1px solid var(--cardBorder)' : ''}">
+      <div class="scirc ${catCls(cat)}" style="width:40px;height:40px;font-size:17px">${catIcon(cat)}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:14px">${esc(svc)} — ${esc(x.customer_name || 'Customer')}</div><div class="ter">${d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}</div></div>
+      <div style="text-align:right"><div class="green-t">+ ${inr(amt)}</div><div class="ter">${x.paid ? 'Paid' : 'Completed'}</div></div>
+    </div>`;
+  }).join('');
 }
 function stars(n) { return '★★★★★☆☆☆☆☆'.slice(5 - n, 10 - n); }
 function reviewCard(r) {

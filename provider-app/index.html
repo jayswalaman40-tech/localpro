@@ -558,14 +558,14 @@
     <div class="hdr blue"><div class="htxt"><div class="h1">Earnings</div><div class="sub">Track your income and payouts</div></div><button class="hpill" id="earnPeriodBtn">This Month &#9662;</button></div>
     <div class="scroll sheet"><div class="pad">
       <div style="display:flex;gap:12px">
-        <div style="flex:1"><div class="sec" style="font-size:13px">Total Earnings</div><div style="font-size:28px;font-weight:800" id="earnTotal">₹12,480</div><div class="green-t" style="font-size:12px">&#8599; +18% from last month</div></div>
-        <div class="panel" style="width:150px"><span style="font-size:20px">&#128176;</span><div class="sec" style="font-size:12px;margin-top:4px">Available Balance</div><div style="font-weight:800;font-size:18px">₹8,320</div><button class="btn btn-green sm" style="margin-top:8px" data-toast="Withdrawal requested — payout in 24 hrs">Withdraw</button></div>
+        <div style="flex:1"><div class="sec" style="font-size:13px" id="earnPeriodLbl">This Month</div><div style="font-size:28px;font-weight:800" id="earnTotal">₹0</div><div class="sec" style="font-size:12px" id="earnSub">from completed jobs</div></div>
+        <div class="panel" style="width:150px"><span style="font-size:20px">&#128181;</span><div class="sec" style="font-size:12px;margin-top:4px">Paid to you</div><div style="font-weight:800;font-size:15px;line-height:1.2">Cash / UPI direct</div><div class="ter" style="font-size:11px;margin-top:4px">HelpZo takes 0% commission</div></div>
       </div>
       <div class="stats" style="margin-top:16px">
-        <div class="stat"><div class="si">&#128188;</div><div class="sv" id="earnJobs">24</div><div class="sn">Jobs Done</div></div>
-        <div class="stat"><div class="si">&#8377;</div><div class="sv">520</div><div class="sn">Avg / Job</div></div>
-        <div class="stat"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv">4.8</div><div class="sn">Rating</div></div>
-        <div class="stat"><div class="si">&#128101;</div><div class="sv">18</div><div class="sn">Repeat</div></div>
+        <div class="stat"><div class="si">&#128188;</div><div class="sv" id="earnJobs">0</div><div class="sn">Jobs Done</div></div>
+        <div class="stat"><div class="si">&#8377;</div><div class="sv" id="earnAvg">0</div><div class="sn">Avg / Job</div></div>
+        <div class="stat"><div class="si" style="color:var(--star)">&#9733;</div><div class="sv" id="earnRate">0.0</div><div class="sn">Rating</div></div>
+        <div class="stat"><div class="si">&#128101;</div><div class="sv" id="earnRepeat">0</div><div class="sn">Repeat</div></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 6px"><div class="h3">Earnings Overview</div>
         <div class="segpill" id="earnSeg"><span data-earnseg="today">Today</span><span data-earnseg="week">Week</span><span class="on" data-earnseg="month">Month</span><span data-earnseg="year">Year</span></div></div>
