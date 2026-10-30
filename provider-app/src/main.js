@@ -825,13 +825,39 @@ function paintReviewSummary(rows) {
 }
 const NOTIF_ICON = { lead: { cls: 'c-clean', icon: '📅' }, booking: { cls: 'c-plumb', icon: '🧭' }, payment: { cls: 'c-elec', icon: '💳' }, review: { cls: 'c-paint', icon: '★' }, system: { cls: 'c-more', icon: '🔔' } };
 let notifRows = [];
+let notifFilter = 'all';   // all | jobs | payments | system
+const notifGroup = (t) => {
+  t = String(t || '').toLowerCase();
+  if (t === 'offer' || t === 'booking' || t === 'lead' || t === 'job') return 'jobs';
+  if (t === 'payment') return 'payments';
+  return 'system';
+};
+function renderNotifChips() {
+  const box = $('notifChips'); if (!box) return;
+  const c = { all: notifRows.length, jobs: 0, payments: 0, system: 0 };
+  notifRows.forEach((n) => { c[notifGroup(n.type)]++; });
+  const defs = [['all', 'All'], ['jobs', 'Jobs'], ['payments', 'Payments'], ['system', 'System']];
+  box.innerHTML = defs.map(([k, label]) =>
+    `<div class="chip ${notifFilter === k ? 'on' : ''}" data-notiffilter="${k}">${label} (${c[k]})</div>`).join('');
+}
 async function renderNotif() {
   const list = $('notifList'); if (!list) return;
+  const chips = $('notifChips'); if (chips) chips.innerHTML = '';
   if (!(hasSupabase && session)) { list.innerHTML = `<div class="empty">Sign in to see your notifications.</div>`; return; }
   list.innerHTML = `<div class="empty">Loading…</div>`;
   try { notifRows = await api.getNotifications(); } catch (e) { notifRows = []; }
+  renderNotifChips();
   if (!notifRows.length) { list.innerHTML = `<div class="empty">No notifications yet.<br>Job, payment and review updates will show here.</div>`; return; }
-  list.innerHTML = notifRows.map((n, i) => {
+  renderNotifList();
+  // Opening the screen clears the unread bell badge.
+  try { await api.markNotificationsRead(); const nb = $('notifBadge'); if (nb) nb.style.display = 'none'; } catch (e) {}
+}
+function setNotifFilter(k) { notifFilter = k; renderNotifChips(); renderNotifList(); }
+function renderNotifList() {
+  const list = $('notifList'); if (!list) return;
+  const rows = notifRows.map((n, i) => ({ n, i })).filter(({ n }) => notifFilter === 'all' || notifGroup(n.type) === notifFilter);
+  if (!rows.length) { list.innerHTML = `<div class="empty">Nothing here in this filter.</div>`; return; }
+  list.innerHTML = rows.map(({ n, i }) => {
     const ic = NOTIF_ICON[n.type] || NOTIF_ICON.system;
     const ago = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
     const unread = !(n.is_read ?? n.read ?? false);
@@ -842,31 +868,34 @@ async function renderNotif() {
       ${unread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px"></span>' : ''}
     </div>`;
   }).join('');
-  // Opening the screen clears the unread bell badge.
-  try { await api.markNotificationsRead(); const nb = $('notifBadge'); if (nb) nb.style.display = 'none'; } catch (e) {}
 }
-// Tapping a notification opens the thing it is about (job / payment / review),
-// so the provider sees the full work behind it.
+// Tapping a notification opens a detail popup with a "View" action.
 async function openNotification(i) {
   const n = notifRows[i]; if (!n) return;
-  const t = String(n.type || '').toLowerCase();
-  if (n.ref_id && (t === 'booking' || t === 'lead' || t === 'payment' || t === 'job')) {
-    try { const b = await api.getBooking(n.ref_id); if (b) { currentJob = normalizeJob(b); show('jobdetail'); return; } } catch (e) {}
-  }
-  if (t === 'review') { show('reviews'); return; }
-  if (t === 'payment') { show('earnings'); return; }
-  if (t === 'offer') { pendingJobTab = 'new'; show('jobs'); return; }   // dispatch offer -> New tab
-  if (t === 'booking' || t === 'lead' || t === 'job') { pendingJobTab = 'active'; show('jobs'); return; }
-  showNotifDetail(n);   // system / other → show the full text
+  // Always open the detail popup so a tap is unmistakably responsive — the
+  // notifications table has no per-row booking link, so the popup carries a
+  // "View" action that jumps to the right screen (New/Active jobs, earnings…).
+  showNotifDetail(n);
 }
+// Where the "View" button in a notification popup should take the provider.
+let notifNav = null;
 function showNotifDetail(n) {
   const ov = $('reqPopup'); if (!ov) { toast(n.body || n.title || ''); return; }
   reqPopData = null;
+  const t = String(n.type || '').toLowerCase();
+  // Pick a destination for the View button based on the notification type.
+  notifNav = null;
+  let viewLabel = '';
+  if (t === 'offer') { notifNav = { tab: 'new' }; viewLabel = 'View request →'; }
+  else if (t === 'booking' || t === 'lead' || t === 'job') { notifNav = { tab: 'active' }; viewLabel = 'View job →'; }
+  else if (t === 'payment') { notifNav = { screen: 'earnings' }; viewLabel = 'View earnings →'; }
+  else if (t === 'review') { notifNav = { screen: 'reviews' }; viewLabel = 'View reviews →'; }
   if ($('reqPopTitle')) $('reqPopTitle').textContent = n.title || 'Notification';
   if ($('reqPopSub')) $('reqPopSub').textContent = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
   if ($('reqPopDesc')) $('reqPopDesc').textContent = n.body || '';
   const fill = $('reqPopFill'); if (fill) fill.style.width = '100%';
-  const acc = $('reqPopAccept'); if (acc) acc.style.display = 'none';
+  const acc = $('reqPopAccept');
+  if (acc) { if (notifNav) { acc.style.display = ''; acc.textContent = viewLabel; } else acc.style.display = 'none'; }
   const rej = $('reqPopReject'); if (rej) rej.textContent = 'Close';
   ov.style.display = 'flex';
   clearTimeout(reqPopTimer);
@@ -1708,6 +1737,8 @@ document.addEventListener('click', (e) => {
   if (ro) { rejectOffer(ro.getAttribute('data-rejectoffer')); return; }
   const sjb = e.target.closest('[data-startjob]');
   if (sjb) { startJobAndGo(); return; }
+  const nf = e.target.closest('[data-notiffilter]');
+  if (nf) { setNotifFilter(nf.getAttribute('data-notiffilter')); return; }
   const nt = e.target.closest('[data-notif]');
   if (nt) { openNotification(Number(nt.getAttribute('data-notif'))); return; }
   const go = e.target.closest('[data-go]');
@@ -1846,8 +1877,14 @@ function showRequestPopup(req) {
   clearTimeout(reqPopTimer);
   reqPopTimer = setTimeout(hideRequestPopup, 12000);   // auto-dismiss the banner (offer stays in New tab)
 }
-function hideRequestPopup() { const ov = $('reqPopup'); if (ov) ov.style.display = 'none'; clearTimeout(reqPopTimer); reqPopData = null; }
+function hideRequestPopup() { const ov = $('reqPopup'); if (ov) ov.style.display = 'none'; clearTimeout(reqPopTimer); reqPopData = null; notifNav = null; }
 function popupAccept() {
+  // Notification-detail popup: the Accept button is a "View" link to a screen.
+  if (!reqPopData && notifNav) {
+    const nav = notifNav; hideRequestPopup();
+    if (nav.screen) { show(nav.screen); return; }
+    pendingJobTab = nav.tab || 'new'; show('jobs'); return;
+  }
   const r = reqPopData; hideRequestPopup();
   if (r && r.offerId) acceptOffer(r.offerId);
   if (stack[stack.length - 1] !== 'jobs') { pendingJobTab = 'active'; show('jobs'); }
