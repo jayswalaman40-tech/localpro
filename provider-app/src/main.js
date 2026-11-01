@@ -438,7 +438,22 @@ async function startJobAndGo() {
     try { await api.startJob(currentJob.rawId); currentJob.status = 'in_progress'; }
     catch (e) { toast(e.message || 'Could not start — is the job active yet?'); return; }
   }
+  if (currentJob) currentJob.startedAtMs = Date.now();   // timer counts up from now (0:00)
   show('progress');
+}
+// Provider can cancel an active/new job from any job screen (proper flow: reason + notify).
+async function cancelCurrentJob() {
+  if (!currentJob) { show('jobs'); return; }
+  if (!confirm('Cancel this job? The customer will be notified.')) return;
+  const reason = (prompt('Reason for cancelling (optional):', '') || '').trim() || null;
+  if (hasSupabase && currentJob.rawId) {
+    try { await api.cancelJob(currentJob.rawId, reason); }
+    catch (e) { toast(e.message || 'Could not cancel'); return; }
+  }
+  stopTimer();
+  toast('Job cancelled — customer notified');
+  lastJobsRows = null; pendingJobTab = 'cancelled';
+  show('jobs');
 }
 async function initBill() {
   billItems = [];
@@ -577,6 +592,7 @@ async function renderJobs() {
   const list = $('jobsList'); if (!list) return;
   jobTab = pendingJobTab || 'new';   // default to the New-requests tab ("Jobs Done" tile opens Completed)
   pendingJobTab = null;
+  renderVerifyBanner();   // show verification / certificate / go-online status at the top
   document.querySelectorAll('[data-jobtab]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-jobtab') === jobTab));
   if (!(hasSupabase && myProvider)) { lastJobsRows = []; updateJobCounts(); paintJobs(); return; }
   if (lastJobsRows === null) list.innerHTML = `<div class="empty">Loading…</div>`;
@@ -694,9 +710,11 @@ function updateLeadCounts() {
 }
 function paintLeads() {
   const list = $('leadsList'); if (!list) return;
-  if (lastLeadsRows === null) {   // demo
-    leadsView = (leadTab === 'all' || leadTab === 'pending') ? DEMO_LEADS : [];
-    list.innerHTML = leadsView.length ? leadsView.map(leadCard).join('') : `<div class="empty">No ${leadTab} leads.</div>`;
+  // Dispatch model: real job requests arrive as offers in Jobs → New. Never show
+  // demo lead cards here — only real leads (if any), else a pointer to Jobs.
+  if (!lastLeadsRows || !lastLeadsRows.length) {
+    leadsView = [];
+    list.innerHTML = `<div class="empty">New customer requests now appear in <b>Jobs → New</b>.<br>Tap a request there to accept it.</div>`;
     return;
   }
   leadsView = leadTab === 'all' ? lastLeadsRows : lastLeadsRows.filter((l) => leadBucket(l.status) === leadTab);
@@ -1140,7 +1158,10 @@ function renderJobDetail() {
         : (st === 'in_progress'
             ? `<button class="btn btn-blue" data-go="progress">Continue Job</button>`
             : `<button class="btn btn-blue" data-startjob>Start Job</button>`)}
-    </div>`;
+    </div>
+    ${bucket === 'completed' || bucket === 'cancelled' || bucket === 'new'
+      ? ''
+      : `<button class="btn btn-out-danger" style="width:100%;margin-top:10px" data-canceljob>✕ Cancel Job</button>`}`;
   liveMap($('jobDetailMap'), addr);
 }
 
@@ -1240,15 +1261,18 @@ function openThread(id, name, phone) { chatCustomer = { id, name, phone }; show(
 /* ---------- job timer (in-progress screen) ---------- */
 function startTimer() {
   stopTimer();
-  let s = 28 * 60 + 15;
+  // Count up from when the job actually started (0:00 on Start Job), not a fake value.
+  const base = (currentJob && currentJob.startedAtMs) ? currentJob.startedAtMs : Date.now();
   const el = $('jobTimer');
-  timerHandle = setInterval(() => {
-    s++;
+  const tick = () => {
+    const s = Math.max(0, Math.floor((Date.now() - base) / 1000));
     const hh = String(Math.floor(s / 3600)).padStart(2, '0');
     const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');
     if (el) el.textContent = `${hh}:${mm}:${ss}`;
-  }, 1000);
+  };
+  tick();
+  timerHandle = setInterval(tick, 1000);
 }
 function stopTimer() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
@@ -1298,6 +1322,33 @@ function initSignature() { sigJob.mount(); }
 /* ---------- verification certificate ---------- */
 function isVerified() {
   return !!(myProvider && (myProvider.verified === true || myProvider.kyc_status === 'verified'));
+}
+// A provider is fully live-ready only after admin verification AND a signed certificate.
+function certSigned() {
+  return !!(myProvider && myProvider.signature_path);
+}
+function canGoLive() { return isVerified() && certSigned(); }
+// Banner on the Jobs dashboard explaining exactly why requests are / aren't coming.
+function renderVerifyBanner() {
+  const el = $('verifyBanner'); if (!el) return;
+  if (!(hasSupabase && myProvider)) { el.style.display = 'none'; return; }
+  let html = '';
+  if (!isVerified()) {
+    html = `<div class="card" style="background:#FFF4E5;border:1px solid #F5C584">
+      <div style="font-weight:800;color:#8A5200;font-size:14.5px">⏳ Admin verification pending</div>
+      <div class="sec" style="font-size:12.5px;margin-top:4px;color:#8A5200">Aapka account abhi admin ne verify nahi kiya — isliye aapko koi job request nahi aayegi. Verify hote hi (24–48 hrs) aapko yahin notification milega.</div></div>`;
+  } else if (!certSigned()) {
+    html = `<div class="card" style="background:#E8F0FE;border:1px solid #9DBDF5">
+      <div style="font-weight:800;color:#13438C;font-size:14.5px">✅ Aap verified ho! Ab certificate banao</div>
+      <div class="sec" style="font-size:12.5px;margin-top:4px;color:#13438C">Live hone aur jobs lene ke liye apna service certificate sign karna zaroori hai.</div>
+      <button class="btn btn-blue sm" style="margin-top:10px" data-go="certificate">Create Certificate →</button></div>`;
+  } else if (myProvider && myProvider.available === false) {
+    html = `<div class="card" style="background:#E9F7EE;border:1px solid #9AD8B0">
+      <div style="font-weight:800;color:#0E6B33;font-size:14.5px">You're verified ✓ — go Online to get jobs</div>
+      <div class="sec" style="font-size:12.5px;margin-top:4px;color:#0E6B33">Profile me jaa kar Online toggle on karo taaki nearby requests aapko milein.</div></div>`;
+  } else { el.style.display = 'none'; return; }
+  el.innerHTML = html;
+  el.style.display = 'block';
 }
 // Stable positive number derived from the provider id → unique per provider.
 function certSerial(id) {
@@ -1605,9 +1656,14 @@ async function submitRegistration() {
 /* ---------- availability toggle ---------- */
 async function toggleAvail() {
   const t = $('availToggle'); const on = !t.classList.contains('on');
-  // A provider can only go live once verified (certificate issued).
+  // A provider can only go live once admin-verified AND the certificate is signed.
   if (on && hasSupabase && !isVerified()) {
-    toast('Get verified first — your certificate must be issued to go live');
+    toast('Admin verification pending — you will get jobs once HelpZo verifies you');
+    show('jobs');
+    return;
+  }
+  if (on && hasSupabase && !certSigned()) {
+    toast('Create & sign your certificate first to go live');
     show('certificate');
     return;
   }
@@ -1735,6 +1791,8 @@ document.addEventListener('click', (e) => {
   if (ao) { acceptOffer(ao.getAttribute('data-acceptoffer')); return; }
   const ro = e.target.closest('[data-rejectoffer]');
   if (ro) { rejectOffer(ro.getAttribute('data-rejectoffer')); return; }
+  const cjb = e.target.closest('[data-canceljob]');
+  if (cjb) { cancelCurrentJob(); return; }
   const sjb = e.target.closest('[data-startjob]');
   if (sjb) { startJobAndGo(); return; }
   const nf = e.target.closest('[data-notiffilter]');

@@ -438,6 +438,7 @@
       <div class="ic-btn" data-go="messages" style="position:relative;margin-right:8px">&#128172;<span id="msgBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);min-width:16px;height:16px;padding:0 3px;border-radius:8px;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;color:#fff">0</span></div>
       <div class="ic-btn" data-go="notif" style="position:relative">&#128276;<span id="notifBadge" style="position:absolute;top:-2px;right:-2px;background:var(--danger);width:16px;height:16px;border-radius:50%;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700">0</span></div></div>
     <div class="scroll sheet"><div class="pad">
+      <div id="verifyBanner" style="display:none;margin-bottom:14px"></div>
       <div class="chips" style="margin-bottom:14px" id="jobsTabs"><div class="chip on" data-jobtab="new">New</div><div class="chip" data-jobtab="active">Active</div><div class="chip" data-jobtab="completed">Completed</div><div class="chip" data-jobtab="cancelled">Cancelled</div></div>
       <div id="jobsList"></div>
     </div></div>
@@ -457,9 +458,8 @@
   <!-- 08 JOB DETAILS -->
   <div class="screen" id="s-jobdetail">
     <div class="hdr blue"><div class="ic-btn" data-back>&#8249;</div>
-      <div class="htxt"><div class="h1">Job Details</div><div class="sub">View job details and accept</div></div><div class="ic-btn">&#8943;</div></div>
-    <div class="scroll sticky-pad sheet"><div class="pad" id="jobDetailBody"></div></div>
-    <div class="sticky"><button class="btn btn-out-danger" data-go="leads">Reject</button><button class="btn btn-green" data-go="enroute">&#10003; Accept Job</button></div>
+      <div class="htxt"><div class="h1">Job Details</div><div class="sub">View &amp; update your job</div></div><div class="ic-btn">&#8943;</div></div>
+    <div class="scroll sheet"><div class="pad" id="jobDetailBody"></div></div>
   </div>
 
   <!-- 09 EN ROUTE -->
@@ -489,7 +489,7 @@
         <div class="jpn"><div class="jpc">4</div><div class="jpl">Complete</div><div class="jpt">--:--</div></div>
       </div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Report</button><button class="btn btn-blue" data-go="progress">&#10003; Arrived</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-canceljob>&#10005; Cancel</button><button class="btn btn-blue" data-go="progress">&#10003; Arrived</button></div>
   </div>
 
   <!-- 10 JOB IN PROGRESS -->
@@ -532,7 +532,7 @@
         <div id="signHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tTertiary);font-size:13px;pointer-events:none">Sign here with your finger</div>
       </div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out-danger" data-toast="Issue reported to support">&#9888; Issue</button><button class="btn btn-green" id="completeBtn">&#10003; Send Bill &amp; Complete</button></div>
+    <div class="sticky"><button class="btn btn-out-danger" data-canceljob>&#10005; Cancel</button><button class="btn btn-green" id="completeBtn">&#10003; Send Bill &amp; Complete</button></div>
   </div>
 
   <!-- 11 JOB COMPLETED -->
@@ -550,7 +550,7 @@
       <div class="card" id="compBill"></div>
       <div id="compPay" style="margin-top:14px"></div>
     </div></div>
-    <div class="sticky"><button class="btn btn-out" data-go="jobs">&#127968; Home</button><button class="btn btn-blue" data-go="leads">Next Job &#8250;</button></div>
+    <div class="sticky"><button class="btn btn-out" data-go="jobs">&#127968; Home</button><button class="btn btn-blue" data-go="jobs">Next Job &#8250;</button></div>
   </div>
 
   <!-- 12 EARNINGS -->

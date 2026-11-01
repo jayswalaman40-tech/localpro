@@ -744,7 +744,7 @@ async function setCityPrompt() {
   if (hasSupabase && session) { try { await api.updateMyProfile({ city: clean }); } catch (e) {} }
   if (myProfile) myProfile.city = clean; else myProfile = { city: clean };
 }
-let bookService = '';   // the specific service the customer picked (or '__other__')
+let bookServices = [];   // the services the customer picked (multi-select; may include '__other__')
 function catKeyForProvider(p) {
   if (!p) return selectedCat || '';
   if (p.cat && SUBCATS[p.cat]) return p.cat;
@@ -756,26 +756,35 @@ function catKeyForProvider(p) {
 // "Other" option so the customer can type exactly what work they need.
 function renderBookServices(p) {
   const row = $('bookSvcRow'); if (!row) return;
-  bookService = '';
+  bookServices = [];
   const other = $('bookSvcOther'); if (other) { other.style.display = 'none'; other.value = ''; }
   const list = (SUBCATS[catKeyForProvider(p)] || []);
   row.innerHTML = list.map((s) => `<div class="slot" data-booksvc="${esc(s)}">${esc(s)}</div>`).join('')
     + `<div class="slot" data-booksvc="__other__">➕ Other</div>`;
-  // Carry over the service(s) the customer picked while browsing the category,
-  // so category → service → profile → Book Now arrives pre-filled.
-  const chosen = selectedSub || (selectedServices && selectedServices.length ? selectedServices.join(', ') : '');
-  if (chosen) preselectBookService(chosen);
+  // Carry over the service(s) the customer picked while browsing the category
+  // (multi-select) so category → services → Book Now arrives pre-filled.
+  const chosen = (selectedServices && selectedServices.length) ? selectedServices.slice()
+    : (selectedSub ? [selectedSub] : []);
+  if (chosen.length) preselectBookServices(chosen);
 }
-function preselectBookService(value) {
+function preselectBookServices(values) {
   const row = $('bookSvcRow'); if (!row) return;
   row.querySelectorAll('[data-booksvc]').forEach((x) => x.classList.remove('on'));
-  const exact = Array.from(row.querySelectorAll('[data-booksvc]')).find((x) => x.getAttribute('data-booksvc') === value);
-  if (exact) { exact.classList.add('on'); bookService = value; return; }
-  // not one of the category's standard services → use "Other" with the text
-  const otherChip = row.querySelector('[data-booksvc="__other__"]');
-  if (otherChip) otherChip.classList.add('on');
-  bookService = '__other__';
-  const other = $('bookSvcOther'); if (other) { other.style.display = ''; other.value = value; }
+  bookServices = [];
+  const chips = Array.from(row.querySelectorAll('[data-booksvc]'));
+  const extras = [];
+  values.forEach((value) => {
+    const exact = chips.find((x) => x.getAttribute('data-booksvc') === value);
+    if (exact) { exact.classList.add('on'); bookServices.push(value); }
+    else if (value && value.trim()) extras.push(value.trim());
+  });
+  // Anything not in the standard list goes into the "Other" free-text field.
+  if (extras.length) {
+    const otherChip = row.querySelector('[data-booksvc="__other__"]');
+    if (otherChip) otherChip.classList.add('on');
+    if (!bookServices.includes('__other__')) bookServices.push('__other__');
+    const other = $('bookSvcOther'); if (other) { other.style.display = ''; other.value = extras.join(', '); }
+  }
 }
 function renderBook() {
   const p = selectedProvider || DEMO_PROVIDERS[0];
@@ -968,9 +977,26 @@ function openBookingDetail(b) {
 }
 async function cancelBookingDetail() {
   const b = detailBooking; if (!b) return;
-  if (b.id && hasSupabase && session) { try { await api.cancelBooking(b.id); } catch (e) {} }
+  if (!confirm('Cancel this booking? The provider will be notified.')) return;
+  const reason = (prompt('Reason for cancelling (optional):', '') || '').trim() || null;
+  if (b.id && hasSupabase && session) {
+    try { await api.cancelBooking(b.id, reason); }
+    catch (e) { toast(e.message || 'Could not cancel'); return; }
+  }
   b.status = 'Cancelled';
-  const idx = localBookings.findIndex((x) => x === b);
+  toast('Booking cancelled');
+  renderBookings(); show('bookings');
+}
+// Cancel the booking the customer just made, straight from the confirmation screen.
+async function cancelLatestBooking() {
+  const b = localBookings[0]; if (!b) { show('bookings'); return; }
+  if (!confirm('Cancel this booking? The provider will be notified.')) return;
+  const reason = (prompt('Reason for cancelling (optional):', '') || '').trim() || null;
+  if (b.id && hasSupabase && session) {
+    try { await api.cancelBooking(b.id, reason); }
+    catch (e) { toast(e.message || 'Could not cancel'); return; }
+  }
+  b.status = 'Cancelled';
   toast('Booking cancelled');
   renderBookings(); show('bookings');
 }
@@ -1133,8 +1159,10 @@ async function confirmBooking() {
   if (!timeVal) { toast('Please select a time'); return; }
   // The customer must say WHICH service they need, so the provider knows the job.
   const otherVal = ($('bookSvcOther')?.value || '').trim();
-  const service = bookService === '__other__' ? otherVal : bookService;
-  if (!service) { toast('Please select the service you need'); $('bookSvcRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  const picked = bookServices.filter((s) => s !== '__other__');
+  if (bookServices.includes('__other__') && otherVal) picked.push(otherVal);
+  const service = picked.join(', ');
+  if (!service) { toast('Please select the service(s) you need'); $('bookSvcRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   const btn = $('confirmBookBtn'); btn.disabled = true; btn.textContent = 'Booking…';
   try {
     const p = selectedProvider || DEMO_PROVIDERS[0];
@@ -1301,17 +1329,23 @@ document.addEventListener('click', (e) => {
     const t = sl.getAttribute('data-time'); if (t && $('bookTime')) $('bookTime').value = t; return;
   }
   const bsvc = e.target.closest('#bookSvcRow [data-booksvc]'); if (bsvc) {
-    document.querySelectorAll('#bookSvcRow [data-booksvc]').forEach((x) => x.classList.remove('on')); bsvc.classList.add('on');
-    bookService = bsvc.getAttribute('data-booksvc');
+    // Multi-select: tap to toggle each service on/off.
+    const val = bsvc.getAttribute('data-booksvc');
+    const i = bookServices.indexOf(val);
+    if (i >= 0) { bookServices.splice(i, 1); bsvc.classList.remove('on'); }
+    else { bookServices.push(val); bsvc.classList.add('on'); }
     const other = $('bookSvcOther');
-    if (bookService === '__other__') { if (other) { other.style.display = ''; other.focus(); } }
-    else if (other) { other.style.display = 'none'; }
+    if (val === '__other__') {
+      const on = bookServices.includes('__other__');
+      if (other) { other.style.display = on ? '' : 'none'; if (on) other.focus(); else other.value = ''; }
+    }
     return;
   }
   const callEl = e.target.closest('[data-call]'); if (callEl) { const ph = callEl.getAttribute('data-call'); if (ph) window.location.href = telHref(ph); return; }
   if (e.target.closest('#callBtn')) { dialProvider(); return; }
   if (e.target.closest('#profChatBtn')) { openChatWith(selectedProvider); return; }
   if (e.target.closest('#bookedChatBtn')) { openChatWith(selectedProvider); return; }
+  if (e.target.closest('#bookedCancelBtn')) { cancelLatestBooking(); return; }
   if (e.target.closest('#editProfileBtn')) { editProfile(); return; }
   if (e.target.closest('#epPhotoBtn') || e.target.closest('#epAvatarWrap')) { $('epPhoto')?.click(); return; }
   if (e.target.closest('#epSaveBtn')) { saveProfile(); return; }

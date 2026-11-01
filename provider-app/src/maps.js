@@ -67,19 +67,14 @@ const MAP_STYLE = [
 ];
 const DEST_PIN = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24"><path fill="#E53935" d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>');
-// HelpZo serviceman on a scooter (Rapido-style moving marker), facing right.
-const RIDER = 'data:image/svg+xml,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
-  '<ellipse cx="32" cy="57" rx="19" ry="4" fill="rgba(16,32,58,.22)"/>' +
-  '<circle cx="18" cy="48" r="8" fill="#2A3340"/><circle cx="18" cy="48" r="3" fill="#9AA6BC"/>' +
-  '<circle cx="48" cy="48" r="8" fill="#2A3340"/><circle cx="48" cy="48" r="3" fill="#9AA6BC"/>' +
-  '<path d="M14 48 Q24 34 40 36 L50 48 Z" fill="#1667E8"/>' +
-  '<path d="M40 36 L45 24" stroke="#0B3E9E" stroke-width="3.5" stroke-linecap="round"/>' +
-  '<rect x="30" y="25" width="13" height="12" rx="3" fill="#E53935"/><rect x="33" y="29" width="7" height="2" rx="1" fill="#fff"/>' +
-  '<path d="M26 37 Q30 22 38 24 L34 38 Z" fill="#1B9E3E"/>' +
-  '<path d="M34 26 L46 32" stroke="#F3C197" stroke-width="4" stroke-linecap="round"/>' +
-  '<circle cx="30" cy="16" r="8" fill="#F3C197"/>' +
-  '<path d="M22 16 a8 8 0 0 1 16 0 Z" fill="#F5A623"/><rect x="22" y="14.5" width="16" height="3.5" rx="1.5" fill="#E08A1E"/>' +
+// Live navigation marker — a Google-Maps-style blue location puck with a white
+// directional arrow (no cartoon scooter/serviceman). It sits on the provider's
+// real position and moves only with real GPS.
+const NAV_MARKER = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
+  '<circle cx="24" cy="24" r="15" fill="#1667E8" fill-opacity="0.18"/>' +
+  '<circle cx="24" cy="24" r="10" fill="#1667E8" stroke="#ffffff" stroke-width="3"/>' +
+  '<path d="M24 16 L29 28 L24 25 L19 28 Z" fill="#ffffff"/>' +
   '</svg>');
 
 function quickPos() {
@@ -116,10 +111,10 @@ export async function liveMap(el, dest, onEta) {
     center: origin, zoom: 15, disableDefaultUI: true, zoomControl: true,
     gestureHandling: 'greedy', clickableIcons: false, styles: MAP_STYLE,
   });
-  // The serviceman marker (anchored at its base).
+  // Live navigation puck (centered on the provider's position).
   const me = new g.Marker({
     map, position: origin, zIndex: 999,
-    icon: { url: RIDER, scaledSize: new g.Size(54, 54), anchor: new g.Point(27, 50) },
+    icon: { url: NAV_MARKER, scaledSize: new g.Size(46, 46), anchor: new g.Point(23, 23) },
   });
   const ds = new g.DirectionsService();
   let destMarker = null, casing = null, line = null, lastRoute = 0, gpsActive = false;
@@ -137,16 +132,9 @@ export async function liveMap(el, dest, onEta) {
     out.push(path[path.length - 1]);
     return out;
   }
-  function animate(path) {
-    if (gpsActive) return;
-    if (el._hz.anim) clearInterval(el._hz.anim);
-    const pts = densify(path); let i = 0;
-    el._hz.anim = setInterval(() => {
-      if (gpsActive || !el.isConnected) { clearInterval(el._hz.anim); return; }
-      i = (i + 1) % pts.length;
-      me.setPosition(pts[i]);
-    }, 120);
-  }
+  // No fake gliding animation: the navigation marker stays on the provider's
+  // real position (origin, then live GPS). Kept as a no-op so callers are safe.
+  function animate(_path) { /* intentionally does not move the marker */ }
 
   function drawRoute(from) {
     ds.route({ origin: from, destination: dest, travelMode: g.TravelMode.DRIVING }, (resu, status) => {

@@ -83,7 +83,8 @@ export async function searchProviders({ lat, lng, categoryId = null, query = '',
     in_query: query || null,
   });
   if (error) throw error;
-  return data ?? [];
+  // Customers only ever see admin-verified providers.
+  return (data ?? []).filter((p) => p.verified === true);
 }
 
 export async function getProvider(id) {
