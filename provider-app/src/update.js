@@ -41,6 +41,26 @@ function showUpdateBar(version) {
   };
   document.getElementById('hzUpdNow').onclick = openApk;
 }
+// Thin red banner while the device is offline, so users know why nothing loads.
+export function initNetworkWatch() {
+  const render = () => {
+    const existing = document.getElementById('hzOffline');
+    if (navigator.onLine) { if (existing) existing.remove(); return; }
+    if (existing) return;
+    const d = document.createElement('div');
+    d.id = 'hzOffline';
+    d.textContent = '⚠ No internet connection — check your network';
+    d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:#C62828;color:#fff;' +
+      'text-align:center;font-size:12.5px;font-weight:600;padding:7px 10px;max-width:520px;margin:0 auto;' +
+      'padding-top:calc(7px + env(safe-area-inset-top,0px))';
+    document.body.appendChild(d);
+  };
+  try {
+    window.addEventListener('online', render);
+    window.addEventListener('offline', render);
+    render();
+  } catch (e) {}
+}
 export async function checkForUpdate() {
   if (!MY_SHA) return;                              // local/dev build — nothing to compare against
   try { if (sessionStorage.getItem('hz_update_dismissed') === MY_SHA) return; } catch (e) {}

@@ -6,7 +6,7 @@
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
 import { openMaps, liveMap } from './maps.js';
-import { checkForUpdate } from './update.js';
+import { checkForUpdate, initNetworkWatch } from './update.js';
 
 /* ---------- tiny helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -2176,5 +2176,6 @@ async function logout() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
-// Check for a newer published APK a few seconds after launch (non-blocking).
+// Offline banner + check for a newer published APK a few seconds after launch.
+initNetworkWatch();
 setTimeout(() => { checkForUpdate(); }, 4000);
