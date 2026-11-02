@@ -6,6 +6,7 @@
 import * as api from './api.js';
 import { hasSupabase } from './supabase.js';
 import { nearbyMap, demoProviders, locationPicker } from './maps.js';
+import { checkForUpdate } from './update.js';
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -66,9 +67,13 @@ function fileToAvatarDataUrl(file) {
 
 // Normalize a Supabase provider/RPC row into the shape the UI cards use.
 function provFromRow(p) {
+  // Reverse the category uuid back to its key (for icons + skill matching).
+  const catKey = Object.keys(catByKey).find((k) => catByKey[k] === p.category_id) || null;
   return {
     id: p.id,
     name: p.name,
+    category_id: p.category_id || null,   // carried into the booking so dispatch matches by skill
+    cat: catKey,
     trade: catMap[p.category_id] || p.custom_category || 'Service Pro',
     rating: Number(p.rating_avg ?? 0) || 0,
     reviews: p.rating_count ?? 0,
@@ -1661,3 +1666,5 @@ function currentScreenIsSplash() {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+// Check for a newer published APK a few seconds after launch (non-blocking).
+setTimeout(() => { checkForUpdate(); }, 4000);

@@ -75,6 +75,7 @@ jobs:
             echo "VITE_DEFAULT_LAT=23.0225"
             echo "VITE_DEFAULT_LNG=72.5714"
             echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}"
+            echo "VITE_APP_SHA=${GITHUB_SHA::7}"
           } > .env
 
       - name: Build web bundle
